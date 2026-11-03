@@ -2,7 +2,7 @@
 
 **Make every solved problem AI intuition you own**
 
-![The harness in 7 steps. 1: You type: make a world for my runs, each run has a day, a distance in km and the minutes it took. 2: The code model writes the type, and the world gets 1 type, Run. 3: You type 3 runs in plain words. They run in parallel and the world has 3 runs. 4: You ask how far you have run in total. The decision model plans the answer from World API calls and answers 13 km in 2.4 s. 5: You type keep it. A tested function goes into world.py and shows under learned by talking. 6: You ask for the total distance again. The plan uses the kept function. 7: You ask on which day your pace was fastest. No call fits, so the decision model opens a new function and the code model writes its body.](https://scriptt.ai/harness-smoke.gif)
+![A screen recording of the harness in 6 steps. 1: You type: make a world for my runs, each run has a day, a distance in km and the minutes it took. The code model writes the type Run. 2: You type 3 runs in plain words: 5 km in 31 minutes, 8 km in 50 minutes and 3 km in 17 minutes. The world has 3 runs. 3: You ask how far you have run in total. The decision model plans the answer from World API calls and answers 16 km. 4: You type keep it. A tested function goes into the world and shows under learned by talking. 5: You ask for your total distance in other words. The plan calls the kept function. 6: You ask on which day your pace was fastest, in minutes per km. No call fits, so the decision model and the code model work together and answer 5.667 minutes per km.](https://scriptt.ai/harness-smoke.gif)
 
 *The harness in development, on a world of runs: 1 type, 3 facts and 2 functions, made by talking. The harness is not part of this release.*
 
