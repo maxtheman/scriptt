@@ -1,0 +1,15 @@
+# Build output
+dist/
+site/
+docs/_build/
+
+# Python and tool caches
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+.pytest_cache/
+
+# Worlds that the examples and cases write
+*.duckdb
+*.duckdb.wal

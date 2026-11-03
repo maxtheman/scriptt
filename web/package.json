@@ -1,0 +1,10 @@
+{
+  "name": "scriptt-site",
+  "private": true,
+  "type": "module",
+  "description": "The scriptt.ai site: the landing page at / and the docs at /docs/. build.sh makes public/.",
+  "devDependencies": {
+    "cf": "0.15.0",
+    "wrangler": "4.151.1"
+  }
+}

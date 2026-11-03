@@ -1,0 +1,41 @@
+/* A chart is as wide as its spec; it scrolls on a narrow screen instead of overflowing the page. */
+div.vega-lite { overflow-x: auto; margin: 1em 0; }
+
+/* A name with hover text (assets/hover.js): a dotted line, and a box like an IDE's on hover. */
+.hover-name { cursor: help; text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
+#hover-tip { position: fixed; z-index: 10; max-width: min(42rem, calc(100vw - 16px)); padding: 0.5rem 0.7rem;
+  background: var(--md-default-bg-color); color: var(--md-default-fg-color); font-size: 0.72rem; line-height: 1.45;
+  border: 1px solid var(--md-default-fg-color--lighter); border-radius: 6px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.15); pointer-events: none; }
+#hover-tip code { display: block; white-space: pre-wrap; font-size: 0.7rem; background: none; padding: 0; margin-bottom: 0.25rem; }
+#hover-tip .hover-where { color: var(--md-default-fg-color--light); margin-top: 0.2rem; }
+
+/* The home page: the name and the tagline at the top. */
+.hero { padding: 1.2rem 0 0.4rem; }
+.hero h1 { margin-bottom: .2rem; }
+.hero p.tagline { font-size: 1.15rem; opacity: .85; margin-top: 0; }
+.md-typeset table:not([class]) { font-size: .72rem; }
+.md-typeset table:not([class]) td code, .md-typeset table:not([class]) th code { white-space: nowrap; }
+.md-banner code { background: rgba(255,255,255,.12); color: inherit; }
+
+/* The colours of the landing page and the harness editor: ink for the header, 1 blue for links. */
+:root > * {
+  --md-primary-fg-color: #1f2328; --md-primary-fg-color--light: #5f666e; --md-primary-fg-color--dark: #000000;
+  --md-accent-fg-color: #2f5fd0; --md-typeset-a-color: #2f5fd0;
+  --md-code-font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --md-text-font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #1e1f22; --md-primary-fg-color: #18191b;
+  --md-accent-fg-color: #6d9bff; --md-typeset-a-color: #6d9bff;
+}
+.md-typeset h1, .md-typeset h2, .hero h1 { font-family: "Source Serif 4", Georgia, serif; font-weight: 600; letter-spacing: -0.01em; }
+.md-typeset h1 { color: inherit; }
+.md-banner { background-color: #1f2328; }
+.md-typeset .admonition, .md-typeset details { border-radius: 4px; box-shadow: none; }
+.md-typeset .grid.cards > ul > li { border-radius: 4px; box-shadow: none; }
+.md-typeset .grid.cards > ul > li:hover { box-shadow: none; border-color: var(--md-accent-fg-color); }
+/* The pre-alpha note: ink and grey, the same as the status line of the landing page. */
+.md-typeset .admonition.warning { border-color: var(--md-default-fg-color); }
+.md-typeset .warning > .admonition-title { background-color: var(--md-default-fg-color--lightest); }
+.md-typeset .warning > .admonition-title::before { background-color: var(--md-default-fg-color); }
+.md-typeset .hero h1 { font-family: "Source Serif 4", Georgia, serif; font-weight: 600; font-size: 2.4rem; }

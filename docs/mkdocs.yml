@@ -1,0 +1,108 @@
+# The scriptt docs site. `mise run docs` first runs docs/build.py (it runs every example and writes docs/_build),
+# then builds this site from docs/_build. The API reference is generated from the docstrings of both packages.
+site_name: scriptt
+site_description: Make every solved problem AI intuition you own. Pre-alpha 0.1.0.
+site_url: https://scriptt.ai/docs/
+repo_url: https://github.com/maxtheman/scriptt
+repo_name: scriptt
+edit_uri: ""  # the pages are built from docs/pages and the examples, so an edit link would point to the wrong file
+copyright: scriptt 0.1.0, pre-alpha
+docs_dir: _build
+# Plain Markdown copies of the reference pages (for the notebook), and the page that Home replaced.
+exclude_docs: |
+  reference-md/
+site_dir: ../site
+
+theme:
+  name: material
+  custom_dir: overrides
+  icon:
+    logo: material/timeline-clock-outline
+    repo: fontawesome/brands/github
+  favicon: assets/favicon.svg
+  font: false  # the system fonts, as in the harness editor; headings use Source Serif 4 (assets/extra.css)
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle: {icon: material/weather-night, name: Switch to dark mode}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle: {icon: material/weather-sunny, name: Switch to light mode}
+  features: [navigation.tabs, navigation.indexes, navigation.sections, navigation.top, navigation.footer, search.suggest, search.highlight, content.code.copy, content.tabs.link, toc.follow]
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tabbed: {alternate_style: true}
+  - def_list
+  - footnotes
+  - tables
+  - toc: {permalink: true}
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+        - name: vega-lite
+          class: vega-lite
+          format: !!python/name:pymdownx.superfences.fence_div_format
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/vega@5.30.0
+  - https://cdn.jsdelivr.net/npm/vega-lite@5.21.0
+  - https://cdn.jsdelivr.net/npm/vega-embed@6.26.0
+  - assets/vega.js
+  - assets/hover.js
+
+extra_css:
+  - https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap
+  - assets/extra.css
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            members_order: source
+            merge_init_into_class: true
+            show_if_no_docstring: true
+            filters: ["!^_[^_]", "!^__(?!describe__|sub__|add__)"]
+            heading_level: 2
+
+nav:
+  - Home: index.md
+  - Get started:
+      - Quickstart: quickstart.md
+      - To-do app tutorial: tutorial-todo.md
+      - What was true, and what you knew: time-travel.md
+      - Mental model: mental-model.md
+  - API reference:
+      - reference/index.md
+      - World: reference/world.md
+      - Facts and rows: reference/facts.md
+      - Fact types: reference/fact.md
+      - The log: reference/log.md
+      - Goals: reference/goals.md
+      - Text and dates: reference/text.md
+      - Versions: reference/versions.md
+      - Charts (scriptt-charts): reference/charts.md
+  - Changelog: changelog.md
