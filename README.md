@@ -2,6 +2,10 @@
 
 **Make every solved problem AI intuition you own**
 
+![The harness in 7 steps. 1: You type: make a world for my runs, each run has a day, a distance in km and the minutes it took. 2: The code model writes the type, and the world gets 1 type, Run. 3: You type 3 runs in plain words. They run in parallel and the world has 3 runs. 4: You ask how far you have run in total. The decision model plans the answer from World API calls and answers 13 km in 2.4 s. 5: You type keep it. A tested function goes into world.py and shows under learned by talking. 6: You ask for the total distance again. The plan uses the kept function. 7: You ask on which day your pace was fastest. No call fits, so the decision model opens a new function and the code model writes its body.](https://scriptt.ai/harness-smoke.gif)
+
+*The harness in development, on a world of runs: 1 type, 3 facts and 2 functions, made by talking. The harness is not part of this release.*
+
 Frontier models solve problems well, and they will keep doing so. scriptt is a harness that keeps you in the
 loop. It turns each solution into AI intuition. AI intuition is a fast answer from a small local model. You take it with you from one chat to the next.
 
