@@ -180,19 +180,17 @@ t2  Send the report  no
         <li><div><b>A small local model learns the answer.</b><span>The small model is a System One model. TypeSafe named this class of decision model after the fast System 1 of Kahneman <a href="#ref-1">[1]</a> <a href="#ref-2">[2]</a>. The Clef models of Cloudflare answer in the same request shape <a href="#ref-3">[3]</a>. Clairic, also from Cloudflare, is a System One model that extracts fields from text <a href="#ref-4">[4]</a>.</span></div></li>
         <li><div><b>The next time, the small model answers.</b><span>The frontier model works only on the parts that are new.</span></div></li>
       </ol>
-      <p class="label" style="margin-top:28px">Measured times of local System One models on our machines</p>
+      <p class="label" style="margin-top:28px">Measured times of the System One models that the harness uses</p>
       <div class="tablewrap">
       <table>
         <thead><tr><th>Model</th><th>Machine</th><th>Time</th></tr></thead>
         <tbody>
-          <tr><td><a href="https://huggingface.co/LiquidAI/d1-omni-600M">d1-omni-600M</a></td><td>Apple M4 Max, Core AI</td><td>7.35 ms for 1 question. 38.3 ms for 1 image.</td></tr>
-          <tr><td><a href="https://huggingface.co/LiquidAI/d1-omni-600M">d1-omni-600M</a></td><td>Apple M5 Pro, Core ML, Neural Engine</td><td>4.6 ms for 64 tokens of text.</td></tr>
-          <tr><td><a href="https://huggingface.co/LiquidAI/d1-3B">d1-3B</a></td><td>Apple M4 Max, Core AI</td><td>34.3 ms for 39 tokens.</td></tr>
-          <tr><td><a href="https://huggingface.co/Cloudflare/clef-flash">Clef-flash</a></td><td>Apple M4 Max, Core AI</td><td>0.41 s for 185 tokens.</td></tr>
+          <tr><td><a href="https://huggingface.co/LiquidAI/d1-2B">d1-2B</a></td><td>Apple M4 Pro, MLX fp16</td><td>89 ms for 1 question. 369 ms for 16 questions in 1 pass.</td></tr>
+          <tr><td><a href="https://huggingface.co/LiquidAI/d1-Omni-2B">d1-Omni-2B</a></td><td>Apple M4 Pro, MLX fp16</td><td>88 ms for 1 question. 379 ms for 16 questions in 1 pass.</td></tr>
         </tbody>
       </table>
       </div>
-      <p class="note">Each time is the time of the model on the device, from our ports of the models. A call through a shared service on the same machine takes longer.</p>
+      <p class="note">Each time is the median of 20 calls to the local CoreAI service on an Apple M4 Pro, measured on 3 Nov 2026. The time includes the HTTP call.</p>
       <ol class="refs">
         <li id="ref-1">Daniel Kahneman. <a href="https://en.wikipedia.org/wiki/Thinking,_Fast_and_Slow"><i>Thinking, Fast and Slow</i></a>. Farrar, Straus and Giroux, 2011.</li>
         <li id="ref-2">Diogo Almeida. <a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">Introducing System One Models &amp; Jev</a>. TypeSafe AI blog, 15 Sep 2026.</li>

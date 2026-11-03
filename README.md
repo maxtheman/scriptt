@@ -42,13 +42,11 @@ gives the same answer fast, at low cost, each time.
 
 | Local System One model | Machine | Measured time |
 |---|---|---|
-| [d1-omni-600M](https://huggingface.co/LiquidAI/d1-omni-600M) | Apple M4 Max, Core AI | 7.35 ms for 1 question. 38.3 ms for 1 image. |
-| [d1-omni-600M](https://huggingface.co/LiquidAI/d1-omni-600M) | Apple M5 Pro, Core ML, Neural Engine | 4.6 ms for 64 tokens of text. |
-| [d1-3B](https://huggingface.co/LiquidAI/d1-3B) | Apple M4 Max, Core AI | 34.3 ms for 39 tokens. |
-| [Clef-flash](https://huggingface.co/Cloudflare/clef-flash) | Apple M4 Max, Core AI | 0.41 s for 185 tokens. |
+| [d1-2B](https://huggingface.co/LiquidAI/d1-2B) | Apple M4 Pro, MLX fp16 | 89 ms for 1 question. 369 ms for 16 questions in 1 pass. |
+| [d1-Omni-2B](https://huggingface.co/LiquidAI/d1-Omni-2B) | Apple M4 Pro, MLX fp16 | 88 ms for 1 question. 379 ms for 16 questions in 1 pass. |
 
-Each time is the time of the model on the device. A call through a shared service on the same machine takes
-longer.
+Each time is the median of 20 calls to the local CoreAI service on an Apple M4 Pro, measured on 3 Nov 2026.
+The time includes the HTTP call.
 
 ## The world works today
 
