@@ -179,6 +179,17 @@ def _choices(annotation: Any) -> list[str] | None:
     return None
 
 
+def _choice(annotation: Any, text: str) -> Any:
+    """The value of an enum or a Literal whose text is `text`, in its own type. "8" is
+    the int 8 of `Literal[1, ..., 10]`. Text that matches no value stays text."""
+    values = (
+        [m.value for m in annotation]
+        if isinstance(annotation, type) and issubclass(annotation, Enum)
+        else list(get_args(annotation))
+    )
+    return next((v for v in values if str(v) == text), text)
+
+
 def _shown(value: Any) -> str:
     """1 field value in a repr. Text and enums are quoted. A float has its significant
     figures only."""
@@ -582,8 +593,10 @@ class Fact(BaseModel):
                     data[name] = json.loads(raw)
                 case "PERCENT_OR_NUMBER" if raw.endswith("%"):
                     data[name] = float(raw[:-1]) / 100
-                case _ if token.type.startswith("V_") and raw.startswith('"'):
-                    data[name] = json.loads(raw)
+                case _ if token.type.startswith("V_"):
+                    text = json.loads(raw) if raw.startswith('"') else raw
+                    annotation, _ = _plain(cls.model_fields[name].annotation)
+                    data[name] = _choice(annotation, text)
                 case _:
                     data[name] = raw
         return cls.check(data)

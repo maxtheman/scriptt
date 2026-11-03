@@ -13,6 +13,7 @@ code bumps the minor number, and any other change bumps the patch number.
 - A `sql` query that names a fact type without braces gets the fix in the error: "Write {Night} for the table
   of the type Night".
 - `to_text` writes a large or a small float with an exponent (`1e+16`), and `parse` reads it back.
+- `parse` reads a value of a number `Literal` or a number enum in its own type: `score=8` gives the int 8.
 
 ## [0.1.0] - 2026-11-02
 

@@ -1,5 +1,8 @@
 """Bugs that the harness found, each with the test that keeps it fixed."""
 
+from enum import IntEnum
+from typing import Literal
+
 import duckdb
 import pytest
 
@@ -39,3 +42,18 @@ def test_to_text_of_a_float_parses_back(amount: float) -> None:
 
     bill = Bill(id="b1", amount=amount)
     assert Bill.parse(bill.to_text()).unwrap() == bill
+
+
+def test_to_text_of_a_number_literal_or_enum_parses_back() -> None:
+    class Size(IntEnum):
+        SMALL = 1
+        LARGE = 2
+
+    class Rating(Fact):
+        id: Key[str]
+        score: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        word: Literal["big", "small"]
+        size: Size
+
+    rating = Rating(id="r1", score=8, word="big", size=Size.LARGE)
+    assert Rating.parse(rating.to_text()).unwrap() == rating
