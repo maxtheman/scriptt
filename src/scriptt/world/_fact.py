@@ -521,7 +521,7 @@ class Fact(BaseModel):
                 r"DATETIME: /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?/",
                 r"DATE: /\d{4}-\d{2}-\d{2}/",
                 'BOOL: "true" | "false"',
-                r"PERCENT_OR_NUMBER: /-?\d+(\.\d+)?%?/",
+                r"PERCENT_OR_NUMBER: /-?\d+(\.\d+)?([eE][+-]?\d+)?%?/",
                 r'LIST: /\[\s*("([^"\\]|\\.)*"\s*(,\s*"([^"\\]|\\.)*"\s*)*)?\]/',
                 "%import common.ESCAPED_STRING",
                 "%import common.SIGNED_INT",

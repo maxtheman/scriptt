@@ -4,6 +4,7 @@ time."""
 import datetime as dt
 import inspect
 import json
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field, replace
 from enum import Enum
@@ -2372,6 +2373,8 @@ class World:
         text, params, made, con = "", [], [], self._store.con
         try:
             return self._run(query, text, params, made)
+        except duckdb.Error as error:
+            raise self._explained(error, made) from None
         finally:
             for name in made:
                 con.execute(f"DROP TABLE IF EXISTS {name}")
@@ -2419,6 +2422,37 @@ class World:
         cur = con.execute(text, params)
         names = [c[0] for c in cur.description]
         return Facts(Row(**dict(zip(names, r))) for r in cur.fetchall())
+
+    def _explained(self, error: duckdb.Error, made: list[str]) -> duckdb.Error:
+        """The DuckDB error of a `sql` query, in the words of the query. Each temporary
+        table shows as the `{Type}` that made it. A type of the view that the query
+        names without braces gets the fix."""
+        message = str(error)
+        for name in made:
+            plain = name.strip('"').replace('""', '"')
+            kind = self._types.get(plain.rsplit("#", 1)[0])
+            shown = "{" + (kind.__name__ if kind else plain) + "}"
+            message = message.replace(name, shown).replace(plain, shown)
+        if found := re.search(r"Table with name (\S+) does not exist", message):
+            named = found.group(1).strip('"').lower()
+            kind = next(
+                (
+                    k
+                    for k in self._types.values()
+                    if named in (k.__name__.lower(), k.type_name())
+                ),
+                None,
+            )
+            if kind is not None:
+                message = "\n".join(
+                    line for line in message.splitlines() if not line.startswith("Did")
+                )
+                message += (
+                    f"\nWrite {{{kind.__name__}}} for the table of the type "
+                    f"{kind.__name__}: sql() takes a t-string, and {{{kind.__name__}}} "
+                    f"becomes the table of its facts in this view."
+                )
+        return type(error)(message)
 
     def _table(self, of: type[Fact]) -> str:
         """The quoted name of a new temporary table with the facts of 1 type in this

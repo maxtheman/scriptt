@@ -7,6 +7,13 @@ code bumps the minor number, and any other change bumps the patch number.
 
 ## [Unreleased]
 
+### Fixed
+
+- A `sql` error names each table as the `{Type}` that made it, instead of the temporary table (`night#4`).
+- A `sql` query that names a fact type without braces gets the fix in the error: "Write {Night} for the table
+  of the type Night".
+- `to_text` writes a large or a small float with an exponent (`1e+16`), and `parse` reads it back.
+
 ## [0.1.0] - 2026-11-02
 
 The first public release, a pre-alpha. Only the world works: the facts, their types and the knowledge graph
