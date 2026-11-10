@@ -353,6 +353,8 @@ if __name__ == "__main__":
             find(words)
         case ["reading"]:  # the user's reading of 1 part, as JSON on stdin (the mod sends it)
             reading(json.load(sys.stdin))
+        case ["world"]:  # the world as JSON (the mod and the page list its functions)
+            print(json.dumps(describe()))
         case ["serve", *port]:
             serve(int(port[0]) if port else 8787)
         case _:
