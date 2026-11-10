@@ -19,6 +19,7 @@ import enum
 import hashlib
 import inspect
 import json
+import math
 import pathlib
 import re
 import sys
@@ -92,41 +93,82 @@ def kind(tp) -> str:
     return tp.__name__ if isinstance(tp, type) else str(tp).replace("pathlib._local.", "")  # a class by its name, a union as written
 
 
-def holes(name: str) -> dict:
-    """The holes of a function of the world, as {path: type}: each parameter, and for a product type (a dataclass) each of its fields."""
-    def leaves(path, tp):
-        if dataclasses.is_dataclass(tp):
-            return [leaf for field, inner in typing.get_type_hints(tp).items() for leaf in leaves(f"{path}.{field}", inner)]
-        return [(path, tp)]
+# ---- What d1 is asked. A question is a template. A slot of it is a thing of the world or words of the message. ----
+def say(value) -> str:
+    """The words for 1 slot of a question: the docstring of a function or a type, the name of a member, or the words themselves."""
+    match value:
+        case types.FunctionType() | type():
+            return value.__doc__
+        case enum.Enum():
+            return value.value
+    return str(value)
 
-    return dict(leaf for parameter, tp in typing.get_type_hints(FUNCTIONS[name]).items() if parameter != "return" for leaf in leaves(parameter, tp))
+
+yes = lambda question: {"type": "boolean", "instructions": "".join(piece if isinstance(piece, str) else say(piece.value) for piece in question)}
+words = lambda question: yes(question) | {"type": "text"}
+
+# Each wording was compared with others on recorded messages and the real d1-2b. The numbers are in README.md.
+DEMANDS = lambda f, where: t"Does {where} ask the reader to {f}?"
+ASKS = lambda where: t"Does {where} ask the reader to do, make, change or answer something?"
+REFERS = lambda member, tp: t"Does the message refer to {member} ({tp})?"
+MEANS = lambda value, tp: t'In the message, are the words "{value}" about {tp}?'
+SAYS = lambda name: t"Does the message say: {name}?"
+WHICH = lambda name: t"Which words of the message say the {name}?"
+DID = lambda f: t"The message asks the reader to {f}. Does the reply do it, or say that it is done?"
+ANSWERED = lambda part: t'The message says: "{part}". Does the reply respond to that?'
+PART = lambda part: f'this part of the message ("{part[:300]}")'
 
 
-def in_words(tp, words: str) -> str | None:
-    """The value for a hole of this type that the words contain, found by code. None when they contain none."""
+def put(ask, state: str, questions: dict) -> dict:
+    """Ask d1 questions that have any keys (a function, a pair, a path). d1 sees numbers. It returns {key: answer}."""
+    keys, answers = list(questions), {}
+    for start in range(0, len(keys), 32):  # d1 takes 32 questions in 1 request
+        answers |= ask(state, {f"q{n}": questions[keys[n]] for n in range(start, min(start + 32, len(keys)))})
+    return {key: answers[f"q{n}"] for n, key in enumerate(keys)}
+
+
+# ---- Holes, by type constructor. Each function below has 1 case for each constructor of a type and calls itself for the types inside. ----
+def holes(tp, path: str) -> list:
+    """The holes of a parameter, as (path, type): the parameter, or for a product type (a dataclass) the holes of each field."""
+    if dataclasses.is_dataclass(tp):
+        return [hole for field, inner in typing.get_type_hints(tp).items() for hole in holes(inner, f"{path}.{field}")]
+    return [(path, tp)]
+
+
+def signature(f) -> tuple[dict, type]:
+    """The holes of a function of the world, as {path: type}, and the type of its result."""
+    hints = typing.get_type_hints(f)
+    return dict(hole for parameter, tp in hints.items() if parameter != "return" for hole in holes(tp, parameter)), hints["return"]
+
+
+def in_words(tp, text: str) -> str | None:
+    """The value for a hole of this type that the text contains, found by code. None when it contains none."""
     match tp:
-        case enum.EnumType():  # a sum type: the member whose name is in the words, the longest name first
-            return next((words[at:at + len(m.value)].lower() for m in sorted(tp, key=lambda m: -len(m.value)) if (at := words.lower().find(m.value)) >= 0), None)
-        case types.UnionType():  # a sum of types: the first that the words fill
-            return next((value for inner in typing.get_args(tp) if (value := in_words(inner, words))), None)
+        case enum.EnumType():  # a sum type: the member whose name is in the text, the longest name first
+            return next((m.value for m in sorted(tp, key=lambda m: -len(m.value)) if m.value in text.lower()), None)
+        case types.UnionType():  # a sum of types: the first that the text fills
+            return next((value for inner in typing.get_args(tp) if (value := in_words(inner, text))), None)
+        case types.GenericAlias() if typing.get_origin(tp) is list:  # several of 1 type: each member that the text names
+            inner, = typing.get_args(tp)
+            return ", ".join(m.value for m in inner if m.value in text.lower()) or None if isinstance(inner, enum.EnumType) else in_words(inner, text)
         case type() if tp is int:
-            return (found := re.search(r"\b\d+\b", words)) and found[0]
+            return (found := re.search(r"\b\d+\b", text)) and found[0]
         case type() if tp is pathlib.Path:
-            return (found := re.search(r"(?:[~.]{0,2}/)?[\w.-]+(?:/[\w.-]+)+|\b[\w-]+\.[a-z]{1,5}\b", words)) and found[0]
+            return (found := re.search(r"(?:[~.]{0,2}/)?[\w.-]+(?:/[\w.-]+)+|\b[\w-]+\.[a-z]{1,5}\b", text)) and found[0]
     return None
 
 
-def to_ask(tp, parameter: str) -> dict:
-    """The questions for d1 about a hole of this type that code did not fill: {the value that a yes means, or "" for a text read: question}."""
+def to_ask(tp, name: str) -> dict:
+    """The questions for d1 about a hole that code did not fill, as {the value that a yes means, or "" for a text read: question}."""
     match tp:
         case enum.EnumType():
-            return {m.value: {"type": "boolean", "instructions": f"Does the message refer to {m.value} ({tp.__doc__})?"} for m in tp}
-        case types.UnionType():
-            return {value: q for inner in typing.get_args(tp) for value, q in to_ask(inner, parameter).items()}
+            return {m.value: yes(REFERS(m, tp)) for m in tp}
+        case types.UnionType() | types.GenericAlias():
+            return {value: q for inner in typing.get_args(tp) for value, q in to_ask(inner, name).items()}
         case type() if tp is bool:
-            return {"yes": {"type": "boolean", "instructions": f"Does the message say: {parameter.replace('_', ' ')}?"}}
+            return {"yes": yes(SAYS(name))}
         case type() if tp is str:
-            return {"": {"type": "text", "instructions": f"Which words of the message say the {parameter.replace('_', ' ')}?"}}
+            return {"": words(WHICH(name))}
     return {}
 
 
@@ -145,64 +187,70 @@ def parts_of(text: str) -> list:
     return spans + ([(start, len(text.rstrip()))] if start is not None else [])
 
 
+LOW = 0.2  # a function with less than this for the whole message is not tried on the parts. Claude chose it; it saved 3 of 4 questions on the recorded messages.
+
+
 def read(text: Asked, ask) -> tuple[Template, list, list, dict]:
-    """The search. d1 gets yes/no and choice questions only, over options that the world or the message lists.
-    1. Coarse: for each function of the world, does the whole message demand it?
-    2. Where: for each demanded function, which part of the message asks for it? (a choice among the parts, or none)
-    3. Fine: for each part that no function claimed, does the part ask for something? If yes, each function again, on that part alone.
-       If no function fits, d1 abstains and the part is a Hole. Claude is told to fill it.
-    4. For each parameter of a demanded function: the named thing of its class that the words contain (code), or else the named
-       thing that d1 chooses, or else the parameter stays open.
-    The search stops there. The template that it returns is the whole message: "".join of its parts is the text."""
-    yes_no = lambda words: {"type": "boolean", "instructions": words}
+    """The search. Every decision is d1's, and every option is from the world or from the message.
+    1. For the whole message: does it ask for each function? This removes most functions for the next step.
+    2. For each part, with the message as the state: does it ask for something, and for which of the functions that are left?
+    3. For each part that may ask: each function of the world again, with the part alone as the state. The 2 answers are pooled.
+       If the part asks and no function fits, d1 abstains. The part is a Hole, and Claude is told to fill it.
+    4. For each hole of a demanded function, by its type: a value in the words of the part or of the message (code), or the result
+       of another function that the message demands and that returns this type, or the value that d1 chooses. Else it stays open.
+    5. d1 checks each value that code found in the words.
+    The template that read returns is the whole message: "".join of its pieces is the text."""
     spans = parts_of(text)
     quoted = [text[a:b] for a, b in spans]  # each part is a part of the message: brand Asked
-    whole = ask(text, {name: yes_no(f"Does the message ask the reader to {f.__doc__}?") for name, f in FUNCTIONS.items()})
+    whole = put(ask, text, {name: yes(DEMANDS(f, "the message")) for name, f in FUNCTIONS.items()})
     p = {name: round(whole[name]["p_true"], 3) for name in FUNCTIONS}
-    found = [{"function": name, "p": p[name], "by": "the message", "part": None} for name in FUNCTIONS if p[name] >= 0.5]
-    if found and len(spans) > 1:
-        options = [{"id": f"part{n}", "description": part[:200]} for n, part in enumerate(quoted)] + [{"id": "none", "description": "no part of the message asks for this"}]
-        where = ask(text, {d["function"]: {"type": "choice", "instructions": f"Which part of the message asks the reader to {FUNCTIONS[d['function']].__doc__}?", "options": options} for d in found})
-        for d in found:
-            d["part"] = None if where[d["function"]]["value"] == "none" else int(where[d["function"]]["value"][4:])
-    for d in found if len(spans) == 1 else []:  # a message of 1 part: that part asks for each of them
-        d["part"] = 0
-    rest = [n for n in range(len(spans)) if n not in {d["part"] for d in found}]
-    asks = ask(text, {f"part{n}": yes_no(f'Does this part of the message ask the reader to do, make, change or answer something? The part: "{quoted[n][:300]}"') for n in rest}) if rest else {}
-    abstained = {}
-    for n in rest:
-        if asks[f"part{n}"]["p_true"] >= 0.5:
-            alone = ask(quoted[n], {name: yes_no(f"Does this text ask the reader to {f.__doc__}?") for name, f in FUNCTIONS.items()})
-            fits = [{"function": name, "p": round(alone[name]["p_true"], 3), "by": "the part", "part": n} for name in FUNCTIONS if alone[name]["p_true"] >= 0.5]
-            found += fits
-            if not fits:
-                abstained[n] = round(asks[f"part{n}"]["p_true"], 3)
+    near = put(ask, text, {(n, None): yes(ASKS(PART(part))) for n, part in enumerate(quoted)}
+               | {(n, name): yes(DEMANDS(FUNCTIONS[name], PART(part))) for n, part in enumerate(quoted) for name in FUNCTIONS if p[name] >= LOW})
+    found, abstained = [], {}
+    for n, part in enumerate(quoted):  # a part that asks, or that some function may fit: each function again, with the part alone as the state
+        if near[n, None]["p_true"] >= 0.5 or any(near[n, name]["p_true"] >= 0.5 for name in FUNCTIONS if (n, name) in near):
+            alone = put(ask, part, {name: yes(DEMANDS(f, "this text")) for name, f in FUNCTIONS.items()})
+            for name in FUNCTIONS:  # 2 answers to 1 question in 2 states are pooled: their odds multiply. 1 answer stands alone.
+                answers = [alone[name]["p_true"]] + ([near[n, name]["p_true"]] if (n, name) in near else [])
+                odds = math.prod(q / (1 - q) for q in answers)
+                if odds >= 1:
+                    found.append({"function": name, "p": round(odds / (1 + odds), 3), "by": "the message" if len(answers) == 2 else "the part", "part": n})
+            if near[n, None]["p_true"] >= 0.5 and not any(d["part"] == n for d in found):
+                abstained[n] = round(near[n, None]["p_true"], 3)
+    found += [{"function": name, "p": p[name], "by": "the message", "part": None} for name in FUNCTIONS if p[name] >= 0.5 and not any(d["function"] == name for d in found)]
 
-    # 4. The holes. First by code, in the words of the part and then of the message. Then 1 request to d1 for the holes that are left.
-    said = {(n, path): next((value for words in ([quoted[d["part"]]] if d["part"] is not None else []) + [text] if (value := in_words(tp, words))), None)
-            for n, d in enumerate(found) for path, tp in holes(d["function"]).items()}
-    left = {(n, path, value): q for n, d in enumerate(found) for path, tp in holes(d["function"]).items() if not said[n, path] for value, q in to_ask(tp, path.split(".")[-1]).items()}
-    told = ask(text, {f"{n} {path} {value}": q for (n, path, value), q in left.items()}) if left else {}
+    def result_of(n: int, tp) -> str | None:
+        """Another demanded function that returns this type: its result fills the hole. One in the same part first."""
+        others = [d for m, d in enumerate(found) if m != n and tp in TYPES.values() and signature(FUNCTIONS[d["function"]])[1] is tp]  # a type of the world only: a str fits any str
+        return next((d["function"] for d in sorted(others, key=lambda d: d["part"] != found[n]["part"])), None)
 
-    def fill(n: int, path: str, tp) -> dict:
-        if said[n, path]:
-            return {"type": kind(tp), "value": said[n, path], "by": "the words"}
-        answers = {value: told[f"{n} {path} {value}"] for (m, other, value) in left if (m, other) == (n, path)}
+    wanted = {(n, path): tp for n, d in enumerate(found) for path, tp in signature(FUNCTIONS[d["function"]])[0].items()}
+    said = {(n, path): next((value for where in ([quoted[found[n]["part"]]] if found[n]["part"] is not None else []) + [text] if (value := in_words(tp, where))), None) for (n, path), tp in wanted.items()}
+    made = {key: result_of(key[0], tp) for key, tp in wanted.items() if not said[key]}
+    told = put(ask, text, {(key, value): q for key, tp in wanted.items() if not said[key] and not made[key] for value, q in to_ask(tp, key[1].split(".")[-1]).items()}
+               | {(key, None): yes(MEANS(said[key], tp)) for key, tp in wanted.items() if said[key] and isinstance(tp, enum.EnumType)})
+
+    def fill(key, tp) -> dict:
+        hole = {"type": kind(tp), "value": None, "by": None}
+        if said[key]:
+            return hole | {"value": said[key], "by": "the words"} | ({"d1": round(told[key, None]["p_true"], 3)} if (key, None) in told else {})
+        if made[key]:
+            return hole | {"value": f"{made[key]}()", "by": "the result of " + made[key]}
+        answers = {value: a for (other, value), a in told.items() if other == key and value is not None}
         if "" in answers:  # a text read: the words that d1 points at, if the message has them
             a = answers[""]
-            return {"type": kind(tp), "value": a["text"], "by": f"d1 {a['found']:.2f}"} if a["found"] >= 0.5 and a["text"] and a["text"] in text else {"type": kind(tp), "value": None, "by": None}
+            return hole | {"value": a["text"], "by": f"d1 {a['found']:.2f}"} if a["found"] >= 0.5 and a["text"] and a["text"] in text and len(a["text"]) <= 60 else hole  # a whole sentence is no value
         best = max(answers, key=lambda value: answers[value]["p_true"], default=None)
-        sure = best is not None and answers[best]["p_true"] >= 0.5
-        return {"type": kind(tp), "value": best if sure else None, "by": f"d1 {answers[best]['p_true']:.2f}" if sure else None}
+        return hole | {"value": best, "by": f"d1 {answers[best]['p_true']:.2f}"} if best is not None and answers[best]["p_true"] >= 0.5 else hole
 
-    demands = [d | {"returns": kind(typing.get_type_hints(FUNCTIONS[d["function"]])["return"]), "words": quoted[d["part"]] if d["part"] is not None else None,
-                    "parameters": {path: fill(n, path, tp) for path, tp in holes(d["function"]).items()}} for n, d in enumerate(found)]
-    parts = [{"start": a, "end": b, "demands": [d["function"] for d in demands if d["part"] == n], "hole": abstained.get(n)} for n, (a, b) in enumerate(spans)]
+    demands = [d | {"returns": kind(signature(FUNCTIONS[d["function"]])[1]), "words": quoted[d["part"]] if d["part"] is not None else None,
+                    "parameters": {path: fill((n, path), tp) for path, tp in signature(FUNCTIONS[d["function"]])[0].items()}} for n, d in enumerate(found)]
+    parts = [{"start": a, "end": b, "asks": round(near[n, None]["p_true"], 3), "demands": [d["function"] for d in demands if d["part"] == n], "hole": abstained.get(n)} for n, (a, b) in enumerate(spans)]
     pieces, at = [], 0
-    for part, words in zip(parts, quoted):  # the whole message as a template: a part that demands or abstains is a slot, the rest is plain text
+    for part, said_here in zip(parts, quoted):  # the whole message as a template: a part that demands or abstains is a slot, the rest is plain text
         if part["demands"] or part["hole"]:
             value = tuple(FUNCTIONS[name] for name in part["demands"]) or Hole
-            pieces += [str(text[at:part["start"]]), Interpolation(value, " + ".join(part["demands"]) or "?", None, words)]
+            pieces += [str(text[at:part["start"]]), Interpolation(value, " + ".join(part["demands"]) or "?", None, said_here)]
             at = part["end"]
     return Template(*pieces, str(text[at:])), demands, parts, p
 
@@ -241,9 +289,9 @@ def handle(event: dict, ask=d1) -> dict | None:
             answer = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "\n".join(lines)}}
         case Written() if asked and ((last := mine[asked[-1]])["demands"] or any(part["hole"] for part in last["parts"])):
             state = f"MESSAGE:\n{last['text']}\n\nREPLY:\n{text}"
-            questions = {d["function"]: f"The message asks the reader to {FUNCTIONS[d['function']].__doc__}. Does the reply do it, or say that it is done?" for d in last["demands"] if d["function"] in FUNCTIONS}
-            questions |= {f"part {n + 1}": f'The message says: "{last["text"][part["start"]:part["end"]][:300]}". Does the reply respond to that?' for n, part in enumerate(last["parts"]) if part["hole"]}
-            done = ask(state, {id: {"type": "boolean", "instructions": words} for id, words in questions.items()})
+            questions = {d["function"]: yes(DID(FUNCTIONS[d["function"]])) for d in last["demands"] if d["function"] in FUNCTIONS}
+            questions |= {f"part {n + 1}": yes(ANSWERED(last["text"][part["start"]:part["end"]][:300])) for n, part in enumerate(last["parts"]) if part["hole"]}
+            done = put(ask, state, questions)
             record["checks"] = {id: round(a["p_true"], 3) for id, a in done.items()}
             demanded = [q for id, q in record["checks"].items() if id in FUNCTIONS]  # a reply goes back only when it does none of the demanded functions
             if max(demanded, default=1) < 0.5 and config().get("block") and not event.get("stop_hook_active"):
@@ -263,7 +311,7 @@ def describe() -> dict:
                 return {"product": {field: kind(inner) for field, inner in typing.get_type_hints(tp).items()}, "doc": tp.__doc__}
 
     return {"types": {name: shape(tp) for name, tp in TYPES.items()},
-            "functions": {name: {"asks": f.__doc__, "returns": kind(typing.get_type_hints(f)["return"]), "holes": {path: kind(tp) for path, tp in holes(name).items()}} for name, f in FUNCTIONS.items()}}
+            "functions": {name: {"asks": f.__doc__, "returns": kind(signature(f)[1]), "holes": {path: kind(tp) for path, tp in signature(f)[0].items()}} for name, f in FUNCTIONS.items()}}
 
 
 def install():
