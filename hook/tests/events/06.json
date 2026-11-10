@@ -1,0 +1,14 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "Done. d1 is mocked, and there is no model and no network call anywhere in the notebook. All cells run with no error.\n\nEach of the ten cells now has three things:\n\n- **The mocked answer**, on a line marked `# MOCK`. Change it and the cell updates.\n- **A check** that keeps the mock honest: a mocked read must be an exact range of the message, and a mocked choice must be one of the options.\n- **What the answer tells the program**, printed under the cell.\n\nWhat they print for the example message:\n\n1. Goal type `int`, and `['count(\u2026)']` fits it.\n2. \"How many\" is a range of the message, so the goal type is tied to your words.\n3. Mock says \"one\", the goal type says \"one\": they agree.\n4. For `containing`: arity 2, `word` = \"TypeForm\", `files` = \"my notebooks\", no empty hole.\n5. The message uses `my_notebooks`, `count` and `containing`; no name in the context is left unused.\n6. \"the usual folders\" is found, so it is an unbound name and a question to you.\n7. One of your three earlier statements is sent along with the message.\n8. Evidence from files, so the goal type becomes `Grounded[int]`.\n9. Estimate 2 with interval 2 to 6; the context has 2 files; inside the interval.\n10. A new demand, so a new hole.\n\nTwo things react when you play with it:\n\n- Edit the message box and remove \"TypeForm\": question 4 reports `word` as an empty hole.\n- Change the mock in question 1 to `\"none\"`: it prints \"nothing: a question to you\".",
+  "stop_hook_active": false
+ },
+ "d1_answers": {
+  "Model": [
+   "d1 is mocked"
+  ]
+ },
+ "expected_output": null
+}

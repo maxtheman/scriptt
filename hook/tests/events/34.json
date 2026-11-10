@@ -1,0 +1,42 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "\"xample it prints the same result as the hand-written version: given my_notebooks and typeform; holes how_many, which_ones, the_usual_folders; the five untyped pieces of text; and lambda my_notebooks, typeform: (..., ..., ..., ).\" Okay. Um get rid of these And go grab all of my messages to you and your replies  From the last hour and start loading them in one by one and adjusting the program and the calibration and saving each of the results until you have generated a gold set program that runs through and does the matching correctly With your hard coded correct calibration values from D1.\n\nPlease build up a file of the types that we'll introduce as you go along - And you're welcome to keep using the naive uh two loops read message and just play and uh you know fudge the calibration basically because it's still mock and um I just want to make sure that it works end to end even if we had the best possible calibration and Didn't need to worry about the search\n\nIn parallel, go uh have a Sonnet agent look up how prompting should work for this model."
+ },
+ "d1_answers": {
+  "Action": [
+   "get rid of"
+  ],
+  "Message": [
+   "all of my messages to you and your replies"
+  ],
+  "Code": [
+   "a gold set program"
+  ],
+  "File": [
+   "a file of the types"
+  ],
+  "Helper": [
+   "a Sonnet agent"
+  ],
+  "Model": [
+   "this model"
+  ],
+  "Explanation": [
+   "how prompting should work"
+  ]
+ },
+ "expected_holes": [
+  "Code",
+  "Explanation",
+  "File",
+  "Notebook"
+ ],
+ "expected_output": {
+  "hookSpecificOutput": {
+   "hookEventName": "UserPromptSubmit",
+   "additionalContext": "scriptt hook: this message, read as types.\nwanted: Notebook (the result of delete, from \"get rid of\"); Code \"a gold set program\"; File \"a file of the types\"; Explanation \"how prompting should work\"\ngiven: Message \"all of my messages to you and your replies\"; Helper \"a Sonnet agent\"; Model \"this model\"\nnot typed: \"xample it prints the same result as the hand-written version: given my_notebooks and typeform; holes how_many, which_ones, the_usual_folders; the five untyped pieces of text; and lambda my_notebooks, typeform: (..., ..., ..., ).\" Okay. Um | these And go grab | From the last hour and start loading them in one by one and adjusting the program and the calibration and saving each of the results until you have generated | that runs through and does the matching correctly With your hard coded correct calibration values from D1.\n\nPlease build up | that we'll introduce as you go along - And you're welcome to keep using the naive uh two loops read message and just play and uh you know fudge the calibration basically because it's still mock and um I just want to make sure that it works end to end even if we had the best possible calibration and Didn't need to worry about the search\n\nIn parallel, go uh have | look up | for | ."
+  }
+ }
+}

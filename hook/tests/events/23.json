@@ -1,0 +1,24 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "I see. \n\nOkay. What about uh if we build that with t-strings then though? So we could build that up dynamically."
+ },
+ "d1_answers": {
+  "Code": [
+   "t-strings"
+  ],
+  "Explanation": [
+   "What about"
+  ]
+ },
+ "expected_holes": [
+  "Explanation"
+ ],
+ "expected_output": {
+  "hookSpecificOutput": {
+   "hookEventName": "UserPromptSubmit",
+   "additionalContext": "scriptt hook: this message, read as types.\nwanted: Explanation \"What about\"\ngiven: Code \"t-strings\"\nnot typed: I see. \n\nOkay. | uh if we build that with | then though? So we could build that up dynamically."
+  }
+ }
+}

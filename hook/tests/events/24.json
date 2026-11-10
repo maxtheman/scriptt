@@ -1,0 +1,14 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "Yes, and it fits better than I expected. I tested it on your interpreter. The message itself becomes the t-string, with a slot where each typed part is:\n\n```python\nm = t\"{how_many} of {my_notebooks} use {typeform}, and {which_ones}? Look in {the_usual_folders}.\"\n```\n\n- **The leftover words come for free.** `m.strings` is `('', ' of ', ' use ', ', and ', '? Look in ', '.')`. That is the same \"words that no part of the type uses\" list, and no code had to blank anything out.\n- **No roles, again.** Each slot records its name and its value. If the value is a type, the slot is a hole of that type. If it is an ordinary value, the message supplied it. The test split the five slots into three holes and two given values that way.\n- **An unbound name fails at once.** A t-string evaluates its slots when it is created, so `t\"{nowhere}\"` raises `NameError: name 'nowhere' is not defined`.\n- **It can be built at run time.** `Template(\"\", Interpolation(int, \"how_many\"), \" of \", \u2026)` builds the same object from parts, with no t-string literal in the source. A message arrives as plain text, so this is the way it would be built from one.\n- **It is not a string.** `isinstance(m, str)` is `False`, so it cannot be passed along as plain text by accident.\n\nTwo things are different from the `def` version, and I am not sure yet which way is right:\n\n- **\"the usual folders\" came out as a hole.** In the `def` it was a parameter. Here I had to put either a value or a type in the slot. I had no value, so it became a hole of type `Paths`. That may be more honest: from the message alone, nobody has supplied it.\n- **Your exact words inside the slots are replaced by names.** \"How many\" becomes `how_many`. The words between the slots stay exact.\n\nI have not put this in the notebook. Do you want it there as a second cell next to the `def` version?",
+  "stop_hook_active": false
+ },
+ "d1_answers": {
+  "Explanation": [
+   "Yes, and it fits better than I expected."
+  ]
+ },
+ "expected_output": null
+}

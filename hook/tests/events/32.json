@@ -1,0 +1,25 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Do we have functions still? Can we just build up functions between those classes? If not, that's a big miss."
+ },
+ "d1_answers": {
+  "Answer": [
+   "Do we have functions still?"
+  ],
+  "Code": [
+   "functions between those classes"
+  ]
+ },
+ "expected_holes": [
+  "Answer",
+  "Code"
+ ],
+ "expected_output": {
+  "hookSpecificOutput": {
+   "hookEventName": "UserPromptSubmit",
+   "additionalContext": "scriptt hook: this message, read as types.\nwanted: Answer \"Do we have functions still?\"; Code \"functions between those classes\"\ngiven: nothing was found\nnot typed: Can we just build up | ? If not, that's a big miss."
+  }
+ }
+}

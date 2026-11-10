@@ -1,0 +1,24 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "And so there's nothing special about the `demand`. That could be a lambda too. Right?"
+ },
+ "d1_answers": {
+  "Types": [
+   "demand"
+  ],
+  "Answer": [
+   "Right?"
+  ]
+ },
+ "expected_holes": [
+  "Answer"
+ ],
+ "expected_output": {
+  "hookSpecificOutput": {
+   "hookEventName": "UserPromptSubmit",
+   "additionalContext": "scriptt hook: this message, read as types.\nwanted: Answer \"Right?\"\ngiven: Types \"demand\"\nnot typed: And so there's nothing special about the ` | `. That could be a lambda too."
+  }
+ }
+}

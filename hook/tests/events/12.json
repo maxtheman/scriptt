@@ -1,0 +1,15 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "Yes to both, and your conclusion is right.\n\n**1. How many things.** It is part of the type. One thing is a plain type. Two things is a record with two fields. \"Some number, not known yet\" is `tuple[T, ...]`. So \"how many\" and \"what kind\" are one question about one type, asked at different positions. My question 1 gets this wrong for your own example: you asked for a count and a list, which is a pair, `(int, Paths)`. The options only offer `int` or `Paths` separately, because no function in the context returns the pair. So the mock picks `int` and \"which ones\" is dropped.\n\n**2. Where the functions come from.** I made them up. `containing` and `count` are two functions I wrote by hand in the notebook for this example. Only the two file paths are real. In a real project they would be the functions that project already has, but I have not built anything that collects them.\n\nAnd yes, each one is a specific transformation of values. That is where the information goes missing. The program only looks at the signature, so it sees `containing` as \"takes a `str` and some paths, returns some paths\". Things it does not see:\n\n- **What the function does.** Any other function with the same signature looks identical to `fits`.\n- **How the output relates to the input.** `which` is always a part of `files`, and `how_many` is always the length of `which`. The types say neither.\n- **The names and the docstring.** I threw those away on purpose, to avoid choosing by label.\n- **Most of your message.** After question 1 picks a type, the rest of your words play no part in choosing the function.\n\nSo I went from one extreme to the other. Choosing by label ignores the content. Choosing by type alone ignores the content too, just differently.\n\nOne thing I notice looking back: your boundary was \"types and the abstract syntax tree\". I only used the types. The body of each function is in the syntax tree, and that is where \"what it does\" and \"how output relates to input\" are written down. I have not used it at all.",
+  "stop_hook_active": false
+ },
+ "d1_answers": {
+  "Explanation": [
+   "It is part of the type.",
+   "I made them up."
+  ]
+ },
+ "expected_output": null
+}

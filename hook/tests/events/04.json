@@ -1,0 +1,14 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "The ten questions are in the notebook, one cell each, and all 23 cells run. But no answers come back yet, because there is no d1 for them to call.\n\n**What is there**\n\n- **A message box** at the top. Type in it and every question below rebuilds from the new text.\n- **One helper cell** with `ask(question)`. It posts one question over the message to `/v1/systemone`, in the shape scriptt sends. `D1_URL` is empty, so it returns `NO D1 CONNECTED` and makes no call.\n- **Ten cells**, in the same order and with the same headers as before. Each prints the exact question and its answer. The questions are built from the context, not written by hand:\n  - Question 1's options are the return types of the functions in the context.\n  - Question 4 makes one read per parameter of the function picked in the `refine` dropdown.\n  - Question 5's options are the names in the context.\n  - Question 7 uses three exact quotes from your earlier messages as the stored statements.\n  - Question 9 is a `number` with a range of 1 to 100.\n\n**Why nothing answers**\n\n- The server scriptt uses for d1-2B (oMLX on port 8790) is not running. You told me not to start servers, so I did not.\n- CoreAI on 8765 is running, but you told me not to touch it, and I have no credential of my own for it. Its `/v1/decide` also has only three question types. It would cover questions 1, 3, 8 and 10. The reads (2, 4, 6) would have to go through `/v1/extract`, and 5, 7 and 9 have no route there.\n\nIf oMLX comes up on 8790, set `D1_URL = \"http://127.0.0.1:8790\"` in the helper cell and all ten answer. For CoreAI I would need a credential and your OK, and I would rewrite six of the cells.",
+  "stop_hook_active": false
+ },
+ "d1_answers": {
+  "Notebook": [
+   "The ten questions are in the notebook, one cell each"
+  ]
+ },
+ "expected_output": null
+}

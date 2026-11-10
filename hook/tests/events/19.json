@@ -1,0 +1,27 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Okay, you know, I'm getting closer to buying this. Can you do this without introducing the roles?\n\nCan you do this more elegantly with some of the computer science concepts that we've been talking about that I keep telling you to use, but you don't really use?"
+ },
+ "d1_answers": {
+  "Types": [
+   "the roles"
+  ],
+  "Concepts": [
+   "the computer science concepts"
+  ],
+  "Code": [
+   "do this more elegantly"
+  ]
+ },
+ "expected_holes": [
+  "Code"
+ ],
+ "expected_output": {
+  "hookSpecificOutput": {
+   "hookEventName": "UserPromptSubmit",
+   "additionalContext": "scriptt hook: this message, read as types.\nwanted: Code \"do this more elegantly\"\ngiven: Types \"the roles\"; Concepts \"the computer science concepts\"\nnot typed: Okay, you know, I'm getting closer to buying this. Can you do this without introducing | ?\n\nCan you | with some of | that we've been talking about that I keep telling you to use, but you don't really use?"
+  }
+ }
+}

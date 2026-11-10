@@ -1,0 +1,17 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "The cell is rewritten with a t-string, and it runs with no error. The whole message is now one template:\n\n```python\ntyped: Template = t\"{how_many:How many} of {my_notebooks:my notebooks} use {typeform:TypeForm}, and {which_ones:which ones}? Look in {the_usual_folders:the usual folders}.\"\n```\n\n- **A slot is `{name:your exact words}`.** The name carries a value or a type, and your words ride along in the slot. The cell checks that the template, read back, is exactly your message.\n- **A value in a slot means the message supplies it.** Two slots: `my_notebooks` and `typeform`.\n- **A type in a slot means a hole of that type.** Three slots: `how_many: int`, `which_ones: Paths`, `the_usual_folders: Paths`.\n- **The text between the slots is the escape hatch.** It is not typed: `' of '`, `' use '`, `', and '`, `'? Look in '`, `'.'`. The template shows exactly how much of the message is still outside the types.\n- **Compiled to a program:** `lambda my_notebooks, typeform: (..., ..., ..., )`. Each given slot is a parameter, and each hole is one `...`.\n\nOn your ambition that everything has a functional relationship to everything else, this version does not get there:\n\n- **The slots do not relate to each other.** Nothing says that `which_ones` is computed from `my_notebooks` and `typeform`, or that `how_many` is computed from `which_ones`. Those relations are in the untyped words: \"use\", \"of\", \"and\".\n- **So the escape hatch currently carries the most important part.** Typing it would mean turning \"use\" into a function between slots. That is the next thing to do if you want to push toward the ambition.\n\nOne choice in there is mine: \"the usual folders\" is a hole of type `Paths`, because the message does not supply a value for it.",
+  "stop_hook_active": false
+ },
+ "d1_answers": {
+  "Notebook": [
+   "The cell is rewritten with a t-string"
+  ],
+  "Code": [
+   "The text between the slots is the escape hatch."
+  ]
+ },
+ "expected_output": null
+}

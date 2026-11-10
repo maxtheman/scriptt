@@ -1,0 +1,14 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "Right. Nothing is special about the name `demand`, and it can be a lambda. Python adds one wrinkle: a lambda cannot have annotations, so the type has to sit beside it instead of on it.\n\n```python\nDemand = Callable[\n    [Annotated[str, \"TypeForm\"], Annotated[Paths, \"my notebooks\"], Annotated[Paths, \"the usual folders\"]],\n    tuple[Annotated[int, \"How many\"], Annotated[Paths, \"which ones\"]],\n]\nanswer: Demand = lambda typeform, my_notebooks, the_usual_folders: ...\n```\n\nI checked two things on your interpreter:\n\n- **The type keeps your words.** `get_args` on that `Callable` returns the `Annotated` parts with \"TypeForm\" and \"How many\" still attached.\n- **The lambda keeps nothing.** `get_type_hints` on it returns `{}`. Everything is read from the type.\n\nThere is one real difference between the two spellings. A `Callable` type has no parameter names, only positions. With `def`, the name `my_notebooks` and its type are written together. With a lambda, the names are only in the lambda and the types only in `Callable`, matched by position.\n\nFrom the earlier test, ty and mypy both check a lambda against a `Callable` type and take the parameter types from it, so the checking is the same either way.",
+  "stop_hook_active": false
+ },
+ "d1_answers": {
+  "Answer": [
+   "Right."
+  ]
+ },
+ "expected_output": null
+}

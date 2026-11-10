@@ -1,0 +1,14 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "The roles are gone, and so are the rows. The cell is replaced and runs with no error.\n\nThe message is now read as one function that has no body yet:\n\n```python\ndef demand(\n    typeform: Annotated[str, \"TypeForm\"],\n    my_notebooks: Annotated[Paths, \"my notebooks\"],\n    the_usual_folders: Annotated[Paths, \"the usual folders\"],\n) -> tuple[Annotated[int, \"How many\"], Annotated[Paths, \"which ones\"]]: ...\n```\n\nThe concepts do the work the labels did:\n\n- **Domain and range.** \"Supplied\" and \"wanted\" were my labels for these. A parameter is something the message supplies, and the result type is what it wants back. The position in the function type says which, so no label is needed.\n- **Hole.** The body is `...`. ty already reports it without being told: \"Function always implicitly returns `None`, which is not assignable to return type `tuple[int, tuple[Path, ...]]`\".\n- **Brand.** `Annotated[type, words]` attaches your exact words to each part of the type. The cell checks that every one of them is in the message.\n- **Arity.** It is the number of parameters and the number of parts in the result. The cell reads them back from the definition with `get_type_hints`.\n\nEverything under the definition is read from it: the domain (three parameters), the range (two parts), and the words that no part of the type uses: `___ of ___ use ___, and ___? Look in ___.`\n\nWriting that one definition from the message is still done by reading. I wrote it.",
+  "stop_hook_active": false
+ },
+ "d1_answers": {
+  "Code": [
+   "The cell is replaced"
+  ]
+ },
+ "expected_output": null
+}

@@ -1,0 +1,30 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Okay, so the point of what you're doing here is trying to decide the type of the result. That's it - got it.\n\nHere's what I can't quite figure out Between the first two:\n\n1. Figuring out how many things I'm looking for - It seems like that does have something to do with types.\n2. result types - Okay. It's based on the functions that we have in the com in the context, but where do those come from precisely? You just decided to get those from like the pre-existing notebooks, right? But aren't those like you said, defined over specific value transformations?\n\n\nSo it seems like in your assumed world here even there's a lot of information we're throwing away."
+ },
+ "d1_answers": {
+  "Types": [
+   "the type of the result",
+   "result types"
+  ],
+  "Code": [
+   "the functions"
+  ],
+  "Explanation": [
+   "how many things I'm looking for",
+   "where do those come from precisely"
+  ]
+ },
+ "expected_holes": [
+  "Explanation",
+  "Explanation"
+ ],
+ "expected_output": {
+  "hookSpecificOutput": {
+   "hookEventName": "UserPromptSubmit",
+   "additionalContext": "scriptt hook: this message, read as types.\nwanted: Explanation \"how many things I'm looking for\"; Explanation \"where do those come from precisely\"\ngiven: Types \"the type of the result\"; Types \"result types\"; Code \"the functions\"\nnot typed: Okay, so the point of what you're doing here is trying to decide | . That's it - got it.\n\nHere's what I can't quite figure out Between the first two:\n\n1. Figuring out | - It seems like that does have something to do with types.\n2. | - Okay. It's based on | that we have in the com in the context, but | ? You just decided to get those from like the pre-existing notebooks, right? But aren't those like you said, defined over specific value transformations?\n\n\nSo it seems like in your assumed world here even there's a lot of information we're throwing away."
+  }
+ }
+}

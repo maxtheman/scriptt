@@ -1,0 +1,34 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Okay. Um well I don't think we're learning anything with these cells, so maybe you can delete them and put in a simpler context. You know, feel free to just throw some functions at the top. You don't need to do the whole notebook rigmarole. Just mock a function and and put it in instead of being so indirect and hiding this. And then think deeper about my boundary and what that has to do with holes and kinds and all the other stuff that you spend all that time putting down into the notebook and the challenges that I've been having and brands and all that and come back with a more integrated proposal covering only these two things. Assume we have functions - Heck, assume we don't have any functions. What happens in that case? We probably have a ()? Or a lambda? Can we just do lambda with types? Like what happens?"
+ },
+ "d1_answers": {
+  "Action": [
+   "delete"
+  ],
+  "Notebook": [
+   "these cells"
+  ],
+  "Code": [
+   "a simpler context",
+   "lambda with types"
+  ],
+  "Explanation": [
+   "what happens"
+  ]
+ },
+ "expected_holes": [
+  "Code",
+  "Code",
+  "Explanation",
+  "Notebook"
+ ],
+ "expected_output": {
+  "hookSpecificOutput": {
+   "hookEventName": "UserPromptSubmit",
+   "additionalContext": "scriptt hook: this message, read as types.\nwanted: Notebook (the result of delete, from \"delete\"); Code \"a simpler context\"; Code \"lambda with types\"; Explanation \"what happens\"\ngiven: Notebook \"these cells\"\nnot typed: Okay. Um well I don't think we're learning anything with | , so maybe you can | them and put in | . You know, feel free to just throw some functions at the top. You don't need to do the whole notebook rigmarole. Just mock a function and and put it in instead of being so indirect and hiding this. And then think deeper about my boundary and what that has to do with holes and kinds and all the other stuff that you spend all that time putting down into the notebook and the challenges that I've been having and brands and all that and come back with a more integrated proposal covering only these two things. Assume we have functions - Heck, assume we don't have any functions. What happens in that case? We probably have a ()? Or a lambda? Can we just do | ? Like | ?"
+  }
+ }
+}

@@ -1,0 +1,20 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "The notebook is now a real program in four cells, 79 lines in all, and it runs with no error.\n\n**Cell 1: the world.** Three classes, each with a one-line docstring: `Word` (\"a word or a name to search for\"), `Count` (\"a number of things\"), `Files` (\"a set of files\"). `NAMED` has the things in the world that have a name; today that is only \"my notebooks\". `WORLD` says how a value of each class is made from words: a `Word` is the words themselves, a `Count` only if the words are a number, `Files` only if the world has files with that name. When that fails, the slot is a hole of that class. So I can no longer pick a class that is not in the world.\n\n**Cell 2: the mocked d1.** The program uses d1 in exactly one way, a `text` read. There is one prompt, built from the docstring of a class:\n\n> The next words in the message that stand for a number of things.\n\nd1 gets the state and that prompt, and returns a range or `found: False`. The mock answers from a table.\n\n**Cell 3: the program.** `read_message` has two loops and nothing else:\n\n- For each class of the world, it asks d1 again and again until d1 finds no more. So nobody states how many slots there are.\n- Each range it gets back is blanked out in the state, so d1 does not see those words again.\n- For each range, the world either makes a value or the slot becomes a hole.\n\nThen it builds the `Template` from the parts. For the example it prints the same result as the hand-written version: given `my_notebooks` and `typeform`; holes `how_many`, `which_ones`, `the_usual_folders`; the five untyped pieces of text; and `lambda my_notebooks, typeform: (..., ..., ..., )`.\n\n**Cell 4: every question d1 was asked.** Eight of them, in order, each with what d1 saw, the prompt and the answer. You can watch the state fill with blanks as the reads go on.\n\nThree things to look at hard:\n\n- **The prompt is the weak point.** \"The next words that stand for a set of files\" has to find both \"which ones\" and \"the usual folders\". The mock just finds them. I do not know if a real d1 would.\n- **The mock is a table for this one message.** For another message it finds only what the table has. To try one, add its words to `MOCK` in cell 2.\n- **The docstrings are now the prompts.** Whatever I write there is what d1 is asked, so those three lines are where my wording can still slip in. They are in the world, where you can see and change them.",
+  "stop_hook_active": false
+ },
+ "d1_answers": {
+  "Code": [
+   "a real program in four cells"
+  ],
+  "World": [
+   "the world"
+  ],
+  "Model": [
+   "the mocked d1"
+  ]
+ },
+ "expected_output": null
+}

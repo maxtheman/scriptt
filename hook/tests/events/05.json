@@ -1,0 +1,24 @@
+{
+ "input": {
+  "session_id": "gold",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Mock d1, Please stop this sick obsession with the model."
+ },
+ "d1_answers": {
+  "Action": [
+   "Mock d1"
+  ],
+  "Model": [
+   "the model"
+  ]
+ },
+ "expected_holes": [
+  "Model"
+ ],
+ "expected_output": {
+  "hookSpecificOutput": {
+   "hookEventName": "UserPromptSubmit",
+   "additionalContext": "scriptt hook: this message, read as types.\nwanted: Model (the result of mock, from \"Mock d1\")\ngiven: Model \"the model\"\nnot typed: , Please stop this sick obsession with | ."
+  }
+ }
+}
