@@ -9,12 +9,14 @@
   A function with no body is work for the reader of the message. A function with a body is run by the harness when the
   message fills all its holes, and its result goes to the reader as observed. Give a body only to a function that reads.
 
+A piece is a place in the message where code finds a value of a type: the name of a member of a sum type, a number, a path.
 How a hole is filled, by its type:
-  a sum type   the member whose name the words of the part contain (code). If none: d1 chooses 1 member, or none.
-  int, Path    the first number or path in the words of the part (code).
+  a sum type   the first free piece of this type in the part, and d1 checks it. If none: d1 chooses 1 member, or none.
+  int, Path    the first free piece of this type in the part, and d1 checks it.
   str          the words that d1 points at.
   bool         d1 answers yes or no.
-A hole that nothing fills stays open, and Claude is told.
+A hole that nothing fills can take the piece that "it", "them" or "that" in the part stands for, if d1 says yes.
+Else it stays open, and Claude is told.
 """
 
 import dataclasses

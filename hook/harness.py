@@ -2,13 +2,14 @@
 """The scriptt harness. 1 file, beside world.py. Python 3.14 or later, standard library only.
 
 Claude Code runs it as a hook, with 1 event as JSON on stdin:
-  UserPromptSubmit   d1 decides which computations of the world the message demands. Claude receives them.
+  UserPromptSubmit   d1 decides which computations of the world each part of the message demands, and code maps the typed
+                     pieces of the message into their holes. Claude receives the reading, and the holes that stay open.
   Stop               d1 checks the reply against each demand. With "block": true in config.json, a reply that does none of them is sent back.
 You run it for the rest:
   python harness.py install        add the 2 hooks and the skill to .claude/ of the folder above this one
   python harness.py serve [port]   show the events on a page where you drag to disagree
-  python harness.py find WORDS     the parts of every logged message that have these words or this function. find "?" lists the
-                                   parts that d1 abstained on: the candidates for a new line of world.py
+  python harness.py find WORDS     the parts of every logged message that have these words, this function, or a piece of this type
+                                   or value. find "?" lists the parts that d1 abstained on: the candidates for a new line of world.py
 
 Everything is beside this file: world.py (the whitelist), config.json (where d1 is), events.jsonl (the log).
 """
@@ -31,8 +32,8 @@ import typing
 import urllib.request
 from string.templatelib import Interpolation, Template
 
-VERSION = "0.1.5"  # of the harness
-FORM = 2  # of a line of events.jsonl. Change it when a key changes its meaning, and add the step to migrate().
+VERSION = "0.1.6"  # of the harness
+FORM = 3  # of a line of events.jsonl. Change it when a key changes its meaning, and add the step to migrate().
 HOME = pathlib.Path(__file__).resolve().parent
 LOG = HOME / "events.jsonl"
 sys.path.insert(0, str(HOME))
@@ -50,6 +51,7 @@ class By(enum.StrEnum):
     WORDS = "the words"  # code found the value in the words
     RESULT = "the result of"  # another demanded function returns this type
     D1 = "d1"  # d1 chose the value
+    PIECE = "the piece"  # the words stand for a piece that the session named before, and d1 said yes
 
 
 class Brand(str):
@@ -103,10 +105,21 @@ def stamp() -> dict:
 
 
 def migrate(record: dict) -> dict:
-    """A line of the log in the current form. Form 1 (0.1.1) had no parts: its demands were found for the whole message."""
+    """A line of the log in the current form. Form 1 (0.1.1) had no parts: its demands were found for the whole message.
+    Form 2 (0.1.5) had no choice in a part and no pieces."""
     if record.get("form", 1) < 2 and record["event"] == "UserPromptSubmit":
         record = record | {"form": 2, "parts": [], "demands": [d | {"part": None, "by": By.MESSAGE} for d in record.get("demands", [])]}
+    if record.get("form", 1) < 3 and record["event"] == "UserPromptSubmit":
+        record = record | {"parts": [part | {"choice": chosen(part["scores"]) if "scores" in part else (part["demands"] or ["none" if part["hole"] is not None else "nothing"])[0]}
+                                     for part in record["parts"]], "pieces": []}  # the first lines of 0.1.5 have no scores
     return record | {"form": FORM}
+
+
+def chosen(scores: dict) -> str:
+    """The choice for 1 part, from d1's shares: the function with the largest share if it gets more than "none" and "nothing"
+    together. Else "none" (d1 abstains) if "none" gets half or more. Else "nothing"."""
+    top = max((name for name in scores if name not in ELSE), key=scores.get, default=None)
+    return top if top and scores[top] > scores["none"] + scores["nothing"] else "none" if scores["none"] >= 0.5 else "nothing"
 
 
 def history() -> list:
@@ -139,6 +152,8 @@ SAYS = lambda name: t"Does the text say: {name}?"
 WHICH = lambda name: t"Which words of the text say the {name}?"
 IS = lambda value, name, f: t'The message asks the reader to {f}. In the message, are the words "{value}" the {name} for that?'
 WITH = lambda f, g: t"Does the message ask the reader to {f} with the result of this: {g}?"
+REFERS = lambda word, value: t"In the last sentence, does [{word}] mean {value}?"  # the state: the sentence that names the value, then the sentence with [the words]
+REFER = r"\b(?:it|them|that|this|these|those|both|the same)\b"  # words that stand for a thing named before: the only list of words in the harness
 DID = lambda f: t"The message asks the reader to {f}. Does the reply do it, or say that it is done?"
 ANSWERED = lambda part: t'The message says: "{part}". Does the reply respond to that?'
 
@@ -167,21 +182,24 @@ def signature(f) -> tuple[dict, type]:
     return dict(hole for parameter, tp in hints.items() if parameter != "return" for hole in holes(tp, parameter)), hints["return"]
 
 
-def in_words(tp, text: str) -> str | None:
-    """The value for a hole of this type that the text contains, found by code. None when it contains none."""
+def places(tp, text: str) -> list:
+    """Each place in the text where a value of this type stands, found by code, as (start, end, type, value). The function
+    calls itself for the types inside a union, a list and a product type. A str or a bool has no place that code can find."""
     match tp:
-        case enum.EnumType():  # a sum type: the member whose name is in the text, the longest name first
-            return next((m.value for m in sorted(tp, key=lambda m: -len(m.value)) if m.value in text.lower()), None)
-        case types.UnionType():  # a sum of types: the first that the text fills
-            return next((value for inner in typing.get_args(tp) if (value := in_words(inner, text))), None)
-        case types.GenericAlias() if typing.get_origin(tp) is list:  # several of 1 type: each member that the text names
-            inner, = typing.get_args(tp)
-            return ", ".join(m.value for m in inner if m.value in text.lower()) or None if isinstance(inner, enum.EnumType) else in_words(inner, text)
-        case type() if tp is int:
-            return (found := re.search(r"\b\d+\b", text)) and found[0]
+        case enum.EnumType():  # a sum type: each place of the name of each member
+            return [(m.start(), m.end(), kind(tp), member.value) for member in tp for m in re.finditer(rf"\b{re.escape(member.value)}\b", text, re.I)]
+        case types.UnionType() | types.GenericAlias():
+            return [place for inner in typing.get_args(tp) for place in places(inner, text)]
+        case type() if dataclasses.is_dataclass(tp):
+            return [place for inner in typing.get_type_hints(tp).values() for place in places(inner, text)]
+        case type() if tp is int:  # a number. No part of a version such as 0.1.6 or of a time such as 05:15, and no list number such as "2. "
+            return [(m.start(), m.end(), "int", m[0]) for m in re.finditer(r"(?<![\w.:])\d+(?!\w|[.:]\d|\.\s)", text)]
         case type() if tp is pathlib.Path:
-            return (found := re.search(r"(?:[~.]{0,2}/)?[\w.-]+(?:/[\w.-]+)+|\b[\w-]+\.[a-z]{1,5}\b", text)) and found[0].rstrip(".")
-    return None
+            return [(m.start(), m.start() + len(m[0].rstrip(".")), "Path", m[0].rstrip(".")) for m in re.finditer(r"(?:[~.]{0,2}/)?[\w.-]+(?:/[\w.-]+)+|\b[\w-]+\.[a-z]{1,5}\b", text)]
+    return []
+
+
+leaves = lambda tp: {leaf for inner in typing.get_args(tp) for leaf in leaves(inner)} if isinstance(tp, types.UnionType | types.GenericAlias) else {kind(tp)}  # the types that a piece for this hole can have
 
 
 def to_ask(tp, name: str, f) -> dict:
@@ -214,35 +232,50 @@ def parts_of(text: str) -> list:
     return spans + ([(start, len(text.rstrip()))] if start is not None else [])
 
 
-def read(text: Asked, ask) -> tuple[Template, list, list, dict]:
+def read(text: Asked, ask, before: list = ()) -> tuple[Template, list, list, list, dict]:
     """The search. Every decision is d1's, and every option is from the world or from the message.
     1. For each part, with the part alone as the state: 1 choice among the functions of the world, "something else" and "nothing".
        If 1 function gets more than those 2 together, the part demands each function that gets a quarter or more.
        Else, if "something else" gets half or more, d1 abstains: the part is a Hole, and Claude is told to fill it, with the closest function beside it.
        Else the part is plain text: a remark, a reason, a rule or a greeting.
-    2. For each hole of a demanded function, by its type: a value in the words of the part (code), or the result of another
-       demand of the same part that returns this type, or the value that d1 chooses. Else the hole stays open.
-    3. d1 checks each value that code found, and each result that code put in a hole. A value that d1 rejects leaves the hole open.
+    2. Pieces, from the smallest typed things up: code finds each place in the message where a value of a type of the world
+       (or an int or a Path) stands. Pieces do not overlap: the longest wins.
+    3. For each hole of a demanded function, by its type: a free piece of that type in the part (the surest demand takes first),
+       or the result of another demand of the same part that returns this type, or the value that d1 chooses. Else the hole is open.
+    4. d1 checks each piece that code put in a hole, and each result. A value that d1 rejects leaves the hole open.
+    5. Words that stand for a thing named before ("it", "them"): the nearest piece before them, in the message, then in the earlier
+       messages of the session (before), of the type of an open hole of the part, or of any type. d1 checks it. A yes is a piece with "of",
+       and it fills the hole, in place of a member that d1 chose from the part alone.
     Two trial agents and the recorded messages decided these rules: see README.md, "What was tried".
-    The template that read returns is the whole message: "".join of its pieces is the text."""
+    The template that read returns is the whole message, 1 slot for each part: "".join of its pieces is the text."""
     spans = parts_of(text)
     quoted = [text[a:b] for a, b in spans]  # each part is a part of the message: brand Asked
     options = [{"id": name, "description": f.__doc__} for name, f in FUNCTIONS.items()] + [{"id": id, "description": words} for id, words in ELSE.items()]
     together = concurrent.futures.ThreadPoolExecutor(8).map  # 1 request for each part, 8 at a time
     scores = dict(enumerate(together(lambda part: put(ask, part, {0: {"type": "choice", "instructions": say(WHAT), "options": options}})[0]["probabilities"], quoted)))
-    top = {n: max(FUNCTIONS, key=chosen.get, default=None) for n, chosen in scores.items()}
-    choice = {n: top[n] if top[n] and chosen[top[n]] > chosen["none"] + chosen["nothing"] else "none" if chosen["none"] >= 0.5 else "nothing" for n, chosen in scores.items()}
-    found = [{"function": name, "p": round(q, 3), "by": By.PART, "part": n} for n, chosen in scores.items() if choice[n] not in ELSE
-             for name, q in chosen.items() if name not in ELSE and q >= 0.25]
-    p = {name: round(max((chosen[name] for chosen in scores.values()), default=0.0), 3) for name in FUNCTIONS}
+    choice = {n: chosen(scores[n]) for n in scores}
+    found = [{"function": name, "p": round(q, 3), "by": By.PART, "part": n} for n, scored in scores.items() if choice[n] not in ELSE
+             for name, q in scored.items() if name not in ELSE and (q >= 0.25 or name == choice[n])]
+    p = {name: round(max((scored[name] for scored in scores.values()), default=0.0), 3) for name in FUNCTIONS}
+
+    part_of = lambda at: next((n for n, (a, b) in enumerate(spans) if a <= at < b), None)
+    apart = lambda a, b: all(b <= piece["start"] or piece["end"] <= a for piece in pieces)  # the words overlap no piece
+    piece = lambda a, b, tp, value, by, **more: {"id": None, "part": part_of(a), "start": a, "end": b, "words": text[a:b], "type": tp, "value": value, "by": by, "to": None, "of": None} | more
+    pieces = []
+    for a, b, tp, value in sorted({place for tp in [*(tp for f in FUNCTIONS.values() for tp in signature(f)[0].values()), int, pathlib.Path] for place in places(tp, text)}, key=lambda place: place[0] - place[1]):
+        pieces += [piece(a, b, tp, value, By.WORDS)] * (apart(a, b) and part_of(a) is not None)  # the longest first
 
     wanted = {(n, path): tp for n, d in enumerate(found) for path, tp in signature(FUNCTIONS[d["function"]])[0].items()}
-    said = {key: in_words(tp, quoted[found[key[0]]["part"]]) for key, tp in wanted.items()}
+    said = {}
+    for key in sorted(wanted, key=lambda key: -found[key[0]]["p"]):  # the surest demand takes a piece first. A piece fills 1 hole, and a list hole takes each.
+        free = [one for one in sorted(pieces, key=lambda one: one["start"]) if one["part"] == found[key[0]]["part"] and one["type"] in leaves(wanted[key]) and not any(one in taken for taken in said.values())]
+        said[key] = free[:None if typing.get_origin(wanted[key]) is list else 1]
+    value = lambda key: ", ".join(one["value"] for one in said[key])
     made = {key: next((d["function"] for m, d in enumerate(found) if m != key[0] and d["part"] == found[key[0]]["part"] and getattr(tp, "__module__", "") == "world" and signature(FUNCTIONS[d["function"]])[1] is tp), None)
             for key, tp in wanted.items() if not said[key]}
     role = lambda key: (FUNCTIONS[found[key[0]]["function"]], key[1].split(".")[-1].replace("_", " "))
     open_ = {(key, value): q for key, tp in wanted.items() if not said[key] and not made[key] for value, q in to_ask(tp, role(key)[1], role(key)[0]).items()}
-    told = put(ask, text, {(key, None): yes(IS(said[key], role(key)[1], role(key)[0])) for key in wanted if said[key]}
+    told = put(ask, text, {(key, None): yes(IS(value(key), role(key)[1], role(key)[0])) for key in wanted if said[key]}
                | {(key, None): yes(WITH(role(key)[0], FUNCTIONS[made[key]])) for key in wanted if made.get(key)})
     for filled in together(lambda n: put(ask, quoted[n], {k: q for k, q in open_.items() if found[k[0][0]]["part"] == n}), {found[key[0]]["part"] for key, _ in open_}):
         told |= filled  # d1 fills a hole from the part alone: a thing that another sentence names is no argument here
@@ -251,12 +284,17 @@ def read(text: Asked, ask) -> tuple[Template, list, list, dict]:
         hole = {"type": kind(tp), "value": None, "by": None}
         check = round(told[key, None]["p_true"], 3) if (key, None) in told else None
         if said[key] or made.get(key):  # code found it. d1 checks it, and a value that d1 rejects leaves the hole open.
-            value, by = (said[key], By.WORDS) if said[key] else (made[key], By.RESULT)
-            return hole | {"value": value, "by": by, "d1": check} if check >= 0.5 else hole | {"rejected": value, "d1": check}
+            filled, by = (value(key), By.WORDS) if said[key] else (made[key], By.RESULT)
+            for one in said[key] * (check >= 0.5):
+                one["to"] = {"demand": key[0], "path": key[1]}
+            return hole | {"value": filled, "by": by, "d1": check} if check >= 0.5 else hole | {"rejected": filled, "d1": check}
         answers = {value: a for (other, value), a in told.items() if other == key and value is not None}
-        if "" in answers:  # a text read: the words that d1 points at, if the message has them
-            a = answers[""]
-            return hole | {"value": a["text"], "by": By.D1, "d1": round(a["found"], 3)} if a["found"] >= 0.5 and a["text"] and a["text"] in text and len(a["text"]) <= 60 else hole
+        if "" in answers:  # a text read: the words that d1 points at, if the message has them. They are a piece if they overlap none.
+            a, at = answers[""], text.find(answers[""]["text"] or "\0")
+            if a["found"] < 0.5 or at < 0 or len(a["text"]) > 60:
+                return hole
+            pieces.extend([piece(at, at + len(a["text"]), "str", a["text"], By.D1, d1=round(a["found"], 3), to={"demand": key[0], "path": key[1]})] * apart(at, at + len(a["text"])))
+            return hole | {"value": a["text"], "by": By.D1, "d1": round(a["found"], 3)}
         share = {value: a["p_true"] for value, a in answers.items() if "p_true" in a} | {m: q for a in answers.values() for m, q in a.get("probabilities", {}).items() if m != "none"}
         best = max(share, key=share.get, default=None)  # a yes, or the member that d1 chose in its sum type
         hole |= {"names_none": round(q, 3) for a in answers.values() if (q := a.get("probabilities", {}).get("none", 0)) >= 0.5}  # d1: the part names no member of the sum type
@@ -264,16 +302,38 @@ def read(text: Asked, ask) -> tuple[Template, list, list, dict]:
 
     demands = [d | {"returns": kind(signature(FUNCTIONS[d["function"]])[1]), "words": quoted[d["part"]],
                     "parameters": {path: fill((n, path), tp) for path, tp in signature(FUNCTIONS[d["function"]])[0].items()}} for n, d in enumerate(found)]
-    parts = [{"start": a, "end": b, "asks": round(1 - scores[n]["nothing"], 3), "demands": [d["function"] for d in demands if d["part"] == n],
+
+    asks, holes_open = [], [key for key in wanted if demands[key[0]]["parameters"][key[1]]["value"] is None or demands[key[0]]["parameters"][key[1]]["by"] == By.D1 and "str" not in leaves(wanted[key])]  # open, or a member that d1 guessed from the part alone
+    for word in (word for word in re.finditer(REFER, text, re.I) if choice.get(part_of(word.start()), "nothing") != "nothing" and apart(*word.span())):
+        n, (a, b) = part_of(word.start()), spans[part_of(word.start())]
+        key = next((key for key in holes_open if found[key[0]]["part"] == n and all(key != k for _, k, *_ in asks)), None)
+        nearest = lambda types: [(one, quoted[one["part"]], {"piece": one}) for one in sorted(pieces, key=lambda one: -one["start"]) if one["end"] <= word.start() and one["type"] in types(one)] + [
+            (one, r["text"][r["parts"][one["part"]]["start"]:r["parts"][one["part"]]["end"]], {"at": r["at"], "piece": one["id"]}) for r in reversed(before) for one in reversed(r.get("pieces", [])) if one["type"] in types(one)]
+        key, candidates = (key, near) if key and (near := nearest(lambda one: leaves(wanted[key]))) else (None, nearest(lambda one: {one["type"]}))  # the type of the open hole, else any type
+        for one, where, of in candidates[:1]:  # the nearest piece. d1 sees its sentence, then this one with the words in brackets.
+            state = (where + "\n") * (where != quoted[n]) + text[a:word.start()] + f"[{word[0]}]" + text[word.end():b]
+            asks += [(word, key, one, of, state, yes(REFERS(word[0], one["value"])))]
+    for (word, key, one, of, *_), a in zip(asks, together(lambda asked: put(ask, asked[-2], {0: asked[-1]})[0], asks)):
+        if a["p_true"] >= 0.8:  # d1 says yes: the words are a piece that stands for the other one, and it fills the open hole. 0.8: see README.md
+            pieces.append(piece(*word.span(), one["type"], one["value"], By.PIECE, d1=round(a["p_true"], 3), to=key and {"demand": key[0], "path": key[1]}, of=of))
+            if key:
+                demands[key[0]]["parameters"][key[1]] = {k: v for k, v in demands[key[0]]["parameters"][key[1]].items() if k != "names_none"} | {"value": one["value"], "by": By.PIECE, "d1": round(a["p_true"], 3)}
+
+    pieces.sort(key=lambda one: one["start"])
+    for n, one in enumerate(pieces):  # each piece gets its number, and each hole that a piece fills names it
+        one["id"] = n
+        if one["to"]:
+            demands[one["to"]["demand"]]["parameters"][one["to"]["path"]].setdefault("piece", n)
+        if one["of"] and "at" not in one["of"]:  # a reference in this message: the piece that it stands for is before it, and has its number
+            one["of"] = {"piece": one["of"]["piece"]["id"]}
+    parts = [{"start": a, "end": b, "asks": round(1 - scores[n]["nothing"], 3), "choice": choice[n], "demands": [d["function"] for d in demands if d["part"] == n],
               "hole": round(scores[n]["none"], 3) if choice[n] == "none" else None,
               "scores": {name: round(q, 3) for name, q in scores[n].items()}} for n, (a, b) in enumerate(spans)]
-    pieces, at = [], 0
-    for part, said_here in zip(parts, quoted):  # the whole message as a template: a part that demands or abstains is a slot, the rest is plain text
-        if part["demands"] or part["hole"] is not None:
-            value = tuple(FUNCTIONS[name] for name in part["demands"]) or Hole
-            pieces += [str(text[at:part["start"]]), Interpolation(value, " + ".join(part["demands"]) or "?", None, said_here)]
-            at = part["end"]
-    return Template(*pieces, str(text[at:])), demands, parts, p
+    slots, at = [], 0
+    for part, said_here in zip(parts, quoted):  # the whole message as a template: each part is a slot, and what is between the parts is plain text
+        slots += [str(text[at:part["start"]]), Interpolation(tuple(FUNCTIONS[name] for name in part["demands"]) or Hole, " + ".join(part["demands"]) or {"none": "?"}.get(part["choice"], part["choice"]), None, said_here)]
+        at = part["end"]
+    return Template(*slots, str(text[at:])), demands, parts, pieces, p
 
 
 def expression(demand: dict, demands: list, seen: tuple = ()) -> ast.Call:
@@ -334,21 +394,24 @@ def handle(event: dict, ask=d1) -> dict | None:
     record, answer = stamp() | {"event": event["hook_event_name"], "session": event.get("session_id"), "brand": type(text).__name__, "text": text}, None
     match text:
         case Asked():
-            template, demands, parts, p = read(text, ask)
+            template, demands, parts, pieces, p = read(text, ask, [mine[n] for n in asked])
             demands = [d | {"python": call(d, demands)} | ({"result": result} if (result := run(d, demands)) else {}) for d in demands]
-            record |= {"demands": demands, "parts": parts, "p": p, "template": [piece if isinstance(piece, str) else {"words": piece.format_spec, "is": piece.expression} for piece in template]}
-            asking = [(n, part, [d for d in demands if d["part"] == n]) for n, part in enumerate(parts) if part["demands"] or part["hole"]]
-            lines = [f"scriptt: d1 read this message against .scriptt/world.py. Parts: {len(parts)}. Parts that ask for something: {len(asking)}."]
-            for n, part, found in asking:  # 1 line for each part that asks for something: what it demands, how sure d1 is, and its first words
-                near = max(((q, name) for name, q in part["scores"].items() if name not in ELSE), default=(0, ""))
-                unnamed = lambda d: "".join(f"  (d1: the part names no {hole['type']})" for hole in d["parameters"].values() if hole.get("names_none") and "None" not in hole["type"])
-                what = " + ".join(d["python"] + f" {d['p']:.2f}" + (f" = {d['result']}" if d.get("result") else "") + unnamed(d) for d in found) or f"?  d1 abstains: no function of the world fits. The closest is {near[1]} {near[0]:.2f}."
-                lines += [f'{n + 1}. {what}   "{text[part["start"]:part["end"]][:90]}"']
+            record |= {"demands": demands, "parts": parts, "pieces": pieces, "p": p, "template": [piece if isinstance(piece, str) else {"words": piece.format_spec, "is": piece.expression} for piece in template]}
+            literal = lambda one: (f'"{one["words"]}" = ' if one["of"] else "") + (str(int(one["value"])) if one["type"] == "int" else repr(one["value"]) if one["type"] == "str" else f"{one['type']}({one['value']!r})") + (
+                "" if not one["of"] else " (an earlier message)" if "at" in one["of"] else f" (part {pieces[one['of']['piece']]['part'] + 1})")  # a piece as Python, and a reference with its words and where its piece is
+            named = lambda n: "".join(f" [{', '.join(map(literal, free))}]" for free in [[one for one in pieces if one["part"] == n and (one["to"] is None or one["of"])]] if free)
+            lines = [f"scriptt: d1 read this message against .scriptt/world.py. Parts: {len(parts)}. Parts that ask for something: {sum(part['choice'] != 'nothing' for part in parts)}."]
+            for n, part in enumerate(parts):  # 1 line for each part that asks for something: what it demands, how sure d1 is, the pieces that no hole takes, and its first words
+                if part["choice"] != "nothing":
+                    near = max(((q, name) for name, q in part["scores"].items() if name not in ELSE), default=(0, ""))
+                    unnamed = lambda d: "".join(f"  (d1: the part names no {hole['type']})" for hole in d["parameters"].values() if hole.get("names_none") and "None" not in hole["type"])
+                    what = " + ".join(d["python"] + f" {d['p']:.2f}" + (f" = {d['result']}" if d.get("result") else "") + unnamed(d) for d in demands if d["part"] == n) or f"?  d1 abstains: no function of the world fits. The closest is {near[1]} {near[0]:.2f}."
+                    lines += [f'{n + 1}. {what}{named(n)}   "{text[part["start"]:part["end"]][:90]}"']
+            quiet = [f"{n + 1}{named(n)}" for n, part in enumerate(parts) if part["choice"] == "nothing"]
+            lines += [f"Nothing: {', '.join(quiet)}."] * bool(quiet)
             lines += [f"-. {d['python']} {d['p']:.2f}   (the message as a whole)" for d in demands if d["part"] is None]
             if any(part["hole"] for part in parts):
                 lines += ['For each "?": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.']
-            if any("..." in d["python"] for d in demands):
-                lines += ["An argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."]
             if any(d.get("result") for d in demands):
                 lines += ['"= value" after a call: the world gives that function a body, and the harness ran it. The value is observed.']
             if asked:  # what came after the last message: the reply check, and the corrections of the user (the last one for each message)
@@ -360,6 +423,8 @@ def handle(event: dict, ask=d1) -> dict | None:
                 for r in {(r["text"], r["part"]): r for r in after if r["event"] == "Disagree"}.values():  # the last reading of each part
                     things = "".join(f', {path} is "{value}"' if value else f", {path} is open" for path, value in r["things"].items())
                     lines += [f'The user says that "{r["words"][:90]}" asks for {" + ".join(r["demands"]) or "nothing"}{things}. d1 said otherwise.']
+            gaps = [f'{d["part"] + 1}. {d["function"]}.{path}: {hole["type"]}   "{d["words"][:90]}"' for d in demands for path, hole in d["parameters"].items() if hole["value"] is None and "None" not in hole["type"]]
+            lines += ["Open holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:", *gaps] * bool(gaps)
             answer = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "\n".join(lines)}}
         case Written() if asked and ((last := mine[asked[-1]])["demands"] or any(part["hole"] for part in last["parts"])):
             state = f"MESSAGE:\n{last['text']}\n\nREPLY:\n{text}"
@@ -453,24 +518,26 @@ def serve(port: int):
 
 def reading(mine: dict) -> None:
     """Add the user's own reading of 1 part of 1 message to the log. Claude receives it with the next message of that session.
-    mine = {"session", "text", "part": its number from 0, "demands": [function names], "things": {hole path: value}}"""
+    mine = {"session", "text", "part": its number from 0, "demands": [function names], "things": {"<function>.<hole path>": value, or None for an open hole}}"""
     message = next(r for r in reversed(history()) if r["event"] == "UserPromptSubmit" and r["session"] == mine["session"] and r["text"] == mine["text"])
     part = message["parts"][mine["part"]]
     record = stamp() | {"event": "Disagree", "session": mine["session"], "text": mine["text"], "part": mine["part"], "words": mine["text"][part["start"]:part["end"]],
-                        "demands": [name for name in mine["demands"] if name in FUNCTIONS], "things": mine.get("things", {})}
+                        "demands": [name for name in mine["demands"] if name in FUNCTIONS], "things": {key: value for key, value in mine.get("things", {}).items() if key.split(".")[0] in FUNCTIONS}}
     with LOG.open("a") as file:
         file.write(json.dumps(record) + "\n")
 
 
 def find(words: list) -> None:
-    """Print each part of each logged message that has all these words in its text or among its functions. "?" finds the parts
+    """Print each part of each logged message that has all these words in its text, among its functions, among the types of its
+    pieces or in their values. "?" finds the parts
     that d1 abstained on, each with the closest function. A line that was read with another world.py than the one now is marked."""
     now = stamp()["world"]
     for record in history():
         for n, part in enumerate(record.get("parts", [])):
-            tags = part["demands"] + ["?"] * (part["hole"] is not None)
+            tags = part["demands"] + ["?"] * (part["hole"] is not None) + [one["type"] for one in record["pieces"] if one["part"] == n]
             said = " ".join(record["text"][part["start"]:part["end"]].split())
-            if tags and all(word in tags or (word != "?" and word.lower() in said.lower()) for word in words):
+            values = " ".join(one["value"] for one in record["pieces"] if one["part"] == n)  # a reference matches by the value that it stands for
+            if tags and all(word in tags or (word != "?" and word.lower() in f"{said} {values}".lower()) for word in words):
                 near = max(((q, name) for name, q in part.get("scores", {}).items() if name not in ELSE), default=None)
                 closest = f"  closest: {near[1]} {near[0]:.2f}" if near and part["hole"] is not None else ""
                 print(f'{record["at"][:16]}  {record["session"][:8]}  part {n + 1}  [{" + ".join(tags)}]{closest}{"  (an older world.py)" * (record["world"] != now)}  {said[:160]}')

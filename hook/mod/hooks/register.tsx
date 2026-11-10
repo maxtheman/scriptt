@@ -1,29 +1,28 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, ProcessRunInit, Register } from 'claude-code'
 
-import type { Mine, Reading } from '../types'
+import type { Change, Mine, Piece, Reading, View, ViewPiece, World } from '../types'
 
 // scriptt in the app. The harness (.scriptt/harness.py in the folder of the session) does all the reading and writes the log.
-// This mod runs it on each message that you type, attaches its block for Claude, and draws the reading on your own message:
-// 1 line for each part. Only the items after a part's words can be pressed, never the words. The pointer on an item shows
-// what a press will say. Press a function: the part does not ask for it. Press it again: it does. Pick from "?" what a part asks for.
+// This mod runs it on each message that you type, attaches its block for Claude, and hands the reading of your own message
+// to hooks/row.tsx, which draws it on the message and lets you move its pieces. A drop there comes back here as a ui.message
+// and goes to the log through `harness.py reading`.
 const PYTHONS = ['python3.14', '/opt/homebrew/bin/python3.14', '/usr/local/bin/python3.14']
 const HARNESS = '.scriptt/harness.py'
-// Values of the "?" picker that are no function. A function name is a Python name, so neither can be one.
-const UNKNOWN = '?'
-const NOTHING = '-'
+// 1 colour for each type, in the order that the world and the message name the types. The status colours stay out of it.
+const COLOURS = ['#5b9cf5', '#e5a33a', '#b07ee8', '#3fb8c4', '#ee78b0', '#8f9df7', '#c9b037', '#f08a4b', '#6cc4f0', '#c58fd8']
 
 const readings = atom({ plugin: 'scriptt', key: 'readings' } as const, {}, { shape: 'readings-2' })
-const mine = atom({ plugin: 'scriptt', key: 'mine' } as const, {})
+const mine = atom({ plugin: 'scriptt', key: 'mine' } as const, {}, { shape: 'mine-3' })
+const said = atom({ plugin: 'scriptt', key: 'said' } as const, {})
 const checks = atom({ plugin: 'scriptt', key: 'checks' } as const, {})
-const open = atom({ plugin: 'scriptt', key: 'open' } as const, {})
-const functions = atom({ plugin: 'scriptt', key: 'functions' } as const, [])
-const world = atom({ plugin: 'scriptt', key: 'world' } as const, {})
+const world = atom({ plugin: 'scriptt', key: 'world' } as const, { functions: {}, types: {} }, { shape: 'world-3' })
 const session = atom({ plugin: 'scriptt', key: 'session' } as const, '')
 const interpreter = atom({ plugin: 'scriptt', key: 'python' } as const, '')
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error))
 const lastLine = (text: string) => (text.trim().split('\n').pop() ?? '').replace(/^scriptt: /, '').slice(0, 120)
+const one = (type: string) => type.split('|').map(t => t.trim()).find(t => t !== 'None') ?? type
 
 // The folder that has .scriptt/harness.py: the folder of the session, or the nearest folder above it.
 const UP = 'd=$PWD; while :; do [ -f "$d/.scriptt/harness.py" ] && printf %s "$d" && exit 0; [ "$d" = / ] && exit 1; d=$(dirname "$d"); done'
@@ -65,8 +64,89 @@ const harness = async ($: EngineInterface, args: string[], init?: ProcessRunInit
   return $.process.run([python, HARNESS, ...args], { ...init, cwd })
 }
 
+// Form 2 has no pieces: each hole value that the part's own words hold is one, at its first place in the part.
+const piecesOf = (r: Reading): Piece[] => {
+  if (r.pieces) {
+    return r.pieces
+  }
+
+  const out: Piece[] = []
+
+  r.demands.forEach((d, demand) => {
+    const part = d.part === null ? undefined : r.parts[d.part]
+
+    for (const [path, hole] of Object.entries(d.parameters)) {
+      const value = hole.value == null ? '' : String(hole.value)
+      const at = part && value ? r.text.slice(part.start, part.end).toLowerCase().indexOf(value.toLowerCase()) : -1
+
+      if (part && value && at >= 0) {
+        const start = part.start + at
+        const end = start + value.length
+
+        if (!out.some(p => p.start < end && start < p.end)) {
+          const words = r.text.slice(start, end)
+          out.push({ id: out.length, part: d.part ?? 0, start, end, words, type: one(hole.type), value, by: hole.by ?? '', to: { demand, path }, of: null })
+        }
+      }
+    }
+  })
+
+  return out.sort((a, b) => a.start - b.start)
+}
+
+// The reading of 1 message as the row draws it: d1's reading with the user's own over it.
+const viewOf = (r: Reading, own: Mine, saved: Record<string, boolean>, done: Record<string, number>, w: World): View => {
+  const pieces = piecesOf(r)
+  const types = [...Object.keys(w.types), ...Object.values(w.functions).flatMap(f => Object.values(f.holes).map(one)), ...pieces.map(p => p.type)]
+  const named = [...new Set(types)].filter(t => !w.types[t]?.fields)
+  const colours = Object.fromEntries(named.map((t, n) => [t, COLOURS[n % COLOURS.length] ?? 'text']))
+
+  const parts = r.parts.map((part, n) => {
+    const yours = own[n]
+    const demands = yours?.demands ?? part.demands
+    const things = yours?.things ?? {}
+    const choice = part.choice ?? part.demands[0] ?? (part.hole !== null ? 'none' : 'nothing')
+    const score = part.scores?.[choice] ?? r.demands.find(d => d.part === n && d.function === choice)?.p ?? part.hole
+    const tag = yours ? demands.join(' ') || 'nothing' : `${part.demands.join(' ') || choice}${score == null ? '' : ` ${score.toFixed(2)}`}`
+
+    const calls = demands.map(fn => {
+      const index = r.demands.findIndex(d => d.part === n && d.function === fn)
+      const d1 = r.demands[index]?.parameters ?? {}
+      const all = w.functions[fn]?.holes ?? {}
+      const paths = [...Object.keys(d1), ...Object.keys(things).filter(k => k.startsWith(`${fn}.`)).map(k => k.slice(fn.length + 1))]
+      const shown = [...new Set(paths)]
+      const holes = shown.map(path => {
+        const key = `${fn}.${path}`
+        // The harness may write a number (an int); the row and the reading take text.
+        const value = key in things ? (things[key] ?? null) : d1[path]?.value == null ? null : String(d1[path]?.value)
+        const by = key in things
+          ? pieces.find(p => String(p.value) === value)
+          : pieces.find(p => p.id === d1[path]?.piece) ?? pieces.find(p => p.to?.demand === index && p.to.path === path)
+
+        return { path, type: one(d1[path]?.type ?? all[path] ?? 'str'), value, piece: value === null ? null : (by?.id ?? null) }
+      })
+      const hidden = Object.entries(all).filter(([path]) => !shown.includes(path)).map(([path, type]) => ({ path, type: one(type) }))
+
+      return { fn, holes, hidden, check: done[fn] ?? null }
+    })
+
+    return { start: part.start, end: part.end, tag, demands, things, calls, said: saved[n] ?? null }
+  })
+
+  return {
+    text: r.text,
+    colours,
+    parts,
+    pieces: pieces.map((p): ViewPiece => ({ id: p.id, start: p.start, end: p.end, type: p.type, value: String(p.value), of: p.of && !p.of.at ? p.of.piece : null })),
+    functions: Object.entries(w.functions).map(([name, f]) => ({ name, asks: f.asks ?? '' })),
+    types: named.map(name => ({ name, doc: w.types[name]?.doc ?? '', members: w.types[name]?.sum ?? [] })),
+  }
+}
+
 export const register: Register = on => {
   let lastText = ''
+  // A row module that failed on a surface: the rows go back to the app's own drawing until the mod loads again.
+  let fault = ''
 
   on('prompt.submit', async ($, e, next) => {
     if (e.command || e.isMeta || e.origin.kind !== 'composer') {
@@ -85,11 +165,8 @@ export const register: Register = on => {
         await update($, session, () => made)
       }
 
-      if (Object.keys(await read($, world)).length === 0) {
-        const described: Record<string, { asks?: string | null }> = JSON.parse((await harness($, ['world'])).stdout).functions
-        const asks = Object.fromEntries(Object.entries(described).map(([name, f]) => [name, f.asks ?? '']))
-        await update($, world, () => asks)
-      }
+      const described: World = JSON.parse((await harness($, ['world'])).stdout)
+      await update($, world, () => described)
 
       const event = { hook_event_name: 'UserPromptSubmit', session_id: id, prompt: e.text }
       const ran = await harness($, [], { stdin: JSON.stringify(event), timeoutMs: 60000 })
@@ -143,38 +220,49 @@ export const register: Register = on => {
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
     const reading = (await read($, readings))[e.props.text]
 
-    // The terminal has a full view of a row (ctrl+o): there the engine draws it. The other surfaces have this 1 view only.
-    if (!reading || (e.props.isExpanded && e.surface === 'terminal')) {
+    // The terminal has a full view of a row (ctrl+o): there the engine draws it. A surface with no Client draws its own row.
+    if (!reading || fault || (e.surface !== 'desktop' && e.surface !== 'terminal') || (e.props.isExpanded && e.surface === 'terminal')) {
       return next(e)
     }
 
-    const table = $.ui.resolve(e)
-    const { Box, Text, Button } = table
-    const Select = 'Select' in table ? table.Select : undefined
+    const { Box, Client } = $.ui.resolve(e)
     const text = reading.text
-    const own: Mine = (await read($, mine))[text] ?? {}
-    const done = (await read($, checks))[text] ?? {}
-    const isOpen = (await read($, open))[text] ?? false
-    const asks = await read($, world)
-    const names = Object.keys(asks).length > 0 ? Object.keys(asks) : await read($, functions)
+    const props = viewOf(reading, (await read($, mine))[text] ?? {}, (await read($, said))[text] ?? {}, (await read($, checks))[text] ?? {}, await read($, world))
 
-    // Your reading of a part goes to the log. Claude gets it with your next message.
-    // The item changes at once. If the log does not take the reading, the item goes back and the status line says so.
-    const say = async (part: number, change: (now: string[]) => string[]) => {
-      const was: { before?: string[]; demands: string[] } = { demands: [] }
+    return (
+      <Box width="100%">
+        <Client key="row" module="./row.tsx" width="100%" props={props} />
+      </Box>
+    )
+  })
+
+  // A press or a drop in the row: the user's reading of 1 or 2 parts. Each goes to the log; the row shows it at once.
+  // If the log does not take one, that part goes back and the status line says why.
+  on('ui.message', async ($, e, next) => {
+    const data = (e.data ?? {}) as { text?: unknown; changes?: unknown }
+    const reading = typeof data.text === 'string' ? (await read($, readings))[data.text] : undefined
+
+    for (const raw of reading && Array.isArray(data.changes) ? (data.changes as Partial<Change>[]) : []) {
+      if (!reading || typeof raw.part !== 'number' || !reading.parts[raw.part] || !Array.isArray(raw.demands) || typeof raw.things !== 'object') {
+        continue
+      }
+
+      const { text, session: id } = reading
+      const part = raw.part
+      const demands = raw.demands.filter(name => typeof name === 'string')
+      const things = Object.fromEntries(Object.entries(raw.things ?? {}).filter(([, v]) => v === null || typeof v === 'string'))
+      const was: { before?: Omit<Change, 'part'> } = {}
 
       await update($, mine, all => {
         was.before = all[text]?.[part]
-        was.demands = change(was.before ?? reading.parts[part]?.demands ?? [])
 
-        return { ...all, [text]: { ...(all[text] ?? {}), [part]: was.demands } }
+        return { ...all, [text]: { ...(all[text] ?? {}), [part]: { demands, things } } }
       })
 
       let failed = ''
 
       try {
-        const correction = { session: reading.session, text, part, demands: was.demands, things: {} }
-        const ran = await harness($, ['reading'], { stdin: JSON.stringify(correction) })
+        const ran = await harness($, ['reading'], { stdin: JSON.stringify({ session: id, text, part, demands, things }) })
         failed = ran.exitCode === 0 ? '' : lastLine(ran.stderr) || `the harness ended with status ${ran.exitCode}`
       } catch (error) {
         failed = lastLine(reason(error))
@@ -187,119 +275,19 @@ export const register: Register = on => {
 
           return { ...all, [text]: was.before === undefined ? rest : { ...rest, [part]: was.before } }
         })
-        $.ui.status(`${failed}: your reading was not saved`)
-      } else {
-        $.ui.status(undefined)
       }
+
+      await update($, said, all => ({ ...all, [text]: { ...(all[text] ?? {}), [part]: !failed } }))
+      $.ui.status(failed ? `${failed}: your reading was not saved` : undefined)
     }
 
-    const call = (name: string, part: number) => {
-      const demand = reading.demands.find(d => d.function === name && d.part === part)
-      // The harness writes each demand as a Python expression. A type where a value belongs is an open hole.
-      const python = demand?.python ?? `${name}()`
+    return next(e)
+  })
 
-      return demand?.result ? `${python} = ${demand.result}` : python
-    }
+  on('ui.fault', async ($, e, next) => {
+    fault = e.reason
+    $.ui.status(`${e.reason}: the app draws the rows`)
 
-    // What a press will say, in words: drawn only while the pointer is on the item (the keyed Box around it).
-    const consequence = (words: string) => (
-      <Box display="none" hover={{ display: 'flex' }}>
-        <Text dimColor>{words}</Text>
-      </Box>
-    )
-
-    const asking = reading.parts.filter(p => p.demands.length > 0 || p.hole !== null).length
-    const rows = reading.parts.map((part, n) => {
-      const words = text.slice(part.start, part.end)
-      const yours = own[n]
-      const now = yours ?? part.demands
-      const isHole = part.hole !== null && part.demands.length === 0
-      // d1's items keep their order and place; a function that only you named comes after them.
-      const items = isHole ? [] : [...part.demands, ...now.filter(name => !part.demands.includes(name))]
-
-      return (
-        <Box flexDirection="row" flexWrap="wrap" columnGap="sm">
-          <Text>{words}</Text>
-          {items.map(name => {
-            const isOn = now.includes(name)
-            const demand = reading.demands.find(d => d.function === name && d.part === n)
-            const check = done[name]
-
-            return (
-              <Box key={`item-${n}-${name}`} flexDirection="row" columnGap="xs">
-                <Button
-                  key={`fn-${n}-${name}`}
-                  onPress={() => say(n, cur => (cur.includes(name) ? cur.filter(other => other !== name) : [...cur, name]))}
-                >
-                  <Text mono weight={isOn ? 'semibold' : 'regular'} strikethrough={!isOn} dimColor={!isOn}>
-                    {call(name, n)}
-                  </Text>
-                </Button>
-                {isOpen && demand && (
-                  <Text dimColor>
-                    {demand.p.toFixed(2)} from {demand.by}
-                  </Text>
-                )}
-                {isOn && check !== undefined && <Text dimColor>{check >= 0.5 ? 'done' : 'not done'}</Text>}
-                {consequence(isOn ? `Press: this part does not ask for ${name}` : `Press: this part asks for ${name}`)}
-              </Box>
-            )
-          })}
-          {!isHole && yours !== undefined && now.length === 0 && <Text>nothing</Text>}
-          {isHole && !Select && <Text weight="semibold">?</Text>}
-          {isHole && Select && (
-            <Box key={`item-${n}-hole`} flexDirection="row" columnGap="xs">
-              {yours !== undefined && (
-                <Text strikethrough dimColor>
-                  ?
-                </Text>
-              )}
-              <Select
-                key={`hole-${n}`}
-                value={yours === undefined ? UNKNOWN : (yours[0] ?? NOTHING)}
-                options={[
-                  ...(yours === undefined ? [{ value: UNKNOWN, label: '?' }] : []),
-                  { value: NOTHING, label: 'it asks for nothing' },
-                  ...names.map(name => ({ value: name, label: asks[name] ? `${name}: ${asks[name]}` : name })),
-                ]}
-                onSelect={value => {
-                  if (value !== UNKNOWN) {
-                    void say(n, () => (value === NOTHING ? [] : [value]))
-                  }
-                }}
-              />
-              {isOpen && part.hole !== null && <Text dimColor>{part.hole.toFixed(2)} asks, no function fits</Text>}
-              {consequence('Pick: what this part asks for')}
-            </Box>
-          )}
-        </Box>
-      )
-    })
-
-    return (
-      <Box flexDirection="column">
-        {rows}
-        <Box key="item-count" flexDirection="row" columnGap="xs">
-          <Button
-            key="count"
-            label={`${asking} of ${reading.parts.length}`}
-            dimColor
-            onPress={() => update($, open, all => ({ ...all, [text]: !(all[text] ?? false) }))}
-          />
-          {consequence(isOpen ? "Press: hide d1's numbers" : "Press: show d1's numbers")}
-        </Box>
-        {isOpen && (
-          <Box flexDirection="row" flexWrap="wrap" columnGap="sm">
-            {Object.keys(reading.p)
-              .filter(name => !reading.parts.some(part => part.demands.includes(name)))
-              .map(name => (
-                <Text dimColor>
-                  <Text strikethrough>{name}</Text> {(reading.p[name] ?? 0).toFixed(2)}
-                </Text>
-              ))}
-          </Box>
-        )}
-      </Box>
-    )
+    return next(e)
   })
 }

@@ -1,4 +1,4 @@
-# scriptt 0.1.5
+# scriptt 0.1.6
 
 A harness for Claude Code in 2 files. Each message to an agent is a demand for computation. A small decision
 model, d1, decides which functions of your world each sentence of a message asks for, before Claude reads it.

@@ -4,13 +4,13 @@
   "same set": 8,
   "classes in both": 19,
   "only the person": 9,
-  "only d1": 10
+  "only d1": 11
  },
  "records": [
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -28,13 +28,15 @@
        "type": "Questions",
        "value": "all ten of these",
        "by": "the words",
-       "d1": 0.59
+       "d1": 0.59,
+       "piece": 0
       },
       "concepts": {
        "type": "Concepts",
        "value": "the computer science concepts",
        "by": "the words",
-       "d1": 0.866
+       "d1": 0.866,
+       "piece": 2
       }
      },
      "python": "restate(questions=Questions('all ten of these'), concepts=Concepts('the computer science concepts'))"
@@ -107,6 +109,7 @@
      "start": 0,
      "end": 75,
      "asks": 0.997,
+     "choice": "restate",
      "demands": [
       "restate"
      ],
@@ -131,6 +134,7 @@
      "start": 76,
      "end": 132,
      "asks": 0.886,
+     "choice": "rewrite",
      "demands": [
       "rewrite"
      ],
@@ -155,6 +159,7 @@
      "start": 133,
      "end": 156,
      "asks": 0.883,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -179,6 +184,7 @@
      "start": 157,
      "end": 206,
      "asks": 0.953,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -203,6 +209,7 @@
      "start": 207,
      "end": 264,
      "asks": 0.901,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -225,6 +232,7 @@
      "start": 265,
      "end": 329,
      "asks": 0.728,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -247,6 +255,7 @@
      "start": 330,
      "end": 378,
      "asks": 0.782,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -269,6 +278,7 @@
      "start": 379,
      "end": 403,
      "asks": 0.869,
+     "choice": "none",
      "demands": [],
      "hole": 0.748,
      "scores": {
@@ -291,6 +301,7 @@
      "start": 404,
      "end": 450,
      "asks": 0.953,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -315,6 +326,7 @@
      "start": 451,
      "end": 487,
      "asks": 0.735,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -337,6 +349,7 @@
      "start": 488,
      "end": 499,
      "asks": 0.562,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -359,6 +372,7 @@
      "start": 500,
      "end": 567,
      "asks": 0.983,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -378,6 +392,53 @@
       "none": 0.117,
       "nothing": 0.017
      }
+    }
+   ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 5,
+     "end": 21,
+     "words": "all ten of these",
+     "type": "Questions",
+     "value": "all ten of these",
+     "by": "the words",
+     "to": {
+      "demand": 0,
+      "path": "questions"
+     },
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 0,
+     "start": 34,
+     "end": 38,
+     "words": "them",
+     "type": "Questions",
+     "value": "all ten of these",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 0
+     },
+     "d1": 0.942
+    },
+    {
+     "id": 2,
+     "part": 0,
+     "start": 45,
+     "end": 74,
+     "words": "the computer science concepts",
+     "type": "Concepts",
+     "value": "the computer science concepts",
+     "by": "the words",
+     "to": {
+      "demand": 0,
+      "path": "concepts"
+     },
+     "of": null
     }
    ],
    "p": {
@@ -413,7 +474,22 @@
      "words": "Cool. Are you talking like how do you break that?",
      "is": "explain"
     },
-    " How would you think about getting information about that? Using all of the different concepts in the research you've done. Same with which words say what should come back. ",
+    " ",
+    {
+     "words": "How would you think about getting information about that?",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "Using all of the different concepts in the research you've done.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "Same with which words say what should come back.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "Go look at the research.",
      "is": "?"
@@ -423,7 +499,17 @@
      "words": "What does it have to do with what you've done?",
      "is": "explain"
     },
-    " One list, one thing or one per item. Same thing. ",
+    " ",
+    {
+     "words": "One list, one thing or one per item.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "Same thing.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "How does this have to do with any of the research that you've done?",
      "is": "explain"
@@ -432,14 +518,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 12. Parts that ask for something: 7.\n1. restate(questions=Questions('all ten of these'), concepts=Concepts('the computer science concepts')) 0.83   \"Take all ten of these and restate them using the computer science concepts.\"\n2. rewrite(change=Change(notebook=..., code=...)) 0.36  (d1: the part names no Code)   \"I want the exact same headers here in your next message.\"\n3. explain() 0.47   \"So what kind of result?\"\n4. explain() 0.67   \"Cool. Are you talking like how do you break that?\"\n8. ?  d1 abstains: no function of the world fits. The closest is explain 0.03.   \"Go look at the research.\"\n9. explain() 0.74   \"What does it have to do with what you've done?\"\n12. explain() 0.83   \"How does this have to do with any of the research that you've done?\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nAn argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 12. Parts that ask for something: 7.\n1. restate(questions=Questions('all ten of these'), concepts=Concepts('the computer science concepts')) 0.83 [\"them\" = Questions('all ten of these') (part 1)]   \"Take all ten of these and restate them using the computer science concepts.\"\n2. rewrite(change=Change(notebook=..., code=...)) 0.36  (d1: the part names no Code)   \"I want the exact same headers here in your next message.\"\n3. explain() 0.47   \"So what kind of result?\"\n4. explain() 0.67   \"Cool. Are you talking like how do you break that?\"\n8. ?  d1 abstains: no function of the world fits. The closest is explain 0.03.   \"Go look at the research.\"\n9. explain() 0.74   \"What does it have to do with what you've done?\"\n12. explain() 0.83   \"How does this have to do with any of the research that you've done?\"\nNothing: 5, 6, 7, 10, 11.\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n2. rewrite.change.notebook: Notebook   \"I want the exact same headers here in your next message.\"\n2. rewrite.change.code: Code   \"I want the exact same headers here in your next message.\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -453,9 +539,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -494,9 +580,10 @@
      "parameters": {
       "questions": {
        "type": "Questions",
-       "value": null,
-       "by": null,
-       "names_none": 0.679
+       "value": "all ten of these",
+       "by": "the piece",
+       "d1": 0.83,
+       "piece": 1
       },
       "cells": {
        "type": "int | None",
@@ -504,7 +591,7 @@
        "by": null
       }
      },
-     "python": "implement(questions=...)"
+     "python": "implement(questions=Questions('all ten of these'))"
     },
     {
      "function": "implement",
@@ -534,6 +621,7 @@
      "start": 0,
      "end": 93,
      "asks": 0.931,
+     "choice": "implement",
      "demands": [
       "implement"
      ],
@@ -558,6 +646,7 @@
      "start": 94,
      "end": 137,
      "asks": 0.996,
+     "choice": "implement",
      "demands": [
       "implement"
      ],
@@ -582,6 +671,7 @@
      "start": 138,
      "end": 230,
      "asks": 0.78,
+     "choice": "implement",
      "demands": [
       "implement"
      ],
@@ -606,6 +696,7 @@
      "start": 232,
      "end": 247,
      "asks": 0.784,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -623,6 +714,38 @@
       "none": 0.16,
       "nothing": 0.216
      }
+    }
+   ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 34,
+     "end": 50,
+     "words": "all ten of these",
+     "type": "Questions",
+     "value": "all ten of these",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 1,
+     "start": 121,
+     "end": 126,
+     "words": "these",
+     "type": "Questions",
+     "value": "all ten of these",
+     "by": "the piece",
+     "to": {
+      "demand": 1,
+      "path": "questions"
+     },
+     "of": {
+      "piece": 0
+     },
+     "d1": 0.83
     }
    ],
    "p": {
@@ -653,19 +776,23 @@
      "words": "And I and make it so I can plug the message in and play with them and see what they tell us.",
      "is": "implement"
     },
-    "\n\nIncluding nine."
+    "\n\n",
+    {
+     "words": "Including nine.",
+     "is": "nothing"
+    }
    ],
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 3.\n1. implement(questions=...) 0.59   \"Okay. Why don't we just implement all ten of these with the smallest amount of code possib\"\n2. implement(questions=...) 0.88  (d1: the part names no Questions)   \"Can you please put each of these in a cell?\"\n3. implement(questions=...) 0.36  (d1: the part names no Questions)   \"And I and make it so I can plug the message in and play with them and see what they tell u\"\nAn argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 3.\n1. implement(questions=...) 0.59 [Questions('all ten of these')]   \"Okay. Why don't we just implement all ten of these with the smallest amount of code possib\"\n2. implement(questions=Questions('all ten of these')) 0.88 [\"these\" = Questions('all ten of these') (part 1)]   \"Can you please put each of these in a cell?\"\n3. implement(questions=...) 0.36  (d1: the part names no Questions)   \"And I and make it so I can plug the message in and play with them and see what they tell u\"\nNothing: 4.\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n1. implement.questions: Questions   \"Okay. Why don't we just implement all ten of these with the smallest amount of code possib\"\n3. implement.questions: Questions   \"And I and make it so I can plug the message in and play with them and see what they tell u\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -679,9 +806,9 @@
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -697,12 +824,13 @@
      "parameters": {
       "model": {
        "type": "Model",
-       "value": "the model",
+       "value": "d1",
        "by": "the words",
-       "d1": 0.929
+       "d1": 0.975,
+       "piece": 0
       }
      },
-     "python": "mock(model=Model('the model'))"
+     "python": "mock(model=Model('d1'))"
     }
    ],
    "parts": [
@@ -710,6 +838,7 @@
      "start": 0,
      "end": 56,
      "asks": 0.96,
+     "choice": "mock",
      "demands": [
       "mock"
      ],
@@ -729,6 +858,35 @@
       "none": 0.023,
       "nothing": 0.04
      }
+    }
+   ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 5,
+     "end": 7,
+     "words": "d1",
+     "type": "Model",
+     "value": "d1",
+     "by": "the words",
+     "to": {
+      "demand": 0,
+      "path": "model"
+     },
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 0,
+     "start": 46,
+     "end": 55,
+     "words": "the model",
+     "type": "Model",
+     "value": "the model",
+     "by": "the words",
+     "to": null,
+     "of": null
     }
    ],
    "p": {
@@ -753,14 +911,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. mock(model=Model('the model')) 0.89   \"Mock d1, Please stop this sick obsession with the model.\""
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. mock(model=Model('d1')) 0.89 [Model('the model')]   \"Mock d1, Please stop this sick obsession with the model.\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -771,9 +929,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -791,7 +949,8 @@
        "type": "Notebook",
        "value": "the old cells",
        "by": "the words",
-       "d1": 0.791
+       "d1": 0.791,
+       "piece": 0
       }
      },
      "python": "delete(notebook=Notebook('the old cells'))"
@@ -802,6 +961,7 @@
      "start": 0,
      "end": 44,
      "asks": 0.999,
+     "choice": "delete",
      "demands": [
       "delete"
      ],
@@ -821,6 +981,23 @@
       "none": 0.002,
       "nothing": 0.001
      }
+    }
+   ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 30,
+     "end": 43,
+     "words": "the old cells",
+     "type": "Notebook",
+     "value": "the old cells",
+     "by": "the words",
+     "to": {
+      "demand": 0,
+      "path": "notebook"
+     },
+     "of": null
     }
    ],
    "p": {
@@ -850,9 +1027,9 @@
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -863,9 +1040,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -897,6 +1074,7 @@
      "start": 0,
      "end": 47,
      "asks": 0.997,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -921,6 +1099,7 @@
      "start": 48,
      "end": 90,
      "asks": 0.988,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -940,6 +1119,50 @@
       "none": 0.074,
       "nothing": 0.012
      }
+    }
+   ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 7,
+     "end": 19,
+     "words": "result types",
+     "type": "Types",
+     "value": "result types",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 0,
+     "start": 36,
+     "end": 38,
+     "words": "it",
+     "type": "Types",
+     "value": "result types",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 0
+     },
+     "d1": 0.83
+    },
+    {
+     "id": 2,
+     "part": 1,
+     "start": 56,
+     "end": 60,
+     "words": "this",
+     "type": "Types",
+     "value": "result types",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 0
+     },
+     "d1": 0.852
     }
    ],
    "p": {
@@ -969,14 +1192,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 2. Parts that ask for something: 2.\n1. explain() 0.94   \"Why is result types defined the way it is here?\"\n2. explain() 0.87   \"What is this supposed to be accomplishing?\""
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 2. Parts that ask for something: 2.\n1. explain() 0.94 [Types('result types'), \"it\" = Types('result types') (part 1)]   \"Why is result types defined the way it is here?\"\n2. explain() 0.87 [\"this\" = Types('result types') (part 1)]   \"What is this supposed to be accomplishing?\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -987,9 +1210,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1041,6 +1264,7 @@
      "start": 0,
      "end": 88,
      "asks": 0.641,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1063,6 +1287,7 @@
      "start": 89,
      "end": 108,
      "asks": 0.217,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1085,6 +1310,7 @@
      "start": 110,
      "end": 169,
      "asks": 0.828,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -1109,6 +1335,7 @@
      "start": 171,
      "end": 277,
      "asks": 0.624,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1131,6 +1358,7 @@
      "start": 278,
      "end": 301,
      "asks": 0.44,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1153,6 +1381,7 @@
      "start": 302,
      "end": 409,
      "asks": 0.993,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -1177,6 +1406,7 @@
      "start": 410,
      "end": 484,
      "asks": 0.837,
+     "choice": "answer",
      "demands": [
       "answer"
      ],
@@ -1201,6 +1431,7 @@
      "start": 485,
      "end": 561,
      "asks": 0.794,
+     "choice": "answer",
      "demands": [
       "answer"
      ],
@@ -1225,6 +1456,7 @@
      "start": 564,
      "end": 662,
      "asks": 0.502,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1244,6 +1476,89 @@
      }
     }
    ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 65,
+     "end": 87,
+     "words": "the type of the result",
+     "type": "Types",
+     "value": "the type of the result",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 4,
+     "start": 281,
+     "end": 293,
+     "words": "result types",
+     "type": "Types",
+     "value": "result types",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 2,
+     "part": 5,
+     "start": 316,
+     "end": 329,
+     "words": "the functions",
+     "type": "Code",
+     "value": "the functions",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 3,
+     "part": 5,
+     "start": 383,
+     "end": 388,
+     "words": "those",
+     "type": "Code",
+     "value": "the functions",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 2
+     },
+     "d1": 0.907
+    },
+    {
+     "id": 4,
+     "part": 6,
+     "start": 434,
+     "end": 439,
+     "words": "those",
+     "type": "Code",
+     "value": "the functions",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 2
+     },
+     "d1": 0.82
+    },
+    {
+     "id": 5,
+     "part": 7,
+     "start": 496,
+     "end": 501,
+     "words": "those",
+     "type": "Code",
+     "value": "the functions",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 2
+     },
+     "d1": 0.861
+    }
+   ],
    "p": {
     "explain": 0.808,
     "restate": 0.094,
@@ -1258,12 +1573,31 @@
     "count": 0.176
    },
    "template": [
-    "Okay, so the point of what you're doing here is trying to decide the type of the result. That's it - got it.\n\n",
+    {
+     "words": "Okay, so the point of what you're doing here is trying to decide the type of the result.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "That's it - got it.",
+     "is": "nothing"
+    },
+    "\n\n",
     {
      "words": "Here's what I can't quite figure out Between the first two:",
      "is": "explain"
     },
-    "\n\n1. Figuring out how many things I'm looking for - It seems like that does have something to do with types.\n2. result types - Okay. ",
+    "\n\n",
+    {
+     "words": "1. Figuring out how many things I'm looking for - It seems like that does have something to do with types.",
+     "is": "nothing"
+    },
+    "\n",
+    {
+     "words": "2. result types - Okay.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "It's based on the functions that we have in the com in the context, but where do those come from precisely?",
      "is": "explain"
@@ -1278,19 +1612,23 @@
      "words": "But aren't those like you said, defined over specific value transformations?",
      "is": "answer"
     },
-    "\n\n\nSo it seems like in your assumed world here even there's a lot of information we're throwing away."
+    "\n\n\n",
+    {
+     "words": "So it seems like in your assumed world here even there's a lot of information we're throwing away.",
+     "is": "nothing"
+    }
    ],
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 9. Parts that ask for something: 4.\n3. explain() 0.50   \"Here's what I can't quite figure out Between the first two:\"\n6. explain() 0.81   \"It's based on the functions that we have in the com in the context, but where do those com\"\n7. answer() 0.56   \"You just decided to get those from like the pre-existing notebooks, right?\"\n8. answer() 0.36   \"But aren't those like you said, defined over specific value transformations?\""
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 9. Parts that ask for something: 4.\n3. explain() 0.50   \"Here's what I can't quite figure out Between the first two:\"\n6. explain() 0.81 [Code('the functions'), \"those\" = Code('the functions') (part 6)]   \"It's based on the functions that we have in the com in the context, but where do those com\"\n7. answer() 0.56 [\"those\" = Code('the functions') (part 6)]   \"You just decided to get those from like the pre-existing notebooks, right?\"\n8. answer() 0.36 [\"those\" = Code('the functions') (part 6)]   \"But aren't those like you said, defined over specific value transformations?\"\nNothing: 1 [Types('the type of the result')], 2, 4, 5 [Types('result types')], 9."
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1302,9 +1640,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1322,7 +1660,8 @@
        "type": "Notebook",
        "value": "these cells",
        "by": "the words",
-       "d1": 0.963
+       "d1": 0.963,
+       "piece": 0
       }
      },
      "python": "delete(notebook=Notebook('these cells'))"
@@ -1339,7 +1678,8 @@
        "type": "str",
        "value": "functions",
        "by": "d1",
-       "d1": 0.555
+       "d1": 0.555,
+       "piece": 2
       }
      },
      "python": "extend(what='functions')"
@@ -1441,6 +1781,7 @@
      "start": 0,
      "end": 128,
      "asks": 0.989,
+     "choice": "delete",
      "demands": [
       "delete"
      ],
@@ -1465,6 +1806,7 @@
      "start": 129,
      "end": 189,
      "asks": 0.85,
+     "choice": "extend",
      "demands": [
       "extend"
      ],
@@ -1489,6 +1831,7 @@
      "start": 190,
      "end": 240,
      "asks": 0.525,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1511,6 +1854,7 @@
      "start": 241,
      "end": 325,
      "asks": 0.951,
+     "choice": "implement",
      "demands": [
       "implement",
       "solve"
@@ -1536,6 +1880,7 @@
      "start": 326,
      "end": 637,
      "asks": 0.908,
+     "choice": "rewrite",
      "demands": [
       "rewrite"
      ],
@@ -1560,6 +1905,7 @@
      "start": 638,
      "end": 706,
      "asks": 0.666,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1582,6 +1928,7 @@
      "start": 707,
      "end": 733,
      "asks": 0.97,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -1606,6 +1953,7 @@
      "start": 734,
      "end": 756,
      "asks": 0.81,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1628,6 +1976,7 @@
      "start": 757,
      "end": 769,
      "asks": 0.787,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1650,6 +1999,7 @@
      "start": 770,
      "end": 803,
      "asks": 0.939,
+     "choice": "answer",
      "demands": [
       "answer"
      ],
@@ -1674,6 +2024,7 @@
      "start": 804,
      "end": 822,
      "asks": 0.834,
+     "choice": "explain",
      "demands": [
       "explain"
      ],
@@ -1693,6 +2044,69 @@
       "none": 0.214,
       "nothing": 0.166
      }
+    }
+   ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 57,
+     "end": 68,
+     "words": "these cells",
+     "type": "Notebook",
+     "value": "these cells",
+     "by": "the words",
+     "to": {
+      "demand": 0,
+      "path": "notebook"
+     },
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 0,
+     "start": 94,
+     "end": 98,
+     "words": "them",
+     "type": "Notebook",
+     "value": "these cells",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 0
+     },
+     "d1": 0.903
+    },
+    {
+     "id": 2,
+     "part": 1,
+     "start": 168,
+     "end": 177,
+     "words": "functions",
+     "type": "str",
+     "value": "functions",
+     "by": "d1",
+     "to": {
+      "demand": 1,
+      "path": "what"
+     },
+     "of": null,
+     "d1": 0.555
+    },
+    {
+     "id": 3,
+     "part": 6,
+     "start": 723,
+     "end": 727,
+     "words": "that",
+     "type": "str",
+     "value": "functions",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 2
+     },
+     "d1": 0.819
     }
    ],
    "p": {
@@ -1718,7 +2132,12 @@
      "words": "You know, feel free to just throw some functions at the top.",
      "is": "extend"
     },
-    " You don't need to do the whole notebook rigmarole. ",
+    " ",
+    {
+     "words": "You don't need to do the whole notebook rigmarole.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "Just mock a function and and put it in instead of being so indirect and hiding this.",
      "is": "implement + solve"
@@ -1728,12 +2147,27 @@
      "words": "And then think deeper about my boundary and what that has to do with holes and kinds and all the other stuff that you spend all that time putting down into the notebook and the challenges that I've been having and brands and all that and come back with a more integrated proposal covering only these two things.",
      "is": "rewrite"
     },
-    " Assume we have functions - Heck, assume we don't have any functions. ",
+    " ",
+    {
+     "words": "Assume we have functions - Heck, assume we don't have any functions.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "What happens in that case?",
      "is": "explain"
     },
-    " We probably have a ()? Or a lambda? ",
+    " ",
+    {
+     "words": "We probably have a ()?",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "Or a lambda?",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "Can we just do lambda with types?",
      "is": "answer"
@@ -1747,14 +2181,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 11. Parts that ask for something: 7.\n1. delete(notebook=Notebook('these cells')) 0.86   \"Okay. Um well I don't think we're learning anything with these cells, so maybe you can del\"\n2. extend(what='functions') 0.31   \"You know, feel free to just throw some functions at the top.\"\n4. implement(questions=...) 0.36  (d1: the part names no Questions) + solve(types=...) 0.29  (d1: the part names no Types)   \"Just mock a function and and put it in instead of being so indirect and hiding this.\"\n5. rewrite(change=Change(notebook=..., code=...)) 0.47  (d1: the part names no Code)   \"And then think deeper about my boundary and what that has to do with holes and kinds and a\"\n7. explain() 0.70   \"What happens in that case?\"\n10. answer() 0.35   \"Can we just do lambda with types?\"\n11. explain() 0.51   \"Like what happens?\"\nAn argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 11. Parts that ask for something: 7.\n1. delete(notebook=Notebook('these cells')) 0.86 [\"them\" = Notebook('these cells') (part 1)]   \"Okay. Um well I don't think we're learning anything with these cells, so maybe you can del\"\n2. extend(what='functions') 0.31   \"You know, feel free to just throw some functions at the top.\"\n4. implement(questions=...) 0.36  (d1: the part names no Questions) + solve(types=...) 0.29  (d1: the part names no Types)   \"Just mock a function and and put it in instead of being so indirect and hiding this.\"\n5. rewrite(change=Change(notebook=..., code=...)) 0.47  (d1: the part names no Code)   \"And then think deeper about my boundary and what that has to do with holes and kinds and a\"\n7. explain() 0.70 [\"that\" = 'functions' (part 2)]   \"What happens in that case?\"\n10. answer() 0.35   \"Can we just do lambda with types?\"\n11. explain() 0.51   \"Like what happens?\"\nNothing: 3, 6, 8, 9.\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n4. implement.questions: Questions   \"Just mock a function and and put it in instead of being so indirect and hiding this.\"\n4. solve.types: Types   \"Just mock a function and and put it in instead of being so indirect and hiding this.\"\n5. rewrite.change.notebook: Notebook   \"And then think deeper about my boundary and what that has to do with holes and kinds and a\"\n5. rewrite.change.code: Code   \"And then think deeper about my boundary and what that has to do with holes and kinds and a\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1771,9 +2205,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1817,6 +2251,7 @@
      "start": 0,
      "end": 14,
      "asks": 0.744,
+     "choice": "answer",
      "demands": [
       "answer"
      ],
@@ -1841,6 +2276,7 @@
      "start": 15,
      "end": 78,
      "asks": 0.685,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -1863,6 +2299,7 @@
      "start": 79,
      "end": 268,
      "asks": 0.995,
+     "choice": "implement",
      "demands": [
       "implement"
      ],
@@ -1884,6 +2321,32 @@
      }
     }
    ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 2,
+     "start": 90,
+     "end": 96,
+     "words": "demand",
+     "type": "Types",
+     "value": "demand",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 2,
+     "start": 202,
+     "end": 215,
+     "words": "this notebook",
+     "type": "Notebook",
+     "value": "this notebook",
+     "by": "the words",
+     "to": null,
+     "of": null
+    }
+   ],
    "p": {
     "explain": 0.118,
     "restate": 0.035,
@@ -1902,7 +2365,12 @@
      "words": "Sure. Why not?",
      "is": "answer"
     },
-    " If that's gonna be the easier way to do it, let's go backwards. ",
+    " ",
+    {
+     "words": "If that's gonna be the easier way to do it, let's go backwards.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "Start from demand and work out by what process you actually got to it from the message Solve the inverse problem for me in this notebook using actually legible code, the least amount of it.",
      "is": "implement"
@@ -1911,14 +2379,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 2.\n1. answer() 0.41   \"Sure. Why not?\"\n3. implement(questions=...) 0.70  (d1: the part names no Questions)   \"Start from demand and work out by what process you actually got to it from the message Sol\"\nAn argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 2.\n1. answer() 0.41   \"Sure. Why not?\"\n3. implement(questions=...) 0.70  (d1: the part names no Questions) [Types('demand'), Notebook('this notebook')]   \"Start from demand and work out by what process you actually got to it from the message Sol\"\nNothing: 2.\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n3. implement.questions: Questions   \"Start from demand and work out by what process you actually got to it from the message Sol\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1930,9 +2398,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1950,7 +2418,8 @@
        "type": "Notebook",
        "value": "this whole notebook",
        "by": "the words",
-       "d1": 0.977
+       "d1": 0.979,
+       "piece": 0
       }
      },
      "python": "delete(notebook=Notebook('this whole notebook'))"
@@ -1965,9 +2434,9 @@
      "parameters": {
       "change.notebook": {
        "type": "Notebook",
-       "value": "this whole notebook",
-       "by": "the words",
-       "d1": 0.941
+       "value": "delete",
+       "by": "the result of",
+       "d1": 0.809
       },
       "change.code": {
        "type": "Code",
@@ -1976,7 +2445,7 @@
        "names_none": 0.646
       }
      },
-     "python": "rewrite(change=Change(notebook=Notebook('this whole notebook'), code=...))"
+     "python": "rewrite(change=Change(notebook=delete(notebook=Notebook('this whole notebook')), code=...))"
     }
    ],
    "parts": [
@@ -1984,6 +2453,7 @@
      "start": 0,
      "end": 138,
      "asks": 0.997,
+     "choice": "delete",
      "demands": [
       "delete",
       "rewrite"
@@ -2004,6 +2474,23 @@
       "none": 0.01,
       "nothing": 0.003
      }
+    }
+   ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 19,
+     "end": 38,
+     "words": "this whole notebook",
+     "type": "Notebook",
+     "value": "this whole notebook",
+     "by": "the words",
+     "to": {
+      "demand": 0,
+      "path": "notebook"
+     },
+     "of": null
     }
    ],
    "p": {
@@ -2028,14 +2515,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. delete(notebook=Notebook('this whole notebook')) 0.56 + rewrite(change=Change(notebook=Notebook('this whole notebook'), code=...)) 0.39  (d1: the part names no Code)   \"Sorry, just delete this whole notebook and uh give me a fresh one with a single cell that \"\nAn argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. delete(notebook=Notebook('this whole notebook')) 0.56 + rewrite(change=Change(notebook=delete(notebook=Notebook('this whole notebook')), code=...)) 0.39  (d1: the part names no Code)   \"Sorry, just delete this whole notebook and uh give me a fresh one with a single cell that \"\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n1. rewrite.change.code: Code   \"Sorry, just delete this whole notebook and uh give me a fresh one with a single cell that \""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -2047,9 +2534,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2083,6 +2570,7 @@
      "start": 0,
      "end": 50,
      "asks": 0.39,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2105,6 +2593,7 @@
      "start": 51,
      "end": 97,
      "asks": 0.932,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2127,6 +2616,7 @@
      "start": 99,
      "end": 260,
      "asks": 0.984,
+     "choice": "rewrite",
      "demands": [
       "rewrite"
      ],
@@ -2148,6 +2638,32 @@
      }
     }
    ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 1,
+     "start": 87,
+     "end": 96,
+     "words": "the roles",
+     "type": "Types",
+     "value": "the roles",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 2,
+     "start": 143,
+     "end": 172,
+     "words": "the computer science concepts",
+     "type": "Concepts",
+     "value": "the computer science concepts",
+     "by": "the words",
+     "to": null,
+     "of": null
+    }
+   ],
    "p": {
     "explain": 0.052,
     "restate": 0.136,
@@ -2162,7 +2678,16 @@
     "count": 0.007
    },
    "template": [
-    "Okay, you know, I'm getting closer to buying this. Can you do this without introducing the roles?\n\n",
+    {
+     "words": "Okay, you know, I'm getting closer to buying this.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "Can you do this without introducing the roles?",
+     "is": "nothing"
+    },
+    "\n\n",
     {
      "words": "Can you do this more elegantly with some of the computer science concepts that we've been talking about that I keep telling you to use, but you don't really use?",
      "is": "rewrite"
@@ -2171,14 +2696,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 1.\n3. rewrite(change=Change(notebook=..., code=...)) 0.73  (d1: the part names no Code)   \"Can you do this more elegantly with some of the computer science concepts that we've been \"\nAn argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 1.\n3. rewrite(change=Change(notebook=..., code=...)) 0.73  (d1: the part names no Code) [Concepts('the computer science concepts')]   \"Can you do this more elegantly with some of the computer science concepts that we've been \"\nNothing: 1, 2 [Types('the roles')].\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n3. rewrite.change.notebook: Notebook   \"Can you do this more elegantly with some of the computer science concepts that we've been \"\n3. rewrite.change.code: Code   \"Can you do this more elegantly with some of the computer science concepts that we've been \""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -2189,9 +2714,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2213,6 +2738,7 @@
      "start": 0,
      "end": 50,
      "asks": 0.314,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2235,6 +2761,7 @@
      "start": 51,
      "end": 78,
      "asks": 0.622,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2257,6 +2784,7 @@
      "start": 79,
      "end": 85,
      "asks": 0.87,
+     "choice": "answer",
      "demands": [
       "answer"
      ],
@@ -2278,6 +2806,20 @@
      }
     }
    ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 42,
+     "end": 48,
+     "words": "demand",
+     "type": "Types",
+     "value": "demand",
+     "by": "the words",
+     "to": null,
+     "of": null
+    }
+   ],
    "p": {
     "explain": 0.101,
     "restate": 0.055,
@@ -2292,7 +2834,16 @@
     "count": 0.006
    },
    "template": [
-    "And so there's nothing special about the `demand`. That could be a lambda too. ",
+    {
+     "words": "And so there's nothing special about the `demand`.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "That could be a lambda too.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "Right?",
      "is": "answer"
@@ -2301,14 +2852,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 1.\n3. answer() 0.78   \"Right?\""
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 1.\n3. answer() 0.78   \"Right?\"\nNothing: 1 [Types('demand')], 2."
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -2319,9 +2870,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2332,6 +2883,7 @@
      "start": 0,
      "end": 6,
      "asks": 0.448,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2354,6 +2906,7 @@
      "start": 9,
      "end": 73,
      "asks": 0.868,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2376,6 +2929,7 @@
      "start": 74,
      "end": 112,
      "asks": 0.703,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2395,6 +2949,20 @@
      }
     }
    ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 1,
+     "start": 51,
+     "end": 60,
+     "words": "t-strings",
+     "type": "Code",
+     "value": "t-strings",
+     "by": "the words",
+     "to": null,
+     "of": null
+    }
+   ],
    "p": {
     "explain": 0.139,
     "restate": 0.035,
@@ -2409,19 +2977,32 @@
     "count": 0.01
    },
    "template": [
-    "I see. \n\nOkay. What about uh if we build that with t-strings then though? So we could build that up dynamically."
+    {
+     "words": "I see.",
+     "is": "nothing"
+    },
+    " \n\n",
+    {
+     "words": "Okay. What about uh if we build that with t-strings then though?",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "So we could build that up dynamically.",
+     "is": "nothing"
+    }
    ],
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 0."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 0.\nNothing: 1, 2 [Code('t-strings')], 3."
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -2429,9 +3010,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2449,14 +3030,15 @@
        "type": "Notebook",
        "value": "this version",
        "by": "the words",
-       "d1": 0.654
+       "d1": 0.668,
+       "piece": 0
       },
       "change.code": {
        "type": "Code",
        "value": null,
        "by": null,
-       "rejected": "the template",
-       "d1": 0.347
+       "rejected": "t strings",
+       "d1": 0.373
       }
      },
      "python": "rewrite(change=Change(notebook=Notebook('this version'), code=...))"
@@ -2506,6 +3088,7 @@
      "start": 0,
      "end": 74,
      "asks": 0.994,
+     "choice": "rewrite",
      "demands": [
       "rewrite"
      ],
@@ -2530,6 +3113,7 @@
      "start": 76,
      "end": 134,
      "asks": 0.682,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2552,6 +3136,7 @@
      "start": 135,
      "end": 206,
      "asks": 0.443,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2574,6 +3159,7 @@
      "start": 207,
      "end": 241,
      "asks": 0.86,
+     "choice": "implement",
      "demands": [
       "implement",
       "solve"
@@ -2596,6 +3182,47 @@
      }
     }
    ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 21,
+     "end": 33,
+     "words": "this version",
+     "type": "Notebook",
+     "value": "this version",
+     "by": "the words",
+     "to": {
+      "demand": 0,
+      "path": "change.notebook"
+     },
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 0,
+     "start": 41,
+     "end": 50,
+     "words": "T strings",
+     "type": "Code",
+     "value": "t strings",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 2,
+     "part": 0,
+     "start": 55,
+     "end": 67,
+     "words": "the template",
+     "type": "Code",
+     "value": "the template",
+     "by": "the words",
+     "to": null,
+     "of": null
+    }
+   ],
    "p": {
     "explain": 0.146,
     "restate": 0.121,
@@ -2614,7 +3241,17 @@
      "words": "Go ahead and rewrite this version to use T strings And the template, yeah.",
      "is": "rewrite"
     },
-    "\n\nI think my ask though is that the entire message is typed. Everything needs some kind of functional relationship to the other one. ",
+    "\n\n",
+    {
+     "words": "I think my ask though is that the entire message is typed.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "Everything needs some kind of functional relationship to the other one.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "We're compiling this to a program.",
      "is": "implement + solve"
@@ -2623,14 +3260,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 2.\n1. rewrite(change=Change(notebook=Notebook('this version'), code=...)) 0.90   \"Go ahead and rewrite this version to use T strings And the template, yeah.\"\n4. implement(questions=...) 0.34  (d1: the part names no Questions) + solve(types=...) 0.27  (d1: the part names no Types)   \"We're compiling this to a program.\"\nAn argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 2.\n1. rewrite(change=Change(notebook=Notebook('this version'), code=...)) 0.90 [Code('t strings'), Code('the template')]   \"Go ahead and rewrite this version to use T strings And the template, yeah.\"\n4. implement(questions=...) 0.34  (d1: the part names no Questions) + solve(types=...) 0.27  (d1: the part names no Types)   \"We're compiling this to a program.\"\nNothing: 2, 3.\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n1. rewrite.change.code: Code   \"Go ahead and rewrite this version to use T strings And the template, yeah.\"\n4. implement.questions: Questions   \"We're compiling this to a program.\"\n4. solve.types: Types   \"We're compiling this to a program.\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2641,6 +3278,7 @@
      "start": 0,
      "end": 28,
      "asks": 0.418,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2663,6 +3301,7 @@
      "start": 29,
      "end": 140,
      "asks": 0.458,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2682,6 +3321,7 @@
      }
     }
    ],
+   "pieces": [],
    "p": {
     "explain": 0.136,
     "restate": 0.062,
@@ -2696,19 +3336,27 @@
     "count": 0.006
    },
    "template": [
-    "I'll back that off slightly. Maybe that's the ambition, but the uh obviously I think in practice we would allow for an escape hatch on that."
+    {
+     "words": "I'll back that off slightly.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "Maybe that's the ambition, but the uh obviously I think in practice we would allow for an escape hatch on that.",
+     "is": "nothing"
+    }
    ],
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 2. Parts that ask for something: 0."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 2. Parts that ask for something: 0.\nNothing: 1, 2."
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -2716,9 +3364,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2729,6 +3377,7 @@
      "start": 0,
      "end": 155,
      "asks": 0.472,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2751,6 +3400,7 @@
      "start": 156,
      "end": 251,
      "asks": 0.675,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2773,6 +3423,7 @@
      "start": 252,
      "end": 350,
      "asks": 0.657,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2795,6 +3446,7 @@
      "start": 351,
      "end": 416,
      "asks": 0.7,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -2814,6 +3466,44 @@
      }
     }
    ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 1,
+     "start": 216,
+     "end": 223,
+     "words": "Classes",
+     "type": "Types",
+     "value": "classes",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 1,
+     "start": 241,
+     "end": 250,
+     "words": "the types",
+     "type": "Types",
+     "value": "the types",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 2,
+     "part": 3,
+     "start": 392,
+     "end": 401,
+     "words": "the types",
+     "type": "Types",
+     "value": "the types",
+     "by": "the words",
+     "to": null,
+     "of": null
+    }
+   ],
    "p": {
     "explain": 0.221,
     "restate": 0.057,
@@ -2828,19 +3518,37 @@
     "count": 0.007
    },
    "template": [
-    "\"One choice in there is mine: \u201cthe usual folders\u201d is a hole of type Paths, because the message does not supply a value for it.\" I think that's fine though. Because at some point we need to make a decision about what Classes we are using for the types. If not paths, it would be something else, but we have to at some point pull from the world, right? And that's the place to do it is is what the types are, isn't it?"
+    {
+     "words": "\"One choice in there is mine: \u201cthe usual folders\u201d is a hole of type Paths, because the message does not supply a value for it.\" I think that's fine though.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "Because at some point we need to make a decision about what Classes we are using for the types.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "If not paths, it would be something else, but we have to at some point pull from the world, right?",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "And that's the place to do it is is what the types are, isn't it?",
+     "is": "nothing"
+    }
    ],
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 0."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 0.\nNothing: 1, 2 [Types('classes'), Types('the types')], 3, 4 [Types('the types')]."
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -2848,9 +3556,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2962,7 +3670,8 @@
        "type": "Model",
        "value": "d1",
        "by": "the words",
-       "d1": 0.84
+       "d1": 0.835,
+       "piece": 4
       }
      },
      "python": "mock(model=Model('d1'))"
@@ -2984,9 +3693,7 @@
       "cells": {
        "type": "int | None",
        "value": null,
-       "by": null,
-       "rejected": "3",
-       "d1": 0.376
+       "by": null
       }
      },
      "python": "implement(questions=...)"
@@ -3019,6 +3726,7 @@
      "start": 0,
      "end": 28,
      "asks": 0.538,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3041,6 +3749,7 @@
      "start": 29,
      "end": 128,
      "asks": 0.544,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3063,6 +3772,7 @@
      "start": 129,
      "end": 192,
      "asks": 0.667,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3085,6 +3795,7 @@
      "start": 193,
      "end": 375,
      "asks": 0.695,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3107,6 +3818,7 @@
      "start": 376,
      "end": 502,
      "asks": 0.753,
+     "choice": "answer",
      "demands": [
       "answer"
      ],
@@ -3131,6 +3843,7 @@
      "start": 503,
      "end": 552,
      "asks": 0.932,
+     "choice": "implement",
      "demands": [
       "implement"
      ],
@@ -3155,6 +3868,7 @@
      "start": 553,
      "end": 587,
      "asks": 0.567,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3177,6 +3891,7 @@
      "start": 588,
      "end": 618,
      "asks": 0.992,
+     "choice": "implement",
      "demands": [
       "implement",
       "solve"
@@ -3202,6 +3917,7 @@
      "start": 619,
      "end": 633,
      "asks": 0.976,
+     "choice": "restate",
      "demands": [
       "restate"
      ],
@@ -3226,6 +3942,7 @@
      "start": 635,
      "end": 684,
      "asks": 0.671,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3248,6 +3965,7 @@
      "start": 685,
      "end": 714,
      "asks": 0.553,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3270,6 +3988,7 @@
      "start": 715,
      "end": 809,
      "asks": 0.913,
+     "choice": "mock",
      "demands": [
       "mock"
      ],
@@ -3294,6 +4013,7 @@
      "start": 810,
      "end": 924,
      "asks": 0.966,
+     "choice": "implement",
      "demands": [
       "implement"
      ],
@@ -3318,6 +4038,7 @@
      "start": 925,
      "end": 950,
      "asks": 0.874,
+     "choice": "implement",
      "demands": [
       "implement"
      ],
@@ -3342,6 +4063,7 @@
      "start": 951,
      "end": 1009,
      "asks": 0.302,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3361,6 +4083,101 @@
      }
     }
    ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 1,
+     "start": 71,
+     "end": 83,
+     "words": "the template",
+     "type": "Code",
+     "value": "the template",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 4,
+     "start": 405,
+     "end": 412,
+     "words": "classes",
+     "type": "Types",
+     "value": "classes",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 2,
+     "part": 4,
+     "start": 491,
+     "end": 495,
+     "words": "them",
+     "type": "Types",
+     "value": "classes",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 1
+     },
+     "d1": 0.896
+    },
+    {
+     "id": 3,
+     "part": 5,
+     "start": 524,
+     "end": 528,
+     "words": "that",
+     "type": "Types",
+     "value": "classes",
+     "by": "the piece",
+     "to": null,
+     "of": {
+      "piece": 1
+     },
+     "d1": 0.832
+    },
+    {
+     "id": 4,
+     "part": 11,
+     "start": 723,
+     "end": 725,
+     "words": "D1",
+     "type": "Model",
+     "value": "d1",
+     "by": "the words",
+     "to": {
+      "demand": 5,
+      "path": "model"
+     },
+     "of": null
+    },
+    {
+     "id": 5,
+     "part": 12,
+     "start": 921,
+     "end": 923,
+     "words": "D1",
+     "type": "Model",
+     "value": "d1",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 6,
+     "part": 13,
+     "start": 936,
+     "end": 949,
+     "words": "this notebook",
+     "type": "Notebook",
+     "value": "this notebook",
+     "by": "the words",
+     "to": null,
+     "of": null
+    }
+   ],
    "p": {
     "explain": 0.253,
     "restate": 0.754,
@@ -3375,7 +4192,26 @@
     "count": 0.016
    },
    "template": [
-    "\"One caution on my own cell. I defined Paths myself, three lines above the template, and then picked it for \u201cthe usual folders\u201d. So in that cell the \u201cworld\u201d is something I made up on the spot. That is the same place where I substitute the usual thing without telling you: I could just as well have picked str or a list of folder names, and you would not have seen the choice. ",
+    {
+     "words": "\"One caution on my own cell.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "I defined Paths myself, three lines above the template, and then picked it for \u201cthe usual folders\u201d.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "So in that cell the \u201cworld\u201d is something I made up on the spot.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "That is the same place where I substitute the usual thing without telling you: I could just as well have picked str or a list of folder names, and you would not have seen the choice.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "For the pull to be real, the classes have to come from the project\u2019s own file, and I should only be choosing among them.\" Yes.",
      "is": "answer"
@@ -3385,7 +4221,12 @@
      "words": "And that's something that we can put in the code.",
      "is": "implement"
     },
-    " So here's what I'd like you to do. ",
+    " ",
+    {
+     "words": "So here's what I'd like you to do.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "Turn this into a real program.",
      "is": "implement + solve"
@@ -3395,7 +4236,17 @@
      "words": "Generalize it.",
      "is": "restate"
     },
-    "\n\n1. Define your world - I'm fine introducing that. Let's just call it the world.\n",
+    "\n\n",
+    {
+     "words": "1. Define your world - I'm fine introducing that.",
+     "is": "nothing"
+    },
+    " ",
+    {
+     "words": "Let's just call it the world.",
+     "is": "nothing"
+    },
+    "\n",
     {
      "words": "2. mock D1 and I want to pay special attention to how we're using it and what the prompts are.",
      "is": "mock"
@@ -3410,19 +4261,23 @@
      "words": "Keep it in this notebook.",
      "is": "implement"
     },
-    "\nI wouldn't expect it to be much more code at all, frankly."
+    "\n",
+    {
+     "words": "I wouldn't expect it to be much more code at all, frankly.",
+     "is": "nothing"
+    }
    ],
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 15. Parts that ask for something: 7.\n5. answer() 0.44   \"For the pull to be real, the classes have to come from the project\u2019s own file, and I shoul\"\n6. implement(questions=...) 0.66  (d1: the part names no Questions)   \"And that's something that we can put in the code.\"\n8. implement(questions=...) 0.36  (d1: the part names no Questions) + solve(types=...) 0.35  (d1: the part names no Types)   \"Turn this into a real program.\"\n9. restate(questions=..., concepts=...) 0.75  (d1: the part names no Questions)  (d1: the part names no Concepts)   \"Generalize it.\"\n12. mock(model=Model('d1')) 0.74   \"2. mock D1 and I want to pay special attention to how we're using it and what the prompts \"\n13. implement(questions=...) 0.39  (d1: the part names no Questions)   \"3. use this program that you've written to go from the messages to uh the things you'd exp\"\n14. implement(questions=...) 0.67  (d1: the part names no Questions)   \"Keep it in this notebook.\"\nAn argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 15. Parts that ask for something: 7.\n5. answer() 0.44 [Types('classes'), \"them\" = Types('classes') (part 5)]   \"For the pull to be real, the classes have to come from the project\u2019s own file, and I shoul\"\n6. implement(questions=...) 0.66  (d1: the part names no Questions) [\"that\" = Types('classes') (part 5)]   \"And that's something that we can put in the code.\"\n8. implement(questions=...) 0.36  (d1: the part names no Questions) + solve(types=...) 0.35  (d1: the part names no Types)   \"Turn this into a real program.\"\n9. restate(questions=..., concepts=...) 0.75  (d1: the part names no Questions)  (d1: the part names no Concepts)   \"Generalize it.\"\n12. mock(model=Model('d1')) 0.74   \"2. mock D1 and I want to pay special attention to how we're using it and what the prompts \"\n13. implement(questions=...) 0.39  (d1: the part names no Questions) [Model('d1')]   \"3. use this program that you've written to go from the messages to uh the things you'd exp\"\n14. implement(questions=...) 0.67  (d1: the part names no Questions) [Notebook('this notebook')]   \"Keep it in this notebook.\"\nNothing: 1, 2 [Code('the template')], 3, 4, 7, 10, 11, 15.\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n6. implement.questions: Questions   \"And that's something that we can put in the code.\"\n8. implement.questions: Questions   \"Turn this into a real program.\"\n8. solve.types: Types   \"Turn this into a real program.\"\n9. restate.questions: Questions   \"Generalize it.\"\n9. restate.concepts: Concepts   \"Generalize it.\"\n13. implement.questions: Questions   \"3. use this program that you've written to go from the messages to uh the things you'd exp\"\n14. implement.questions: Questions   \"Keep it in this notebook.\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -3437,9 +4292,9 @@
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -3454,6 +4309,28 @@
      "words": "Do we have functions still?",
      "parameters": {},
      "python": "answer()"
+    },
+    {
+     "function": "implement",
+     "p": 0.24,
+     "by": "the part",
+     "part": 1,
+     "returns": "Notebook",
+     "words": "Can we just build up functions between those classes?",
+     "parameters": {
+      "questions": {
+       "type": "Questions",
+       "value": null,
+       "by": null,
+       "names_none": 0.97
+      },
+      "cells": {
+       "type": "int | None",
+       "value": null,
+       "by": null
+      }
+     },
+     "python": "implement(questions=...)"
     }
    ],
    "parts": [
@@ -3461,6 +4338,7 @@
      "start": 0,
      "end": 27,
      "asks": 0.984,
+     "choice": "answer",
      "demands": [
       "answer"
      ],
@@ -3485,7 +4363,10 @@
      "start": 28,
      "end": 81,
      "asks": 0.953,
-     "demands": [],
+     "choice": "implement",
+     "demands": [
+      "implement"
+     ],
      "hole": null,
      "scores": {
       "explain": 0.057,
@@ -3507,6 +4388,7 @@
      "start": 82,
      "end": 108,
      "asks": 0.54,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3524,6 +4406,20 @@
       "none": 0.12,
       "nothing": 0.46
      }
+    }
+   ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 1,
+     "start": 73,
+     "end": 80,
+     "words": "classes",
+     "type": "Types",
+     "value": "classes",
+     "by": "the words",
+     "to": null,
+     "of": null
     }
    ],
    "p": {
@@ -3544,32 +4440,42 @@
      "words": "Do we have functions still?",
      "is": "answer"
     },
-    " Can we just build up functions between those classes? If not, that's a big miss."
+    " ",
+    {
+     "words": "Can we just build up functions between those classes?",
+     "is": "implement"
+    },
+    " ",
+    {
+     "words": "If not, that's a big miss.",
+     "is": "nothing"
+    }
    ],
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 1.\n1. answer() 0.80   \"Do we have functions still?\""
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 2.\n1. answer() 0.80   \"Do we have functions still?\"\n2. implement(questions=...) 0.24  (d1: the part names no Questions) [Types('classes')]   \"Can we just build up functions between those classes?\"\nNothing: 3.\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n2. implement.questions: Questions   \"Can we just build up functions between those classes?\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
    "text": "We did not have them, and you are right that it was a miss. The last version had classes and no functions between them. They are in now, and all five cells run.\n\n**In the world (cell 1).** Two functions, each going from classes of the world to a class of the world:\n\n```python\ndef containing(word: Word, files: Files) -> Files: ...\ndef count(files: Files) -> Count: ...\n```\n\n**A new cell after the program.** For each hole of the message, it asks the world two things: which function returns the hole's class, and which other slots of the message have the class of each parameter. It prints:\n\n- `how_many`: `count(files=\u2026)`, where `files` can be `my_notebooks`, `which_ones` or `the_usual_folders`\n- `which_ones`: `containing(word=typeform, files=\u2026)`, where `files` can be `my_notebooks` or `the_usual_folders`\n- `the_usual_folders`: `containing(word=typeform, files=\u2026)`, where `files` can be `my_notebooks` or `which_ones`\n\nSo the slots now relate to each other through functions. This is the part that was sitting in the untyped words \"use\" and \"of\".\n\nWhat it shows and what it does not:\n\n- **`word` has one candidate.** `typeform` is the only `Word` in the message, so that parameter is settled with no choice.\n- **Every `files` parameter has several candidates.** The types cannot pick between them. `count(my_notebooks)` and `count(which_ones)` both have the right classes, and only one is what you meant.\n- **The third line is wrong in meaning.** The program offers to compute \"the usual folders\" by searching for TypeForm, because the classes match. The message meant the folders as a place to look, an input. The world has no way to say that yet.\n\nThe cell lists candidates and picks nothing. Choosing among them is the next decision, and I would rather not slip a rule in for that without you seeing it.",
    "checks": {
-    "answer": 0.63
+    "answer": 0.628,
+    "implement": 0.82
    },
    "answer": null
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -3614,6 +4520,7 @@
      "start": 0,
      "end": 236,
      "asks": 0.516,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3636,6 +4543,7 @@
      "start": 237,
      "end": 596,
      "asks": 0.98,
+     "choice": "delete",
      "demands": [
       "delete"
      ],
@@ -3660,6 +4568,7 @@
      "start": 598,
      "end": 971,
      "asks": 0.963,
+     "choice": "write",
      "demands": [
       "write"
      ],
@@ -3684,6 +4593,7 @@
      "start": 973,
      "end": 1061,
      "asks": 0.845,
+     "choice": "nothing",
      "demands": [],
      "hole": null,
      "scores": {
@@ -3703,6 +4613,44 @@
      }
     }
    ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 1,
+     "start": 593,
+     "end": 595,
+     "words": "D1",
+     "type": "Model",
+     "value": "d1",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 1,
+     "part": 2,
+     "start": 624,
+     "end": 633,
+     "words": "the types",
+     "type": "Types",
+     "value": "the types",
+     "by": "the words",
+     "to": null,
+     "of": null
+    },
+    {
+     "id": 2,
+     "part": 3,
+     "start": 1050,
+     "end": 1060,
+     "words": "this model",
+     "type": "Model",
+     "value": "this model",
+     "by": "the words",
+     "to": null,
+     "of": null
+    }
+   ],
    "p": {
     "explain": 0.22,
     "restate": 0.04,
@@ -3717,7 +4665,11 @@
     "count": 0.027
    },
    "template": [
-    "\"xample it prints the same result as the hand-written version: given my_notebooks and typeform; holes how_many, which_ones, the_usual_folders; the five untyped pieces of text; and lambda my_notebooks, typeform: (..., ..., ..., ).\" Okay. ",
+    {
+     "words": "\"xample it prints the same result as the hand-written version: given my_notebooks and typeform; holes how_many, which_ones, the_usual_folders; the five untyped pieces of text; and lambda my_notebooks, typeform: (..., ..., ..., ).\" Okay.",
+     "is": "nothing"
+    },
+    " ",
     {
      "words": "Um get rid of these And go grab all of my messages to you and your replies  From the last hour and start loading them in one by one and adjusting the program and the calibration and saving each of the results until you have generated a gold set program that runs through and does the matching correctly With your hard coded correct calibration values from D1.",
      "is": "delete"
@@ -3727,19 +4679,23 @@
      "words": "Please build up a file of the types that we'll introduce as you go along - And you're welcome to keep using the naive uh two loops read message and just play and uh you know fudge the calibration basically because it's still mock and um I just want to make sure that it works end to end even if we had the best possible calibration and Didn't need to worry about the search",
      "is": "write"
     },
-    "\n\nIn parallel, go uh have a Sonnet agent look up how prompting should work for this model."
+    "\n\n",
+    {
+     "words": "In parallel, go uh have a Sonnet agent look up how prompting should work for this model.",
+     "is": "nothing"
+    }
    ],
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 2.\n2. delete(notebook=Notebook('these cells')) 0.78   \"Um get rid of these And go grab all of my messages to you and your replies  From the last \"\n3. write(path=...) 0.65   \"Please build up a file of the types that we'll introduce as you go along - And you're welc\"\nAn argument that is ... is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 2.\n2. delete(notebook=Notebook('these cells')) 0.78 [Model('d1')]   \"Um get rid of these And go grab all of my messages to you and your replies  From the last \"\n3. write(path=...) 0.65 [Types('the types')]   \"Please build up a file of the types that we'll introduce as you go along - And you're welc\"\nNothing: 1, 4 [Model('this model')].\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n3. write.path: Path   \"Please build up a file of the types that we'll introduce as you go along - And you're welc\""
     }
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -3757,7 +4713,8 @@
        "type": "Notebook",
        "value": "the old cells",
        "by": "the words",
-       "d1": 0.791
+       "d1": 0.791,
+       "piece": 0
       }
      },
      "python": "delete(notebook=Notebook('the old cells'))"
@@ -3768,6 +4725,7 @@
      "start": 0,
      "end": 44,
      "asks": 0.999,
+     "choice": "delete",
      "demands": [
       "delete"
      ],
@@ -3787,6 +4745,23 @@
       "none": 0.002,
       "nothing": 0.001
      }
+    }
+   ],
+   "pieces": [
+    {
+     "id": 0,
+     "part": 0,
+     "start": 30,
+     "end": 43,
+     "words": "the old cells",
+     "type": "Notebook",
+     "value": "the old cells",
+     "by": "the words",
+     "to": {
+      "demand": 0,
+      "path": "notebook"
+     },
+     "of": null
     }
    ],
    "p": {
@@ -3816,9 +4791,9 @@
    }
   },
   {
-   "form": 2,
-   "harness": "0.1.5",
-   "world": "7021d610ff48",
+   "form": 3,
+   "harness": "0.1.6",
+   "world": "9f405426f2f0",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -3833,6 +4808,82 @@
   }
  ],
  "answers": {
+  "cf7357d471c253834e5c7b0fdf9842b475228700": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "restate",
+    "confidence": 0.25999890535733705,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.10824992465056761,
+     "restate": 0.25999890535733705,
+     "answer": 0.029166224024296798,
+     "implement": 0.028911775843829042,
+     "delete": 0.012002241790813517,
+     "rewrite": 0.12237811264367955,
+     "mock": 0.008780819327102875,
+     "solve": 0.021213675315356284,
+     "write": 0.006595140142285715,
+     "extend": 0.006556726509560528,
+     "count": 0.014052716232432027,
+     "none": 0.16388972380487754,
+     "nothing": 0.21820401435786144
+    }
+   }
+  },
+  "c90a56f4412a3f2b407a552e8aedccc81fa3edd5": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "none",
+    "confidence": 0.4213449905042969,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.38825799064018596,
+     "restate": 0.02953393313075594,
+     "answer": 0.02372385757151474,
+     "implement": 0.008891522283579464,
+     "delete": 0.004528530585636839,
+     "rewrite": 0.006317772653853866,
+     "mock": 0.0035123644224856745,
+     "solve": 0.004160747810843655,
+     "write": 0.002756231884918742,
+     "extend": 0.0031942873269200332,
+     "count": 0.004814989888966287,
+     "none": 0.4213449905042969,
+     "nothing": 0.09896278129604195
+    }
+   }
+  },
   "7f12a7064df2b7d43f93dc38cbe78db1c1734c5c": {
    "q0": {
     "id": "q0",
@@ -3868,44 +4919,6 @@
      "count": 0.003397305117609979,
      "none": 0.04055774850266495,
      "nothing": 0.0028678915834128094
-    }
-   }
-  },
-  "b93ca6af47665975233db7e1375e7d45c00c83e0": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "rewrite",
-    "confidence": 0.36324416250319147,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.020512311196014526,
-     "restate": 0.06597911496828182,
-     "answer": 0.016049529299750908,
-     "implement": 0.10106587147606841,
-     "delete": 0.006321458169047954,
-     "rewrite": 0.36324416250319147,
-     "mock": 0.0030280314274646713,
-     "solve": 0.06597911496828182,
-     "write": 0.006103732775864729,
-     "extend": 0.0032384366955026003,
-     "count": 0.006585306369662334,
-     "none": 0.22763649400225391,
-     "nothing": 0.11425643614861479
     }
    }
   },
@@ -3985,12 +4998,12 @@
     }
    }
   },
-  "c90a56f4412a3f2b407a552e8aedccc81fa3edd5": {
+  "b93ca6af47665975233db7e1375e7d45c00c83e0": {
    "q0": {
     "id": "q0",
     "type": "choice",
-    "value": "none",
-    "confidence": 0.4213449905042969,
+    "value": "rewrite",
+    "confidence": 0.36324416250319147,
     "option_order": [
      "explain",
      "restate",
@@ -4007,95 +5020,19 @@
      "nothing"
     ],
     "probabilities": {
-     "explain": 0.38825799064018596,
-     "restate": 0.02953393313075594,
-     "answer": 0.02372385757151474,
-     "implement": 0.008891522283579464,
-     "delete": 0.004528530585636839,
-     "rewrite": 0.006317772653853866,
-     "mock": 0.0035123644224856745,
-     "solve": 0.004160747810843655,
-     "write": 0.002756231884918742,
-     "extend": 0.0031942873269200332,
-     "count": 0.004814989888966287,
-     "none": 0.4213449905042969,
-     "nothing": 0.09896278129604195
-    }
-   }
-  },
-  "d0b883502e6ecb48913b37dd6431fefe7d9f7ebb": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "nothing",
-    "confidence": 0.27236058287617587,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.1075889584338566,
-     "restate": 0.04707474125796556,
-     "answer": 0.011056610209377343,
-     "implement": 0.07963689003674192,
-     "delete": 0.006868466817001487,
-     "rewrite": 0.17574067758883985,
-     "mock": 0.008881493862321541,
-     "solve": 0.034039775913150536,
-     "write": 0.014720854223591347,
-     "extend": 0.009666559577787462,
-     "count": 0.009064949271388031,
-     "none": 0.22329943993180248,
-     "nothing": 0.27236058287617587
-    }
-   }
-  },
-  "cf7357d471c253834e5c7b0fdf9842b475228700": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "restate",
-    "confidence": 0.25999890535733705,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.10824992465056761,
-     "restate": 0.25999890535733705,
-     "answer": 0.029166224024296798,
-     "implement": 0.028911775843829042,
-     "delete": 0.012002241790813517,
-     "rewrite": 0.12237811264367955,
-     "mock": 0.008780819327102875,
-     "solve": 0.021213675315356284,
-     "write": 0.006595140142285715,
-     "extend": 0.006556726509560528,
-     "count": 0.014052716232432027,
-     "none": 0.16388972380487754,
-     "nothing": 0.21820401435786144
+     "explain": 0.020512311196014526,
+     "restate": 0.06597911496828182,
+     "answer": 0.016049529299750908,
+     "implement": 0.10106587147606841,
+     "delete": 0.006321458169047954,
+     "rewrite": 0.36324416250319147,
+     "mock": 0.0030280314274646713,
+     "solve": 0.06597911496828182,
+     "write": 0.006103732775864729,
+     "extend": 0.0032384366955026003,
+     "count": 0.006585306369662334,
+     "none": 0.22763649400225391,
+     "nothing": 0.11425643614861479
     }
    }
   },
@@ -4137,12 +5074,12 @@
     }
    }
   },
-  "dbdf82818433f1468d7405c9facb7758b10c8bc0": {
+  "d0b883502e6ecb48913b37dd6431fefe7d9f7ebb": {
    "q0": {
     "id": "q0",
     "type": "choice",
-    "value": "explain",
-    "confidence": 0.7446589998191788,
+    "value": "nothing",
+    "confidence": 0.27236058287617587,
     "option_order": [
      "explain",
      "restate",
@@ -4159,19 +5096,19 @@
      "nothing"
     ],
     "probabilities": {
-     "explain": 0.7446589998191788,
-     "restate": 0.04205071606366067,
-     "answer": 0.012959136590448768,
-     "implement": 0.00661950830204826,
-     "delete": 0.004308828532907775,
-     "rewrite": 0.006895796669026481,
-     "mock": 0.00404066325310524,
-     "solve": 0.004635229106971912,
-     "write": 0.0021189399023074868,
-     "extend": 0.002539594525211449,
-     "count": 0.0050302391995642685,
-     "none": 0.11688029485676668,
-     "nothing": 0.047262053178802166
+     "explain": 0.1075889584338566,
+     "restate": 0.04707474125796556,
+     "answer": 0.011056610209377343,
+     "implement": 0.07963689003674192,
+     "delete": 0.006868466817001487,
+     "rewrite": 0.17574067758883985,
+     "mock": 0.008881493862321541,
+     "solve": 0.034039775913150536,
+     "write": 0.014720854223591347,
+     "extend": 0.009666559577787462,
+     "count": 0.009064949271388031,
+     "none": 0.22329943993180248,
+     "nothing": 0.27236058287617587
     }
    }
   },
@@ -4213,12 +5150,12 @@
     }
    }
   },
-  "378ec871da07aa24a9a5929a36e14b48eac6d6ac": {
+  "dbdf82818433f1468d7405c9facb7758b10c8bc0": {
    "q0": {
     "id": "q0",
     "type": "choice",
-    "value": "nothing",
-    "confidence": 0.43821600081908635,
+    "value": "explain",
+    "confidence": 0.7446589998191788,
     "option_order": [
      "explain",
      "restate",
@@ -4235,19 +5172,19 @@
      "nothing"
     ],
     "probabilities": {
-     "explain": 0.024174435760557503,
-     "restate": 0.31966303691893116,
-     "answer": 0.09938035231749268,
-     "implement": 0.010485065446470916,
-     "delete": 0.006234214701948776,
-     "rewrite": 0.014123946938948166,
-     "mock": 0.004153967300938256,
-     "solve": 0.004935184317491816,
-     "write": 0.0034659103961116513,
-     "extend": 0.0032788097361277717,
-     "count": 0.005863321129686291,
-     "none": 0.06602575421620875,
-     "nothing": 0.43821600081908635
+     "explain": 0.7446589998191788,
+     "restate": 0.04205071606366067,
+     "answer": 0.012959136590448768,
+     "implement": 0.00661950830204826,
+     "delete": 0.004308828532907775,
+     "rewrite": 0.006895796669026481,
+     "mock": 0.00404066325310524,
+     "solve": 0.004635229106971912,
+     "write": 0.0021189399023074868,
+     "extend": 0.002539594525211449,
+     "count": 0.0050302391995642685,
+     "none": 0.11688029485676668,
+     "nothing": 0.047262053178802166
     }
    }
   },
@@ -4286,6 +5223,44 @@
      "count": 0.002281681593488375,
      "none": 0.11699456985793637,
      "nothing": 0.01707015905695764
+    }
+   }
+  },
+  "378ec871da07aa24a9a5929a36e14b48eac6d6ac": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "nothing",
+    "confidence": 0.43821600081908635,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.024174435760557503,
+     "restate": 0.31966303691893116,
+     "answer": 0.09938035231749268,
+     "implement": 0.010485065446470916,
+     "delete": 0.006234214701948776,
+     "rewrite": 0.014123946938948166,
+     "mock": 0.004153967300938256,
+     "solve": 0.004935184317491816,
+     "write": 0.0034659103961116513,
+     "extend": 0.0032788097361277717,
+     "count": 0.005863321129686291,
+     "none": 0.06602575421620875,
+     "nothing": 0.43821600081908635
     }
    }
   },
@@ -4355,6 +5330,66 @@
     }
    }
   },
+  "8ab535fc4a98e73b2987ea54264e9d2c3c8c4eb7": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.9417779690068094,
+    "probabilities": {
+     "false": 0.058222030993190566,
+     "true": 0.9417779690068094
+    }
+   }
+  },
+  "14069621def217f84f5b0d8705902c712fcd0d0e": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.47810813637028543,
+    "probabilities": {
+     "false": 0.5218918636297145,
+     "true": 0.47810813637028543
+    }
+   }
+  },
+  "4fec30e7b06f6b8b6b675da6ee3a997da6544de9": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5581513106567313,
+    "probabilities": {
+     "false": 0.4418486893432687,
+     "true": 0.5581513106567313
+    }
+   }
+  },
+  "1862ae92f94ef36200b971c8c684d88df9f12f01": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.418939676276892,
+    "probabilities": {
+     "false": 0.581060323723108,
+     "true": 0.418939676276892
+    }
+   }
+  },
+  "0967ac34edfd3bee2b631a4c9ca2f1dcb8160817": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5058412992322061,
+    "probabilities": {
+     "false": 0.4941587007677939,
+     "true": 0.5058412992322061
+    }
+   }
+  },
   "8ce4666327be1e257922421fc226944694c8ca77": {
    "q0": {
     "id": "q0",
@@ -4397,44 +5432,6 @@
     }
    }
   },
-  "4c4d9e6b19c86c14df1604e3d8eb948f0d7e75c5": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "implement",
-    "confidence": 0.59191629799733,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.10503167762376947,
-     "restate": 0.006883807563041535,
-     "answer": 0.02326937751136524,
-     "implement": 0.59191629799733,
-     "delete": 0.004226614196585273,
-     "rewrite": 0.04717988286667973,
-     "mock": 0.0037386641975721406,
-     "solve": 0.044114547078474294,
-     "write": 0.0037168882124876796,
-     "extend": 0.0054335274267162705,
-     "count": 0.005931113777607666,
-     "none": 0.0891836900868311,
-     "nothing": 0.0693739114615396
-    }
-   }
-  },
   "a2cc1957855f95d70f4636b9c799ece2f742f583": {
    "q0": {
     "id": "q0",
@@ -4473,12 +5470,12 @@
     }
    }
   },
-  "77291d2605a2cde2b809384caee115d03443ec99": {
+  "4c4d9e6b19c86c14df1604e3d8eb948f0d7e75c5": {
    "q0": {
     "id": "q0",
     "type": "choice",
     "value": "implement",
-    "confidence": 0.35646926955342595,
+    "confidence": 0.59191629799733,
     "option_order": [
      "explain",
      "restate",
@@ -4495,19 +5492,19 @@
      "nothing"
     ],
     "probabilities": {
-     "explain": 0.0729856712894065,
-     "restate": 0.030744512349475877,
-     "answer": 0.00711638225186468,
-     "implement": 0.35646926955342595,
-     "delete": 0.005650011994582969,
-     "rewrite": 0.05324045971012009,
-     "mock": 0.01887693564547745,
-     "solve": 0.1154486671247529,
-     "write": 0.011624221082991137,
-     "extend": 0.01280040445045394,
-     "count": 0.006771659504451451,
-     "none": 0.08876172796255065,
-     "nothing": 0.21951007708044645
+     "explain": 0.10503167762376947,
+     "restate": 0.006883807563041535,
+     "answer": 0.02326937751136524,
+     "implement": 0.59191629799733,
+     "delete": 0.004226614196585273,
+     "rewrite": 0.04717988286667973,
+     "mock": 0.0037386641975721406,
+     "solve": 0.044114547078474294,
+     "write": 0.0037168882124876796,
+     "extend": 0.0054335274267162705,
+     "count": 0.005931113777607666,
+     "none": 0.0891836900868311,
+     "nothing": 0.0693739114615396
     }
    }
   },
@@ -4546,6 +5543,44 @@
      "count": 0.10427847127589171,
      "none": 0.15973228165846995,
      "nothing": 0.21642856824537895
+    }
+   }
+  },
+  "77291d2605a2cde2b809384caee115d03443ec99": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "implement",
+    "confidence": 0.35646926955342595,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.0729856712894065,
+     "restate": 0.030744512349475877,
+     "answer": 0.00711638225186468,
+     "implement": 0.35646926955342595,
+     "delete": 0.005650011994582969,
+     "rewrite": 0.05324045971012009,
+     "mock": 0.01887693564547745,
+     "solve": 0.1154486671247529,
+     "write": 0.011624221082991137,
+     "extend": 0.01280040445045394,
+     "count": 0.006771659504451451,
+     "none": 0.08876172796255065,
+     "nothing": 0.21951007708044645
     }
    }
   },
@@ -4590,6 +5625,42 @@
     "probabilities": {
      "all ten of these": 0.06134059377173354,
      "none": 0.9386594062282665
+    }
+   }
+  },
+  "ba60eb09db277324e4b3334ea9b20e19e115e38e": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8304620842092922,
+    "probabilities": {
+     "false": 0.16953791579070776,
+     "true": 0.8304620842092922
+    }
+   }
+  },
+  "84c5d6687e75e67f4290bcda68980687afa8fee8": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6447039033725469,
+    "probabilities": {
+     "false": 0.3552960966274531,
+     "true": 0.6447039033725469
+    }
+   }
+  },
+  "fffddbcf75d6e67b8224e62a7ff821acfd4ac972": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5029207492777374,
+    "probabilities": {
+     "false": 0.49707925072226256,
+     "true": 0.5029207492777374
     }
    }
   },
@@ -4643,15 +5714,27 @@
     }
    }
   },
-  "a139949be3d7bf36a3cad35709fb13d2a3e38a4c": {
+  "1c817f38751ea24f7388271d0f7b6219b71c50e1": {
    "q0": {
     "id": "q0",
     "type": "boolean",
     "value": true,
-    "p_true": 0.9291173517029275,
+    "p_true": 0.9751909212242487,
     "probabilities": {
-     "false": 0.07088264829707247,
-     "true": 0.9291173517029275
+     "false": 0.024809078775751336,
+     "true": 0.9751909212242487
+    }
+   }
+  },
+  "5f503f05a7434459d2d06f0f792268acb24636ba": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.4985396129027892,
+    "probabilities": {
+     "false": 0.5014603870972107,
+     "true": 0.4985396129027892
     }
    }
   },
@@ -4805,6 +5888,30 @@
     }
    }
   },
+  "0e1c176e6b9bcf1dd4a9ef95fdf0dbf065b56516": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8515269810658088,
+    "probabilities": {
+     "false": 0.14847301893419118,
+     "true": 0.8515269810658088
+    }
+   }
+  },
+  "d6c2f316287c4e4c64b07e8ce117be379b5853fb": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8304620842092924,
+    "probabilities": {
+     "false": 0.16953791579070765,
+     "true": 0.8304620842092924
+    }
+   }
+  },
   "f58721f1761d9ae67d01ba0bb352dd8075529871": {
    "q0": {
     "id": "q0",
@@ -4814,44 +5921,6 @@
     "probabilities": {
      "false": 0.06532446307863737,
      "true": 0.9346755369213626
-    }
-   }
-  },
-  "34ce8dec7f3be19240df216c467a7c9fc63ab67d": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "explain",
-    "confidence": 0.36916226706691,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.36916226706691,
-     "restate": 0.05339292681071116,
-     "answer": 0.013217533523472021,
-     "implement": 0.014597508309577107,
-     "delete": 0.0036668050630144786,
-     "rewrite": 0.009698209689759332,
-     "mock": 0.004867773425481122,
-     "solve": 0.006462088307017982,
-     "write": 0.0026321787205848134,
-     "extend": 0.003262485825198403,
-     "count": 0.0076998394877907566,
-     "none": 0.1528045999248289,
-     "nothing": 0.35853578384565393
     }
    }
   },
@@ -4893,6 +5962,82 @@
     }
    }
   },
+  "de1105e12d9611db853ceeed511f6b4356718121": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "nothing",
+    "confidence": 0.3764476474149524,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.18137802003721976,
+     "restate": 0.03372409752120986,
+     "answer": 0.017175979795927308,
+     "implement": 0.01573501382729148,
+     "delete": 0.0047233864909800236,
+     "rewrite": 0.01021250142031169,
+     "mock": 0.003395590223551797,
+     "solve": 0.007625777993723399,
+     "write": 0.0039525395118741825,
+     "extend": 0.0061975793707643445,
+     "count": 0.17615698132721305,
+     "none": 0.1632748850649806,
+     "nothing": 0.3764476474149524
+    }
+   }
+  },
+  "34ce8dec7f3be19240df216c467a7c9fc63ab67d": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "explain",
+    "confidence": 0.36916226706691,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.36916226706691,
+     "restate": 0.05339292681071116,
+     "answer": 0.013217533523472021,
+     "implement": 0.014597508309577107,
+     "delete": 0.0036668050630144786,
+     "rewrite": 0.009698209689759332,
+     "mock": 0.004867773425481122,
+     "solve": 0.006462088307017982,
+     "write": 0.0026321787205848134,
+     "extend": 0.003262485825198403,
+     "count": 0.0076998394877907566,
+     "none": 0.1528045999248289,
+     "nothing": 0.35853578384565393
+    }
+   }
+  },
   "76ab792c281f96caaa30a649d2f69ec804c8432a": {
    "q0": {
     "id": "q0",
@@ -4931,12 +6076,12 @@
     }
    }
   },
-  "de1105e12d9611db853ceeed511f6b4356718121": {
+  "35aebd5d4117ac03f55660687200ade8851a9383": {
    "q0": {
     "id": "q0",
     "type": "choice",
-    "value": "nothing",
-    "confidence": 0.3764476474149524,
+    "value": "answer",
+    "confidence": 0.5607079010483184,
     "option_order": [
      "explain",
      "restate",
@@ -4953,19 +6098,19 @@
      "nothing"
     ],
     "probabilities": {
-     "explain": 0.18137802003721976,
-     "restate": 0.03372409752120986,
-     "answer": 0.017175979795927308,
-     "implement": 0.01573501382729148,
-     "delete": 0.0047233864909800236,
-     "rewrite": 0.01021250142031169,
-     "mock": 0.003395590223551797,
-     "solve": 0.007625777993723399,
-     "write": 0.0039525395118741825,
-     "extend": 0.0061975793707643445,
-     "count": 0.17615698132721305,
-     "none": 0.1632748850649806,
-     "nothing": 0.3764476474149524
+     "explain": 0.06906161256292599,
+     "restate": 0.04011432477549728,
+     "answer": 0.5607079010483184,
+     "implement": 0.016897773654240115,
+     "delete": 0.027122093168715097,
+     "rewrite": 0.01598557909591757,
+     "mock": 0.005424889248950189,
+     "solve": 0.005132036796689231,
+     "write": 0.0035415455902088108,
+     "extend": 0.004027225467567152,
+     "count": 0.009312357176122815,
+     "none": 0.08015473462528502,
+     "nothing": 0.16251792678956237
     }
    }
   },
@@ -5045,44 +6190,6 @@
     }
    }
   },
-  "35aebd5d4117ac03f55660687200ade8851a9383": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "answer",
-    "confidence": 0.5607079010483184,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.06906161256292599,
-     "restate": 0.04011432477549728,
-     "answer": 0.5607079010483184,
-     "implement": 0.016897773654240115,
-     "delete": 0.027122093168715097,
-     "rewrite": 0.01598557909591757,
-     "mock": 0.005424889248950189,
-     "solve": 0.005132036796689231,
-     "write": 0.0035415455902088108,
-     "extend": 0.004027225467567152,
-     "count": 0.009312357176122815,
-     "none": 0.08015473462528502,
-     "nothing": 0.16251792678956237
-    }
-   }
-  },
   "a7ef9a10922cee4c1622bf93f3a2b721ba6d3ba7": {
    "q0": {
     "id": "q0",
@@ -5156,6 +6263,66 @@
      "count": 0.01555358574896838,
      "none": 0.09211591681967368,
      "nothing": 0.4983287672698893
+    }
+   }
+  },
+  "988d9d2afb8c3b64a75e62b54086225470991ed2": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.713262865630609,
+    "probabilities": {
+     "false": 0.28673713436939097,
+     "true": 0.713262865630609
+    }
+   }
+  },
+  "1bbd0678923870397e8cc78a10fc16704ec04016": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.9065626333577822,
+    "probabilities": {
+     "false": 0.0934373666422178,
+     "true": 0.9065626333577822
+    }
+   }
+  },
+  "01571209fddb4abed0793cc80907acada76197bb": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8203627233663938,
+    "probabilities": {
+     "false": 0.17963727663360618,
+     "true": 0.8203627233663938
+    }
+   }
+  },
+  "cf5ad9518000cf732a7b2426733e2e2d7d2bce08": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6937731995690102,
+    "probabilities": {
+     "false": 0.3062268004309898,
+     "true": 0.6937731995690102
+    }
+   }
+  },
+  "8a1b411c3fc6640cfe8bade7c4794bc3be045885": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8608740149898514,
+    "probabilities": {
+     "false": 0.1391259850101486,
+     "true": 0.8608740149898514
     }
    }
   },
@@ -5295,12 +6462,12 @@
     }
    }
   },
-  "8e442c875caef0dc81efc487115f18ab557de2fa": {
+  "d7fefe29a480ba83b62971a607a1290044b2800a": {
    "q0": {
     "id": "q0",
     "type": "choice",
-    "value": "implement",
-    "confidence": 0.3621720283641279,
+    "value": "nothing",
+    "confidence": 0.3341567188716739,
     "option_order": [
      "explain",
      "restate",
@@ -5317,19 +6484,19 @@
      "nothing"
     ],
     "probabilities": {
-     "explain": 0.0160021582748194,
-     "restate": 0.018037910605323795,
-     "answer": 0.006721095773604589,
-     "implement": 0.3621720283641279,
-     "delete": 0.009711102298059684,
-     "rewrite": 0.11661241056958654,
-     "mock": 0.04460822516902083,
-     "solve": 0.2867058322611378,
-     "write": 0.006229592104031417,
-     "extend": 0.01751868214810108,
-     "count": 0.004831721296571656,
-     "none": 0.061870649225147754,
-     "nothing": 0.04897859191046758
+     "explain": 0.052755897183006446,
+     "restate": 0.12450994796853684,
+     "answer": 0.04300088883405552,
+     "implement": 0.04918441382055191,
+     "delete": 0.013805076592006244,
+     "rewrite": 0.04735188404239152,
+     "mock": 0.008525888844218897,
+     "solve": 0.06069571612637897,
+     "write": 0.00591806459233969,
+     "extend": 0.09742081420935937,
+     "count": 0.007218323173406833,
+     "none": 0.15545636574207375,
+     "nothing": 0.3341567188716739
     }
    }
   },
@@ -5371,12 +6538,12 @@
     }
    }
   },
-  "d7fefe29a480ba83b62971a607a1290044b2800a": {
+  "8e442c875caef0dc81efc487115f18ab557de2fa": {
    "q0": {
     "id": "q0",
     "type": "choice",
-    "value": "nothing",
-    "confidence": 0.3341567188716739,
+    "value": "implement",
+    "confidence": 0.3621720283641279,
     "option_order": [
      "explain",
      "restate",
@@ -5393,19 +6560,19 @@
      "nothing"
     ],
     "probabilities": {
-     "explain": 0.052755897183006446,
-     "restate": 0.12450994796853684,
-     "answer": 0.04300088883405552,
-     "implement": 0.04918441382055191,
-     "delete": 0.013805076592006244,
-     "rewrite": 0.04735188404239152,
-     "mock": 0.008525888844218897,
-     "solve": 0.06069571612637897,
-     "write": 0.00591806459233969,
-     "extend": 0.09742081420935937,
-     "count": 0.007218323173406833,
-     "none": 0.15545636574207375,
-     "nothing": 0.3341567188716739
+     "explain": 0.0160021582748194,
+     "restate": 0.018037910605323795,
+     "answer": 0.006721095773604589,
+     "implement": 0.3621720283641279,
+     "delete": 0.009711102298059684,
+     "rewrite": 0.11661241056958654,
+     "mock": 0.04460822516902083,
+     "solve": 0.2867058322611378,
+     "write": 0.006229592104031417,
+     "extend": 0.01751868214810108,
+     "count": 0.004831721296571656,
+     "none": 0.061870649225147754,
+     "nothing": 0.04897859191046758
     }
    }
   },
@@ -5624,46 +6791,6 @@
     "text": "functions"
    }
   },
-  "345f6946bb4349116e725caee2e8225ed4427d80": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "none",
-    "confidence": 0.9590835142773387,
-    "option_order": [
-     "all ten of these",
-     "none"
-    ],
-    "probabilities": {
-     "all ten of these": 0.04091648572266133,
-     "none": 0.9590835142773387
-    }
-   },
-   "q1": {
-    "id": "q1",
-    "type": "choice",
-    "value": "none",
-    "confidence": 0.7134772515850241,
-    "option_order": [
-     "result types",
-     "the type of the result",
-     "demand",
-     "the roles",
-     "classes",
-     "the types",
-     "none"
-    ],
-    "probabilities": {
-     "result types": 0.011919006024115365,
-     "the type of the result": 0.010604760148379128,
-     "demand": 0.191674463132157,
-     "the roles": 0.016725676287685075,
-     "classes": 0.00938047222824752,
-     "the types": 0.04621837059439188,
-     "none": 0.7134772515850241
-    }
-   }
-  },
   "6056de0a4744807d19f3c25463bc9bb4fc7a3d82": {
    "q0": {
     "id": "q0",
@@ -5705,6 +6832,166 @@
      "t strings": 0.043691625432546566,
      "the template": 0.2857792311266926,
      "none": 0.5966059132558823
+    }
+   }
+  },
+  "345f6946bb4349116e725caee2e8225ed4427d80": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "none",
+    "confidence": 0.9590835142773387,
+    "option_order": [
+     "all ten of these",
+     "none"
+    ],
+    "probabilities": {
+     "all ten of these": 0.04091648572266133,
+     "none": 0.9590835142773387
+    }
+   },
+   "q1": {
+    "id": "q1",
+    "type": "choice",
+    "value": "none",
+    "confidence": 0.7134772515850241,
+    "option_order": [
+     "result types",
+     "the type of the result",
+     "demand",
+     "the roles",
+     "classes",
+     "the types",
+     "none"
+    ],
+    "probabilities": {
+     "result types": 0.011919006024115365,
+     "the type of the result": 0.010604760148379128,
+     "demand": 0.191674463132157,
+     "the roles": 0.016725676287685075,
+     "classes": 0.00938047222824752,
+     "the types": 0.04621837059439188,
+     "none": 0.7134772515850241
+    }
+   }
+  },
+  "c0cd1399ad3e374ff770266e59ecf4e2cf346b9b": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.9030408320825929,
+    "probabilities": {
+     "false": 0.09695916791740711,
+     "true": 0.9030408320825929
+    }
+   }
+  },
+  "86c635a3d8b08d33cb34e9508620fc71f59e45c1": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.31877579767686776,
+    "probabilities": {
+     "false": 0.6812242023231323,
+     "true": 0.31877579767686776
+    }
+   }
+  },
+  "1cc0df42d55415d6fd793f46f2ee69700ea7f45a": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.3769827938162969,
+    "probabilities": {
+     "false": 0.6230172061837032,
+     "true": 0.3769827938162969
+    }
+   }
+  },
+  "1b6302831b227cb9f6dbf9497df6c35596db4c4a": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.3499620808809239,
+    "probabilities": {
+     "false": 0.6500379191190762,
+     "true": 0.3499620808809239
+    }
+   }
+  },
+  "de163a57c418226c88cf31724276e607cad976b9": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.3499620808809239,
+    "probabilities": {
+     "false": 0.6500379191190762,
+     "true": 0.3499620808809239
+    }
+   }
+  },
+  "8201fb9d466cf1188b2bcffdaf367fcd8c08afd7": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.3062268004309896,
+    "probabilities": {
+     "false": 0.6937731995690104,
+     "true": 0.3062268004309896
+    }
+   }
+  },
+  "496b3213ce810ca853a1e23a7b0f4f246e998c2b": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.27727546825361543,
+    "probabilities": {
+     "false": 0.7227245317463846,
+     "true": 0.27727546825361543
+    }
+   }
+  },
+  "6893fba0d0be91a10676cee480b34878d1d6e8bd": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.613366076535731,
+    "probabilities": {
+     "false": 0.38663392346426895,
+     "true": 0.613366076535731
+    }
+   }
+  },
+  "7c8f1b234193e8cb2e33da0129e2baa48cf1c73c": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.29760892256433163,
+    "probabilities": {
+     "false": 0.7023910774356683,
+     "true": 0.29760892256433163
+    }
+   }
+  },
+  "0767408d1ffe845c452ba3470bdd4aa3451a4b2a": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8186345584854586,
+    "probabilities": {
+     "false": 0.18136544151454137,
+     "true": 0.8186345584854586
     }
    }
   },
@@ -5910,6 +7197,30 @@
     }
    }
   },
+  "7219892bf9376b168ad0881dedd670e1ed11c83e": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.549490720137601,
+    "probabilities": {
+     "false": 0.45050927986239897,
+     "true": 0.549490720137601
+    }
+   }
+  },
+  "20417f81fc3c00f33d31778d3b47e3457dd5b435": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.37424278402473193,
+    "probabilities": {
+     "false": 0.625757215975268,
+     "true": 0.37424278402473193
+    }
+   }
+  },
   "7f44ebf5aa50e4bdb8f24ad02a216a2d110a402a": {
    "q0": {
     "id": "q0",
@@ -5970,25 +7281,25 @@
     }
    }
   },
-  "bd9efe660ceffe7c12de28d573dd2ffccf64a6f4": {
+  "fcec42e060485771e67ffa9ff592ce2a4cd00a00": {
    "q0": {
     "id": "q0",
     "type": "boolean",
     "value": true,
-    "p_true": 0.9772248575239582,
+    "p_true": 0.9790956189800076,
     "probabilities": {
-     "false": 0.022775142476041843,
-     "true": 0.9772248575239582
+     "false": 0.02090438101999237,
+     "true": 0.9790956189800076
     }
    },
    "q1": {
     "id": "q1",
     "type": "boolean",
     "value": true,
-    "p_true": 0.941134040766834,
+    "p_true": 0.8088981614510465,
     "probabilities": {
-     "false": 0.058865959233165954,
-     "true": 0.941134040766834
+     "false": 0.19110183854895346,
+     "true": 0.8088981614510465
     }
    }
   },
@@ -6014,6 +7325,18 @@
     }
    }
   },
+  "3fd98317c477acb0c4083b155e97e6b568b2a12d": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.4418486893432687,
+    "probabilities": {
+     "false": 0.5581513106567313,
+     "true": 0.4418486893432687
+    }
+   }
+  },
   "fd47fd8f43054c1148f6073482c73da977ccca82": {
    "q0": {
     "id": "q0",
@@ -6033,6 +7356,44 @@
     "probabilities": {
      "false": 0.44473189048464434,
      "true": 0.5552681095153557
+    }
+   }
+  },
+  "5c0dc02c1318f325dc7ac5550d55d6591e10a158": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "rewrite",
+    "confidence": 0.7293710026696343,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.01967157243383698,
+     "restate": 0.016850378128622816,
+     "answer": 0.004660994313496962,
+     "implement": 0.013575072308614877,
+     "delete": 0.002063349183542859,
+     "rewrite": 0.7293710026696343,
+     "mock": 0.002285438403311415,
+     "solve": 0.09169124932220972,
+     "write": 0.0022523045913697593,
+     "extend": 0.004004217206531141,
+     "count": 0.0025314322641028317,
+     "none": 0.0949619549777847,
+     "nothing": 0.01608103419694174
     }
    }
   },
@@ -6112,44 +7473,6 @@
     }
    }
   },
-  "5c0dc02c1318f325dc7ac5550d55d6591e10a158": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "rewrite",
-    "confidence": 0.7293710026696343,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.01967157243383698,
-     "restate": 0.016850378128622816,
-     "answer": 0.004660994313496962,
-     "implement": 0.013575072308614877,
-     "delete": 0.002063349183542859,
-     "rewrite": 0.7293710026696343,
-     "mock": 0.002285438403311415,
-     "solve": 0.09169124932220972,
-     "write": 0.0022523045913697593,
-     "extend": 0.004004217206531141,
-     "count": 0.0025314322641028317,
-     "none": 0.0949619549777847,
-     "nothing": 0.01608103419694174
-    }
-   }
-  },
   "73616c3bfaa5105c575536bb40ecacb4035611de": {
    "q0": {
     "id": "q0",
@@ -6191,6 +7514,42 @@
      "t strings": 0.013745598862687268,
      "the template": 0.16124715913329524,
      "none": 0.7671145917836747
+    }
+   }
+  },
+  "3db562e9b2c49fc83a642554db969d225cea5aa5": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.7011685273162077,
+    "probabilities": {
+     "false": 0.2988314726837923,
+     "true": 0.7011685273162077
+    }
+   }
+  },
+  "4e46c4d3420d406746cf6382ab89b3b81dc80fbe": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.4346582255257055,
+    "probabilities": {
+     "false": 0.5653417744742946,
+     "true": 0.4346582255257055
+    }
+   }
+  },
+  "a57c7bafaab16aec3ae029923399180c54e6a03d": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5058412992322061,
+    "probabilities": {
+     "false": 0.4941587007677939,
+     "true": 0.5058412992322061
     }
    }
   },
@@ -6244,44 +7603,6 @@
     }
    }
   },
-  "0f2aa67bcd306abdcb60ae59b36a2c20353fd416": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "nothing",
-    "confidence": 0.37817199454411604,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.04698885279878224,
-     "restate": 0.0483815345849531,
-     "answer": 0.08329460399509901,
-     "implement": 0.10833780764132353,
-     "delete": 0.006896101807510495,
-     "rewrite": 0.03195622856461325,
-     "mock": 0.006336037696192185,
-     "solve": 0.09752473363199812,
-     "write": 0.004594994362864205,
-     "extend": 0.01792241517854784,
-     "count": 0.005571917078658587,
-     "none": 0.16402277811534144,
-     "nothing": 0.37817199454411604
-    }
-   }
-  },
   "a3633913ae160daee19afb42131087024a1182a4": {
    "q0": {
     "id": "q0",
@@ -6317,6 +7638,44 @@
      "count": 0.003907208237594886,
      "none": 0.04174491806197927,
      "nothing": 0.13040994290525984
+    }
+   }
+  },
+  "0f2aa67bcd306abdcb60ae59b36a2c20353fd416": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "nothing",
+    "confidence": 0.37817199454411604,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.04698885279878224,
+     "restate": 0.0483815345849531,
+     "answer": 0.08329460399509901,
+     "implement": 0.10833780764132353,
+     "delete": 0.006896101807510495,
+     "rewrite": 0.03195622856461325,
+     "mock": 0.006336037696192185,
+     "solve": 0.09752473363199812,
+     "write": 0.004594994362864205,
+     "extend": 0.01792241517854784,
+     "count": 0.005571917078658587,
+     "none": 0.16402277811534144,
+     "nothing": 0.37817199454411604
     }
    }
   },
@@ -6446,44 +7805,6 @@
     }
    }
   },
-  "2f7f5a5fefa98c5092e1ee22d87cefc0c2006493": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "rewrite",
-    "confidence": 0.8987371414872145,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.002060280665944794,
-     "restate": 0.0037275868479893304,
-     "answer": 0.005035947363864716,
-     "implement": 0.008395858945975951,
-     "delete": 0.0008453568412719103,
-     "rewrite": 0.8987371414872145,
-     "mock": 0.0011205941860128836,
-     "solve": 0.04622291088311913,
-     "write": 0.0020244894071037834,
-     "extend": 0.0013063018753253278,
-     "count": 0.0012072427273499631,
-     "none": 0.023065300531873015,
-     "nothing": 0.006250988236954748
-    }
-   }
-  },
   "c9fcf044cb485c3ff8d5247bf8a965d92016b45b": {
    "q0": {
     "id": "q0",
@@ -6519,6 +7840,44 @@
      "count": 0.040741709245729445,
      "none": 0.2054835269607045,
      "nothing": 0.3184556583160909
+    }
+   }
+  },
+  "2f7f5a5fefa98c5092e1ee22d87cefc0c2006493": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "rewrite",
+    "confidence": 0.8987371414872145,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.002060280665944794,
+     "restate": 0.0037275868479893304,
+     "answer": 0.005035947363864716,
+     "implement": 0.008395858945975951,
+     "delete": 0.0008453568412719103,
+     "rewrite": 0.8987371414872145,
+     "mock": 0.0011205941860128836,
+     "solve": 0.04622291088311913,
+     "write": 0.0020244894071037834,
+     "extend": 0.0013063018753253278,
+     "count": 0.0012072427273499631,
+     "none": 0.023065300531873015,
+     "nothing": 0.006250988236954748
     }
    }
   },
@@ -6598,25 +7957,25 @@
     }
    }
   },
-  "6cdac21f6bdf04aa868270b377105c321b631382": {
+  "07a30882c2cdbd161f5411f34e3f10f8e6ed8bb2": {
    "q0": {
     "id": "q0",
     "type": "boolean",
     "value": true,
-    "p_true": 0.654014031424915,
+    "p_true": 0.6684067437526842,
     "probabilities": {
-     "false": 0.345985968575085,
-     "true": 0.654014031424915
+     "false": 0.33159325624731584,
+     "true": 0.6684067437526842
     }
    },
    "q1": {
     "id": "q1",
     "type": "boolean",
     "value": false,
-    "p_true": 0.3473089825540283,
+    "p_true": 0.37287578451982784,
     "probabilities": {
-     "false": 0.6526910174459717,
-     "true": 0.3473089825540283
+     "false": 0.6271242154801722,
+     "true": 0.37287578451982784
     }
    }
   },
@@ -6657,6 +8016,18 @@
      "classes": 0.011431019149413697,
      "the types": 0.030057422810181485,
      "none": 0.690288253047875
+    }
+   }
+  },
+  "3a594cabdbdc2d7dc38ce633cc6f3a87d257fd1f": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.431789547272848,
+    "probabilities": {
+     "false": 0.568210452727152,
+     "true": 0.431789547272848
     }
    }
   },
@@ -6774,44 +8145,6 @@
     }
    }
   },
-  "24ba8ff0520cf09a8667c25a91b24e92004a3818": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "nothing",
-    "confidence": 0.3245319184870421,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.22070800936755605,
-     "restate": 0.019772147555537942,
-     "answer": 0.010308200677671731,
-     "implement": 0.0357729887984604,
-     "delete": 0.0036978260880744292,
-     "rewrite": 0.023490601988413552,
-     "mock": 0.003488003303717892,
-     "solve": 0.035982570584612766,
-     "write": 0.003687041300025141,
-     "extend": 0.13122866269758807,
-     "count": 0.004254352868797018,
-     "none": 0.183077676282503,
-     "nothing": 0.3245319184870421
-    }
-   }
-  },
   "c88e90b9c65d0632583c73a645b8a5fb59d4b165": {
    "q0": {
     "id": "q0",
@@ -6847,6 +8180,44 @@
      "count": 0.004164960046364178,
      "none": 0.16228725402061034,
      "nothing": 0.3427797998316373
+    }
+   }
+  },
+  "24ba8ff0520cf09a8667c25a91b24e92004a3818": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "nothing",
+    "confidence": 0.3245319184870421,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.22070800936755605,
+     "restate": 0.019772147555537942,
+     "answer": 0.010308200677671731,
+     "implement": 0.0357729887984604,
+     "delete": 0.0036978260880744292,
+     "rewrite": 0.023490601988413552,
+     "mock": 0.003488003303717892,
+     "solve": 0.035982570584612766,
+     "write": 0.003687041300025141,
+     "extend": 0.13122866269758807,
+     "count": 0.004254352868797018,
+     "none": 0.183077676282503,
+     "nothing": 0.3245319184870421
     }
    }
   },
@@ -6888,12 +8259,12 @@
     }
    }
   },
-  "947bfd5985713cfcd06b7e338d829207260ee808": {
+  "3dc52706c4fc06f9f1c280a8cb6eca395ed66971": {
    "q0": {
     "id": "q0",
     "type": "choice",
     "value": "nothing",
-    "confidence": 0.46164619813896657,
+    "confidence": 0.30456109201353554,
     "option_order": [
      "explain",
      "restate",
@@ -6910,19 +8281,19 @@
      "nothing"
     ],
     "probabilities": {
-     "explain": 0.2025806599101998,
-     "restate": 0.010178288240125474,
-     "answer": 0.011710131504959297,
-     "implement": 0.03532214812136828,
-     "delete": 0.04384444801686729,
-     "rewrite": 0.10227599810089175,
-     "mock": 0.006841660242345864,
-     "solve": 0.011986975288394331,
-     "write": 0.0029243806659943277,
-     "extend": 0.003962377009669785,
-     "count": 0.01572817107113348,
-     "none": 0.09099856368908384,
-     "nothing": 0.46164619813896657
+     "explain": 0.23691096669587894,
+     "restate": 0.09413379605844671,
+     "answer": 0.015847944502286774,
+     "implement": 0.02626757214250311,
+     "delete": 0.013378305768566358,
+     "rewrite": 0.17281815121276137,
+     "mock": 0.008071497670384202,
+     "solve": 0.0600343337398565,
+     "write": 0.006278629693412287,
+     "extend": 0.0047712016908533815,
+     "count": 0.005651966767236188,
+     "none": 0.051274542044278594,
+     "nothing": 0.30456109201353554
     }
    }
   },
@@ -7002,12 +8373,12 @@
     }
    }
   },
-  "3dc52706c4fc06f9f1c280a8cb6eca395ed66971": {
+  "0c7a30beda08564cb9eb2d23f3e95c0d956d1225": {
    "q0": {
     "id": "q0",
     "type": "choice",
-    "value": "nothing",
-    "confidence": 0.30456109201353554,
+    "value": "implement",
+    "confidence": 0.35804433051983575,
     "option_order": [
      "explain",
      "restate",
@@ -7024,19 +8395,95 @@
      "nothing"
     ],
     "probabilities": {
-     "explain": 0.23691096669587894,
-     "restate": 0.09413379605844671,
-     "answer": 0.015847944502286774,
-     "implement": 0.02626757214250311,
-     "delete": 0.013378305768566358,
-     "rewrite": 0.17281815121276137,
-     "mock": 0.008071497670384202,
-     "solve": 0.0600343337398565,
-     "write": 0.006278629693412287,
-     "extend": 0.0047712016908533815,
-     "count": 0.005651966767236188,
-     "none": 0.051274542044278594,
-     "nothing": 0.30456109201353554
+     "explain": 0.006742242649347745,
+     "restate": 0.00628580443611358,
+     "answer": 0.003792397687739376,
+     "implement": 0.35804433051983575,
+     "delete": 0.005511620129651844,
+     "rewrite": 0.1927609686618692,
+     "mock": 0.0040796778087522885,
+     "solve": 0.3518243734421358,
+     "write": 0.008492083905943087,
+     "extend": 0.00557639072906614,
+     "count": 0.004598683649354641,
+     "none": 0.043971204299410635,
+     "nothing": 0.008320222080779975
+    }
+   }
+  },
+  "f2f831b1f2097c866aaaf380a75dabc122fa6ae8": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "nothing",
+    "confidence": 0.433112762001442,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.04958941974352439,
+     "restate": 0.009301439069078984,
+     "answer": 0.005628227361893316,
+     "implement": 0.053190312258253644,
+     "delete": 0.008203619663868102,
+     "rewrite": 0.024244403005097014,
+     "mock": 0.004574141264111219,
+     "solve": 0.015689460705863113,
+     "write": 0.007256536248939293,
+     "extend": 0.006456396302873043,
+     "count": 0.01067010498253904,
+     "none": 0.3720831773925169,
+     "nothing": 0.433112762001442
+    }
+   }
+  },
+  "947bfd5985713cfcd06b7e338d829207260ee808": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "nothing",
+    "confidence": 0.46164619813896657,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.2025806599101998,
+     "restate": 0.010178288240125474,
+     "answer": 0.011710131504959297,
+     "implement": 0.03532214812136828,
+     "delete": 0.04384444801686729,
+     "rewrite": 0.10227599810089175,
+     "mock": 0.006841660242345864,
+     "solve": 0.011986975288394331,
+     "write": 0.0029243806659943277,
+     "extend": 0.003962377009669785,
+     "count": 0.01572817107113348,
+     "none": 0.09099856368908384,
+     "nothing": 0.46164619813896657
     }
    }
   },
@@ -7116,82 +8563,6 @@
     }
    }
   },
-  "f2f831b1f2097c866aaaf380a75dabc122fa6ae8": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "nothing",
-    "confidence": 0.433112762001442,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.04958941974352439,
-     "restate": 0.009301439069078984,
-     "answer": 0.005628227361893316,
-     "implement": 0.053190312258253644,
-     "delete": 0.008203619663868102,
-     "rewrite": 0.024244403005097014,
-     "mock": 0.004574141264111219,
-     "solve": 0.015689460705863113,
-     "write": 0.007256536248939293,
-     "extend": 0.006456396302873043,
-     "count": 0.01067010498253904,
-     "none": 0.3720831773925169,
-     "nothing": 0.433112762001442
-    }
-   }
-  },
-  "0c7a30beda08564cb9eb2d23f3e95c0d956d1225": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "implement",
-    "confidence": 0.35804433051983575,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.006742242649347745,
-     "restate": 0.00628580443611358,
-     "answer": 0.003792397687739376,
-     "implement": 0.35804433051983575,
-     "delete": 0.005511620129651844,
-     "rewrite": 0.1927609686618692,
-     "mock": 0.0040796778087522885,
-     "solve": 0.3518243734421358,
-     "write": 0.008492083905943087,
-     "extend": 0.00557639072906614,
-     "count": 0.004598683649354641,
-     "none": 0.043971204299410635,
-     "nothing": 0.008320222080779975
-    }
-   }
-  },
   "7d462ef42d4bc050b3425f58d60d707ad8f625ce": {
    "q0": {
     "id": "q0",
@@ -7268,44 +8639,6 @@
     }
    }
   },
-  "52e81c63be9b435e1c6b307351a6930b77379084": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "nothing",
-    "confidence": 0.44652424498820853,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.0396529365190327,
-     "restate": 0.30014547653856477,
-     "answer": 0.01001893145550307,
-     "implement": 0.020492688445415214,
-     "delete": 0.011972881067680637,
-     "rewrite": 0.03740294169770536,
-     "mock": 0.006278626515187506,
-     "solve": 0.007569154185631459,
-     "write": 0.005991960947692245,
-     "extend": 0.01575562959984361,
-     "count": 0.005425511191214512,
-     "none": 0.09276901684832047,
-     "nothing": 0.44652424498820853
-    }
-   }
-  },
   "fea8cdd311d11778efc5875e819960babd1c13d3": {
    "q0": {
     "id": "q0",
@@ -7341,6 +8674,44 @@
      "count": 0.0029326299581043623,
      "none": 0.04270248732209381,
      "nothing": 0.08708878361896268
+    }
+   }
+  },
+  "52e81c63be9b435e1c6b307351a6930b77379084": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "nothing",
+    "confidence": 0.44652424498820853,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.0396529365190327,
+     "restate": 0.30014547653856477,
+     "answer": 0.01001893145550307,
+     "implement": 0.020492688445415214,
+     "delete": 0.011972881067680637,
+     "rewrite": 0.03740294169770536,
+     "mock": 0.006278626515187506,
+     "solve": 0.007569154185631459,
+     "write": 0.005991960947692245,
+     "extend": 0.01575562959984361,
+     "count": 0.005425511191214512,
+     "none": 0.09276901684832047,
+     "nothing": 0.44652424498820853
     }
    }
   },
@@ -7458,25 +8829,31 @@
     }
    }
   },
-  "3ca70708521a03068ec64a9bdde3f12b9006792e": {
+  "384439f4ab664e17f4d14d2f8ed91def50b56fa1": {
    "q0": {
     "id": "q0",
     "type": "boolean",
     "value": true,
-    "p_true": 0.8401043183936288,
+    "p_true": 0.8353398602963742,
     "probabilities": {
-     "false": 0.15989568160637124,
-     "true": 0.8401043183936288
+     "false": 0.1646601397036258,
+     "true": 0.8353398602963742
     }
-   },
-   "q1": {
-    "id": "q1",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.37561179344793033,
+   }
+  },
+  "a7e0a7d23d41d21d14ca8ad336749aa4c77bfa6c": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "none",
+    "confidence": 0.8848014578371359,
+    "option_order": [
+     "all ten of these",
+     "none"
+    ],
     "probabilities": {
-     "false": 0.6243882065520696,
-     "true": 0.37561179344793033
+     "all ten of these": 0.11519854216286417,
+     "none": 0.8848014578371359
     }
    }
   },
@@ -7566,22 +8943,6 @@
     }
    }
   },
-  "a7e0a7d23d41d21d14ca8ad336749aa4c77bfa6c": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "none",
-    "confidence": 0.8848014578371359,
-    "option_order": [
-     "all ten of these",
-     "none"
-    ],
-    "probabilities": {
-     "all ten of these": 0.11519854216286417,
-     "none": 0.8848014578371359
-    }
-   }
-  },
   "50106d26f01448e3a9cff6cfd4183aa0c0b1fa33": {
    "q0": {
     "id": "q0",
@@ -7595,6 +8956,114 @@
     "probabilities": {
      "all ten of these": 0.02679022754851459,
      "none": 0.9732097724514853
+    }
+   }
+  },
+  "d75d20ee1f00aa8e41089b21fcfd8136ac4efcde": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.76178149738868,
+    "probabilities": {
+     "false": 0.23821850261132005,
+     "true": 0.76178149738868
+    }
+   }
+  },
+  "d44a5293855cb31d5c3279ab73f07f3cd89bcea6": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.28793333191846815,
+    "probabilities": {
+     "false": 0.7120666680815319,
+     "true": 0.28793333191846815
+    }
+   }
+  },
+  "42082c5dba3ca3ca1542c9f59d1dfacfaf7e8c1d": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.2226837098752416,
+    "probabilities": {
+     "false": 0.7773162901247583,
+     "true": 0.2226837098752416
+    }
+   }
+  },
+  "826db655d1f78aed3211791c96bea0e450050406": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.3852495279647999,
+    "probabilities": {
+     "false": 0.6147504720352002,
+     "true": 0.3852495279647999
+    }
+   }
+  },
+  "fb1d656a35440a8d7e70b3676fa1add2ae54de4f": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8964565289602353,
+    "probabilities": {
+     "false": 0.10354347103976469,
+     "true": 0.8964565289602353
+    }
+   }
+  },
+  "94fa5712694845a5e7ab606898d1a63169d5bce8": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.37151081378218953,
+    "probabilities": {
+     "false": 0.6284891862178105,
+     "true": 0.37151081378218953
+    }
+   }
+  },
+  "6a10382485ecd299818f48253df4e6de906f398c": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.34598596857508496,
+    "probabilities": {
+     "false": 0.654014031424915,
+     "true": 0.34598596857508496
+    }
+   }
+  },
+  "200d32ac875ce6e529f10c7e7a2eab7a7b97349c": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8321006633722015,
+    "probabilities": {
+     "false": 0.16789933662779855,
+     "true": 0.8321006633722015
+    }
+   }
+  },
+  "9efcd4beae1a6d87f3f7b97b582356e8ad68a704": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.3499620808809237,
+    "probabilities": {
+     "false": 0.6500379191190764,
+     "true": 0.3499620808809237
     }
    }
   },
@@ -7650,44 +9119,6 @@
     }
    }
   },
-  "75b1626586201969751559087723b16730e62d5e": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "answer",
-    "confidence": 0.8010933957461803,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
-    "probabilities": {
-     "explain": 0.011598118817612284,
-     "restate": 0.0072682657484953546,
-     "answer": 0.8010933957461803,
-     "implement": 0.008762206826513625,
-     "delete": 0.0018364404436882814,
-     "rewrite": 0.003959013800727039,
-     "mock": 0.0018526026791717749,
-     "solve": 0.007332232659585518,
-     "write": 0.0017423853609510383,
-     "extend": 0.01680677857399842,
-     "count": 0.004029005813132609,
-     "none": 0.11791266450764556,
-     "nothing": 0.015806889022298123
-    }
-   }
-  },
   "3b38d229ee9eaaccc38e150564b8227346641157": {
    "q0": {
     "id": "q0",
@@ -7723,6 +9154,44 @@
      "count": 0.004437033973739036,
      "none": 0.1754319637681275,
      "nothing": 0.046992047692467925
+    }
+   }
+  },
+  "75b1626586201969751559087723b16730e62d5e": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "answer",
+    "confidence": 0.8010933957461803,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.011598118817612284,
+     "restate": 0.0072682657484953546,
+     "answer": 0.8010933957461803,
+     "implement": 0.008762206826513625,
+     "delete": 0.0018364404436882814,
+     "rewrite": 0.003959013800727039,
+     "mock": 0.0018526026791717749,
+     "solve": 0.007332232659585518,
+     "write": 0.0017423853609510383,
+     "extend": 0.01680677857399842,
+     "count": 0.004029005813132609,
+     "none": 0.11791266450764556,
+     "nothing": 0.015806889022298123
     }
    }
   },
@@ -7764,53 +9233,53 @@
     }
    }
   },
-  "f815878b12a0dfd11cd80eacd2556632fdf96d3a": {
+  "c029d0f5b4cde82d2636e8a4ca3a5decd4908a6e": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "none",
+    "confidence": 0.9701588856847126,
+    "option_order": [
+     "all ten of these",
+     "none"
+    ],
+    "probabilities": {
+     "all ten of these": 0.02984111431528748,
+     "none": 0.9701588856847126
+    }
+   }
+  },
+  "278296252b5c6edf437d73e27a427fa3b2c5ee9a": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.4519557772577561,
+    "probabilities": {
+     "false": 0.548044222742244,
+     "true": 0.4519557772577561
+    }
+   }
+  },
+  "50aa4a5e0342d9997e6609c5c7640cccd8fe9e94": {
    "q0": {
     "id": "q0",
     "type": "boolean",
     "value": true,
-    "p_true": 0.6298521094642425,
+    "p_true": 0.6284891862178102,
     "probabilities": {
-     "false": 0.3701478905357575,
-     "true": 0.6298521094642425
+     "false": 0.37151081378218975,
+     "true": 0.6284891862178102
     }
-   }
-  },
-  "3ca87de8ad8ad5866f134142ee73ecab3a3b93ef": {
-   "q0": {
-    "id": "q0",
-    "type": "choice",
-    "value": "nothing",
-    "confidence": 0.48378921761835286,
-    "option_order": [
-     "explain",
-     "restate",
-     "answer",
-     "implement",
-     "delete",
-     "rewrite",
-     "mock",
-     "solve",
-     "write",
-     "extend",
-     "count",
-     "none",
-     "nothing"
-    ],
+   },
+   "q1": {
+    "id": "q1",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8203627233663939,
     "probabilities": {
-     "explain": 0.09316088837796414,
-     "restate": 0.03958850144272309,
-     "answer": 0.12476178898212592,
-     "implement": 0.03982043702099433,
-     "delete": 0.006943127618088873,
-     "rewrite": 0.04334030207575448,
-     "mock": 0.012561934701858282,
-     "solve": 0.027640510296499096,
-     "write": 0.006034872806932672,
-     "extend": 0.006684438185291387,
-     "count": 0.026766573550683362,
-     "none": 0.08890740732273152,
-     "nothing": 0.48378921761835286
+     "false": 0.17963727663360607,
+     "true": 0.8203627233663939
     }
    }
   },
@@ -7890,6 +9359,44 @@
     }
    }
   },
+  "3ca87de8ad8ad5866f134142ee73ecab3a3b93ef": {
+   "q0": {
+    "id": "q0",
+    "type": "choice",
+    "value": "nothing",
+    "confidence": 0.48378921761835286,
+    "option_order": [
+     "explain",
+     "restate",
+     "answer",
+     "implement",
+     "delete",
+     "rewrite",
+     "mock",
+     "solve",
+     "write",
+     "extend",
+     "count",
+     "none",
+     "nothing"
+    ],
+    "probabilities": {
+     "explain": 0.09316088837796414,
+     "restate": 0.03958850144272309,
+     "answer": 0.12476178898212592,
+     "implement": 0.03982043702099433,
+     "delete": 0.006943127618088873,
+     "rewrite": 0.04334030207575448,
+     "mock": 0.012561934701858282,
+     "solve": 0.027640510296499096,
+     "write": 0.006034872806932672,
+     "extend": 0.006684438185291387,
+     "count": 0.026766573550683362,
+     "none": 0.08890740732273152,
+     "nothing": 0.48378921761835286
+    }
+   }
+  },
   "6ba00a6c928ecda46d7f562f65ad1d5c7ad02f51": {
    "q0": {
     "id": "q0",
@@ -7949,6 +9456,90 @@
      "this whole notebook": 0.012805658173777426,
      "this version": 0.00571875513550064,
      "none": 0.011426972854171833
+    }
+   }
+  },
+  "bed91224eb8c409338f679f7504b89bb91e37d93": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.654014031424915,
+    "probabilities": {
+     "false": 0.345985968575085,
+     "true": 0.654014031424915
+    }
+   }
+  },
+  "e09a615c9f3e4c52cbba904ab9807c9f70fcb29c": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.32772062573244576,
+    "probabilities": {
+     "false": 0.6722793742675542,
+     "true": 0.32772062573244576
+    }
+   }
+  },
+  "71005f988963144a0dafb427ddc407613de5bc65": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.15755561315173583,
+    "probabilities": {
+     "false": 0.8424443868482642,
+     "true": 0.15755561315173583
+    }
+   }
+  },
+  "773606557fba538e6a27701d27d944b03745b48f": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.1507023211168212,
+    "probabilities": {
+     "false": 0.8492976788831788,
+     "true": 0.1507023211168212
+    }
+   }
+  },
+  "44f24ee0a89fd417e11390095870d5f460665c98": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.28316643852996737,
+    "probabilities": {
+     "false": 0.7168335614700326,
+     "true": 0.28316643852996737
+    }
+   }
+  },
+  "58454b6b27adbb47325e2a603a4d6015f3aa0c86": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.31877579767686776,
+    "probabilities": {
+     "false": 0.6812242023231323,
+     "true": 0.31877579767686776
+    }
+   }
+  },
+  "54568ccbaeb83b28d37865ec59fcba68ff42dc2f": {
+   "q0": {
+    "id": "q0",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.19565761988346747,
+    "probabilities": {
+     "false": 0.8043423801165326,
+     "true": 0.19565761988346747
     }
    }
   },

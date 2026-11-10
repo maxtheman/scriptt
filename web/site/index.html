@@ -8,7 +8,7 @@
 <link rel="icon" href="data:,">
 <link rel="alternate" type="text/plain" href="llms.txt" title="llms.txt">
 <style>
-  /* scriptt design tokens. The rules and the source of every value are in design-system.md. A value that is not here is not part of the system. */
+  /* scriptt design tokens. A value that is not here is not part of the system. Colour has 2 jobs: --accent is what you can press or where you can drop, --class-N is the type of a thing. */
   :root {
     color-scheme: light dark;
     --font-text: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -18,13 +18,13 @@
     --weight-normal: 400; --weight-strong: 600;
     --measure: 65ch;
     --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px;
-    --border: 2px; --radius-box: 2px; --radius-bubble: 20px; --mark: 8px;
-    --bg: #FFFFFF; --surface: #E5E5EA; --text-1: #383838; --text-2: #636366; --rule: #C7C7CC; --accent: #0019A8; --on-accent: #FFFFFF;
+    --border: 2px; --radius-box: 2px; --radius-bubble: 20px;
+    --bg: #FFFFFF; --surface: #E9E9EB; --text-1: #1C1C1E; --text-2: #636366; --rule: #C7C7CC; --accent: #0019A8; --on-accent: #FFFFFF;
     --class-1: #DC241F; --class-2: #007D32; --class-3: #FA7B05; --class-4: #9B0058; --class-5: #FFC80A; --class-6: #00AFAD;
     --class-7: #B26300; --class-8: #F589A6; --class-9: #5FB526; --class-10: #60399E; --class-11: #838D93; --class-12: #76D0BD;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #1C1C1E; --surface: #2C2C2E; --text-1: #F2F2F7; --text-2: #AEAEB2; --rule: #48484A; --accent: #5CB8FF; --on-accent: #000000; }
+    :root { --bg: #1C1C1E; --surface: #2C2C2E; --text-1: #F2F2F7; --text-2: #AEAEB2; --rule: #48484A; --accent: #5CB8FF; --on-accent: #000000; --class-10: #9A7BD6; }
   }
 
   * { box-sizing: border-box; }
@@ -40,32 +40,38 @@
 
   button { font: var(--weight-strong) var(--size-body)/var(--leading-body) var(--font-text); border-radius: var(--radius-box); cursor: pointer; text-align: left; }
   .second { background: none; border: var(--border) solid var(--text-1); color: var(--text-1); padding: 6px 14px; }
-  .second:hover { background: var(--surface); border-color: var(--surface); }
-  .first { background: var(--accent); border: 0; color: var(--on-accent); padding: var(--space-2) var(--space-4); }
+  .second:hover { background: var(--surface); }
+  .second[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .first { background: var(--accent); border: var(--border) solid var(--accent); color: var(--on-accent); padding: 6px 14px; }
   .first:hover { text-decoration: underline; text-decoration-thickness: var(--border); }
   .link { background: none; border: 0; padding: 0; font-weight: var(--weight-normal); }
-  button:disabled { background: var(--surface); border: 0; color: var(--text-2); padding: var(--space-2) var(--space-4); cursor: default; text-decoration: none; }
-  .link:disabled { background: none; padding: 0; }
+  button:disabled, button:disabled:hover { background: var(--surface); border-color: var(--surface); color: var(--text-2); cursor: default; text-decoration: none; }
+  .link:disabled, .link:disabled:hover { background: none; }
   :focus-visible { outline: var(--border) solid var(--accent); outline-offset: 2px; }
 
-  #top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); margin-bottom: var(--space-4); }
-  #row { margin-top: var(--space-6); }
+  #top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); margin-bottom: var(--space-5); }
   #nav, #foot, #paste { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
   #nav { margin-bottom: var(--space-4); }
-  #foot { margin-top: var(--space-5); }
-  #status { margin: var(--space-2) 0 0; min-height: var(--leading-body); }
-  #block { margin: var(--space-4) 0 0; }
-  #install { margin-top: var(--space-6); }
+  #foot { margin-top: var(--space-4); }
+  #say { position: sticky; bottom: 0; background: var(--bg); margin: 0; padding: var(--space-3) 0; min-height: calc(var(--leading-chip) + 2 * var(--space-3)); max-width: none; font: var(--weight-normal) var(--size-chip)/var(--leading-chip) var(--font-code); overflow-wrap: anywhere; }
+  #say:empty { position: static; }
+  #sent { margin: var(--space-3) 0 0; }
+  #install { margin-top: var(--space-7); }
   #paste { margin-bottom: var(--space-4); }
   #paste p { margin: 0; }
 
-  /* the drawing. A thing that can be picked up or pressed shows its edge under the pointer, before anything happens. */
-  #board { user-select: none; -webkit-user-select: none; }
-  #board svg { display: block; overflow: visible; fill: var(--text-1); }
-  #board .grab { cursor: grab; touch-action: none; }
-  #board .press { cursor: pointer; }
-  #board .grab:hover .edge, #board .press:hover .edge, #board .press:focus-visible .edge { stroke-opacity: 1; }
-  #board .press:focus-visible { outline: none; }
+  /* the board. Nothing moves until "scriptt" is pressed. Then each thing that can be picked up jiggles, and shows its edge under the pointer or on focus. */
+  #board { user-select: none; -webkit-user-select: none; outline: none; }
+  #board svg { display: block; overflow: visible; }
+  #board .grab { cursor: grab; touch-action: none; outline: none; }
+  #board .grab:hover > .jig > .edge, #board .grab:focus-visible > .jig > .edge, #board .lit > .jig > .edge { stroke-opacity: 1; }
+  @keyframes jig { from { rotate: -1.2deg; } to { rotate: 1.2deg; } }
+  @keyframes jig-wide { from { rotate: -0.4deg; } to { rotate: 0.4deg; } }
+  #board.open .jig { animation: jig 0.13s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 50%; }
+  #board.open .jig.wide { animation-name: jig-wide; }
+  #board.open .jig.late { animation-delay: -0.065s; }
+  #board .grab:hover > .jig, #board .grab:focus-visible > .jig { animation-play-state: paused; }
+  @media (prefers-reduced-motion: reduce) { #board.open .jig { animation: none; } }
 
   @media (max-width: 720px) { main { padding: var(--space-4); } }
 </style>
@@ -73,18 +79,16 @@
 <body>
 <main>
   <div id="top"><h1>scriptt</h1><a href="https://github.com/maxtheman/scriptt">GitHub</a></div>
-  <p id="what">scriptt is a harness for Claude Code in 2 files. d1, a small decision model on your computer, decides which functions of your <code>world.py</code> each part (sentence) of a message asks for, before Claude reads it. The messages below are recorded.</p>
 
-  <div id="row">
+  <div id="demo">
     <div id="nav"><button type="button" class="link" id="prev">Previous message</button><span id="where"></span><button type="button" class="link" id="next">Next message</button></div>
-    <div id="board"></div>
+    <div id="board" tabindex="-1"></div>
     <div id="foot">
-      <button type="button" class="second" id="count"></button>
-      <button type="button" class="first" id="save" hidden></button>
-      <button type="button" class="link" id="undo" hidden>Back to d1's reading</button>
+      <button type="button" class="second" id="mode" aria-pressed="false">scriptt</button>
+      <button type="button" class="first" id="save" hidden>Save</button>
     </div>
-    <p id="status" aria-live="polite"></p>
-    <pre id="block" hidden></pre>
+    <p id="say" aria-live="polite"></p>
+    <pre id="sent" hidden></pre>
   </div>
 
   <div id="install">
@@ -126,415 +130,360 @@
 <script src="data.js"></script>
 <script src="vendor/dragology-0.2.0.iife.js"></script>
 <script>
-// ---------- the data: the world, the log of events, and the measure. Nothing below names a type or a function of a world. ----------
-let { world: WORLD, events: LOG, measure: MEASURE } = DATA;
-let EVENTS = [], MSGS = [], FNS = [], TYPES = [];
-let LOCAL = false;  // true when `harness.py serve` answers /data on this computer: the page then shows your own events and can save
+// Every word drawn below comes from the record (events.jsonl), from the world (world.py) or from the message. Nothing names a type or a function of a world.
+const { React, createRoot, DraggableRenderer, translate } = window.Dragology, h = React.createElement;
+let WORLD = { types: {}, functions: {} }, EVENTS = [], MSGS = [], FNS = [], TYPES = [], LOCAL = false;
+let at = 0, OPEN = false, HELD = null, DRAGGING = false, LINE = "", UID = 0, W = 0, FONT = {}, C = {}, root = null;
+const store = {}, saved = {};  // by message: your reading, and the reading of each part that the log already has
 const $ = (id) => document.getElementById(id);
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const short = (s, n = 60) => { s = String(s).replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, Math.max(0, n - 1)) + "…" : s; };
-const asked = (ev) => ev.event === "UserPromptSubmit";
 const two = (p) => Number(p).toFixed(2);
-const names = (type) => String(type).split(" | ");                      // a union as written is several types
-const accepts = (holeType, type) => names(holeType).includes(type);
-const classOf = (type) => names(type).find((t) => TYPES.includes(t));   // the type of the world that a hole or a result has, if any
-const sums = (type) => names(type).filter((t) => WORLD.types[t] && WORLD.types[t].sum);
+const short = (s, n = 28) => ((s = String(s).replace(/\s+/g, " ").trim()).length > n ? s.slice(0, n - 1) + "…" : s);
+const names = (type) => String(type).split(" | ").filter((t) => t !== "None");  // a union as written is several types
+const optional = (type) => String(type).split(" | ").includes("None");
 const ids = new Map(), sid = (s) => ids.get(s) ?? (ids.set(s, ids.size), ids.size - 1);  // a short id for a text
-
-// ---------- pure functions of the data ----------
-// The parts of a message. A line of the log from before parts existed is 1 part.
-const partsOf = (ev) => (ev.parts && ev.parts.length ? ev.parts : [{ start: 0, end: ev.text.length, demands: [], hole: null, old: true }]);
-const wordsOf = (ev, n) => ev.text.slice(partsOf(ev)[n].start, partsOf(ev)[n].end).replace(/\s+/g, " ").trim();
-// The reply check that follows a message: {function or "part N": probability}, and whether the reply was sent back.
-function replyOf(i) {
-  const next = EVENTS[i + 1];
-  return next && !asked(next) && next.session === EVENTS[i].session ? { checks: next.checks || {}, back: !!(next.answer && next.answer.decision === "block") } : { checks: {}, back: false };
-}
-// What d1 decided, as the state that the drawing edits. asks[n] lists the functions on part n. The last list is for the message as a whole.
-// An entry is {id, fn, off, user}: off is "you crossed it out", user is "you put it there". things is {entry id | hole path: value} for holes that you changed.
-function decided(ev) {
-  const parts = partsOf(ev), on = (n) => ev.demands.map((d, k) => ({ id: "d" + k, fn: d.function, k, part: d.part })).filter((e) => e.part === n).map(({ id, fn, k }) => ({ id, fn, k, off: false, user: false }));
-  return { asks: [...parts.map((_, n) => on(n)), on(null)], none: parts.map(() => false), things: {} };
-}
-const live = (st, n) => st.asks[n].filter((e) => !e.off);
-const holesOf = (ev, e) => (e.user ? Object.entries((WORLD.functions[e.fn] || {}).holes || {}) : Object.entries(ev.demands[e.k].parameters).map(([path, h]) => [path, h.type]));
-const returnsOf = (ev, e) => (e.user ? (WORLD.functions[e.fn] || {}).returns : ev.demands[e.k].returns) || "";
-// How d1 filled a hole: by "the words", "the result of" (of another function), "d1", or null (open), and d1's probability if it gave one.
-const how = (hole) => ({ by: /^d1/.test(hole.by || "") ? "d1" : hole.by || null, p: hole.d1 ?? (/^d1 [\d.]+$/.test(hole.by || "") ? +hole.by.slice(3) : null) });
-const d1Value = (ev, e, path) => { const hole = e.user ? null : ev.demands[e.k].parameters[path]; return !hole || hole.value == null ? null : hole.by === "the result of" ? `${hole.value}()` : String(hole.value); };
-const value = (ev, st, e, path) => (`${e.id}|${path}` in st.things ? st.things[`${e.id}|${path}`] : d1Value(ev, e, path));
-const asks = (ev, st, n) => live(st, n).length > 0 || (!!partsOf(ev)[n].hole && !st.none[n]);
-// The reading of 1 part as the harness stores it: {demands, things}.
-const partReading = (ev, st, n) => ({ demands: live(st, n).map((e) => e.fn), things: Object.fromEntries(live(st, n).flatMap((e) => holesOf(ev, e).map(([path]) => [path, value(ev, st, e, path)]))), none: !!st.none[n] });
-const sig = (ev, st, n) => JSON.stringify(partReading(ev, st, n));
-const changed = (ev, st) => partsOf(ev).map((_, n) => n).filter((n) => sig(ev, st, n) !== sig(ev, decided(ev), n));
-// The difference between 2 states, in sentences.
-function sentences(ev, a, b) {
-  const out = [];
-  partsOf(ev).forEach((_, n) => {
-    const fa = live(a, n).map((e) => e.fn), fb = live(b, n).map((e) => e.fn);
-    for (const fn of fb) if (!fa.includes(fn)) out.push(`Part ${n + 1} asks for ${fn}.`);
-    for (const fn of fa) if (!fb.includes(fn)) out.push(`Part ${n + 1} does not ask for ${fn}.`);
-    if (!a.none[n] !== !b.none[n]) out.push(b.none[n] ? `Part ${n + 1} asks nothing.` : `Part ${n + 1} asks for something, and no function fits.`);
-    for (const e of live(b, n)) if (a.asks[n].some((x) => x.id === e.id && !x.off)) for (const [path] of holesOf(ev, e)) {
-      const v = value(ev, b, e, path);
-      if (v !== value(ev, a, e, path)) out.push(v ? `${path} of ${e.fn} is "${v}".` : `${path} of ${e.fn} is open.`);
-    }
-  });
-  return out;
-}
-// The block that Claude received, and the lines that your reading adds to the block of your next message (the wording of the harness).
-function block(ev, st) {
-  const sent = ev.answer ? (ev.answer.hookSpecificOutput ? ev.answer.hookSpecificOutput.additionalContext : ev.answer.reason) : "";
-  const mine = changed(ev, st).map((n) => {
-    const r = partReading(ev, st, n), things = Object.entries(r.things).map(([path, v]) => (v ? `, ${path} is "${v}"` : `, ${path} is open`)).join("");
-    return `The user says that "${wordsOf(ev, n).slice(0, 90)}" asks for ${r.demands.join(" + ") || "nothing"}${things}. d1 said otherwise.`;
-  });
-  return [sent || "The harness sent no block for this message.", ...mine].join("\n");
-}
-// The states that a drop can produce.
-const clone = (st) => structuredClone(st);
-const edit = (st, f) => { const next = clone(st); f(next); return next; };
-const onPart = (st, n, e) => edit(st, (s) => { s.asks = s.asks.map((list) => list.filter((x) => x.id !== e.id)); s.asks[n].push({ id: e.id, fn: e.fn, off: false, user: true }); });
-const offPart = (st, e) => edit(st, (s) => { s.asks = s.asks.map((list) => (e.user ? list.filter((x) => x.id !== e.id) : list.map((x) => (x.id === e.id ? { ...x, off: !x.off } : x)))); });
-const fill = (ev, st, e, path, v) => edit(st, (s) => { if (v === d1Value(ev, e, path)) delete s.things[`${e.id}|${path}`]; else s.things[`${e.id}|${path}`] = v; });
-
-// ---------- the layout: where everything is drawn for one state, on a drawing that is W wide ----------
 const pen = document.createElement("canvas").getContext("2d");
-let FONT = {};
 const tw = (s, font) => { pen.font = font; return Math.ceil(pen.measureText(s).width); };
-function wrap(str, font, max) {
-  const lines = [""];
-  for (let word of str.split(" ")) {
-    while (tw(word, font) > max) { let k = word.length; while (k > 1 && tw(word.slice(0, k), font) > max) k--; if (lines.at(-1)) lines.push(""); lines[lines.length - 1] = word.slice(0, k); lines.push(""); word = word.slice(k); }
-    const tried = lines.at(-1) ? lines.at(-1) + " " + word : word;
-    if (tw(tried, font) <= max) lines[lines.length - 1] = tried; else lines.push(word);
-  }
-  return lines.filter((l, n) => l || n === 0);
-}
-// Tokens in a row that wraps. `br` starts a new line. `near` puts that line 4 under the one before, not 8.
-function flow(tokens, max) {
-  let x = 0, y = 0, lineH = 0;
-  const out = tokens.map((t) => {
-    if (x > 0 && (t.br || x + t.w > max)) { y += lineH + (t.near ? 4 : t.h === 24 && !t.inline ? 0 : 8); x = 0; lineH = 0; }  // a route that wraps is 1 text: its lines touch
-    const placed = { ...t, x, y: y + (t.inline ? 2 : 0) };
-    x += t.w + 8; lineH = Math.max(lineH, t.inline ? 28 : t.h);
-    return placed;
-  });
-  return { tokens: out, h: tokens.length ? y + lineH : 0 };
-}
-const word = (text, how, key) => ({ kind: "word", text, how, key, w: tw(text, how === "taken" ? FONT.strong : FONT.body), h: 24 });
-const join = { kind: "join", w: 16, h: 24 };
-function fnToken(ev, e, n, tray) {
-  const you = tw("you", FONT.chipText), name = tw(e.fn, FONT.chip), p = tray && e.fn in ev.p ? tw(two(ev.p[e.fn]), FONT.code) : 0;
-  return { kind: "fn", e, n, tray, you, name, p, w: 8 + (e.user && !tray ? you + 4 : 0) + name + (p ? 8 + p : 0) + 8, h: 28 };
-}
-// The choice that d1 made for 1 part: the 3 options with the largest share, among the functions of the world and "no function".
-// The options that were taken are plain. The others are crossed out.
-function choiceOf(part, taken, key) {
-  const scores = Object.entries(part.scores || {}).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  return scores.map(([name, q]) => word(`${{ none: "something else", nothing: "nothing" }[name] || name} ${two(q)}`, taken.includes(name) ? "taken" : "out", key));
-}
+const edit = (st, f) => { const next = structuredClone(st); f(next); return next; };
+const color = (type) => { const k = TYPES.indexOf(names(type)[0]); return k >= 0 && k < 12 ? css(`--class-${k + 1}`) : C.t2; };
 
-// The tokens of 1 part: each function that it asks for with its holes, and, when the row is open, the decisions as a route.
-function tokensOf(ev, st, n, reply) {
-  const part = partsOf(ev)[n], out = [];
-  if (part && part.hole != null) {
-    const off = st.none[n] || live(st, n).length > 0, check = reply.checks[`part ${n + 1}`];
-    out.push({ kind: "q", n, off, w: 8 + tw("?", FONT.chip) + 8, h: 28 });
-    if (OPEN) {
-      const choice = choiceOf(part, off ? [] : ["none"], `q${n}`);
-      out.push({ ...choice[0], br: true, near: true }, ...choice.slice(1));
-      if (st.none[n]) out.push(join, word("you: asks nothing", "taken", `q${n}`));
-      if (check != null) out.push(join, word(check >= 0.5 ? `reply responds ${two(check)}` : `reply does not respond ${two(check)}`, "taken", `q${n}`));
-    } else if (check != null && !off) out.push({ ...word(check >= 0.5 ? "done" : "not done", check >= 0.5 ? "plain" : "taken", `q${n}`), inline: true });
-  }
-  if (OPEN && part && part.scores && !part.hole && !st.asks[n].length) out.push(...choiceOf(part, ["nothing"], `a${n}`));
-  for (const [first, e] of st.asks[n].entries()) {
-    const d = e.user ? null : ev.demands[e.k], check = reply.checks[e.fn], key = e.id;
-    out.push({ ...fnToken(ev, e, n, false), br: OPEN });
-    if (!e.off) for (const [pi, [path, type]] of holesOf(ev, e).entries()) {
-      const v = value(ev, st, e, path), cls = classOf(type), shown = v == null ? "?" : short(v, 28);
-      if (v == null && /\bNone\b/.test(type)) continue;                 // a hole that may stay empty
-      const label = OPEN ? tw(path, FONT.code) + 8 : 0, typeW = tw(cls || type, FONT.code);
-      out.push({ kind: "hole", e, n, pi, path, type, cls, v, shown, label, typeW, w: 8 + label + (cls ? 12 : 0) + typeW + 8 + tw(shown, FONT.chipText) + 8, h: 28 });
+// ---------- the record. A line of form 2 has no choice and no pieces: they are derived here as form 3 defines them. ----------
+const partsOf = (ev) => (ev.parts?.length ? ev.parts : [{ start: 0, end: ev.text.length, demands: ev.demands.map((d) => d.function), hole: null }]);
+const partOf = (ev, d) => d.part ?? (ev.parts?.length ? null : 0);  // a demand of the message as a whole has no part, except in a line of form 1
+const wordsOf = (ev, n) => ev.text.slice(partsOf(ev)[n].start, partsOf(ev)[n].end);
+const choiceOf = (part) => part.choice ?? (part.hole != null ? "none" : part.demands.length ? part.demands.reduce((a, b) => ((part.scores?.[b] ?? 0) > (part.scores?.[a] ?? 0) ? b : a)) : "nothing");
+const holesOf = (ev, fn) => Object.entries(WORLD.functions[fn]?.holes ?? Object.fromEntries(Object.entries(ev.demands.find((d) => d.function === fn)?.parameters ?? {}).map(([path, x]) => [path, x.type])));
+const derived = new Map();
+function piecesOf(ev) {  // form 2: a piece for each filled hole whose value is in the words of its part
+  if (ev.pieces?.length) return ev.pieces;
+  if (derived.has(ev)) return derived.get(ev);
+  const out = [], low = ev.text.toLowerCase();
+  ev.demands.forEach((d, k) => {
+    const n = partOf(ev, d), part = partsOf(ev)[n];
+    if (part) for (const [path, x] of Object.entries(d.parameters)) {
+      const v = x.value == null || x.by === "the result of" ? "" : String(x.value), start = v ? low.indexOf(v.toLowerCase(), part.start) : -1, end = start + v.length;
+      if (start < 0 || end > part.end || out.some((p) => p.start < end && start < p.end)) continue;
+      out.push({ id: out.length, part: n, start, end, words: ev.text.slice(start, end), type: names(x.type)[0], value: v, to: { demand: k, path }, of: null });
     }
-    if (OPEN && !e.off && TYPES.includes(returnsOf(ev, e)) && n < partsOf(ev).length) out.push({ kind: "ret", e, n, type: returnsOf(ev, e), w: 8 + tw("->", FONT.code) + 8 + 12 + tw(returnsOf(ev, e), FONT.code) + 8, h: 28 });
-    if (d && d.result !== undefined && !e.off) out.push({ ...word(`returned ${short(typeof d.result === "string" ? d.result : JSON.stringify(d.result), 28)}`, "plain", key), inline: true });
-    if (!OPEN) { if (check != null && !e.off && !e.user) out.push({ ...word(check >= 0.5 ? "done" : "not done", check >= 0.5 ? "plain" : "taken", key), inline: true }); continue; }
-    // the decisions, plan then outcome: how the function was found, how each hole was filled, what the reply did. The branch not taken is crossed out.
-    const route = first === 0 && part && part.asks != null && !part.scores ? [word(part.asks >= 0.5 ? `asks ${two(part.asks)}` : `does not ask ${two(part.asks)}`, part.asks >= 0.5 ? "taken" : "out", key)] : [];
-    if (e.user) route.push(word("you", "taken", key));
-    else {
-      if (first === 0) route.push(...choiceOf(part, e.off ? [] : part.demands, key));
-      if (e.off) route.push(join, word("you: does not ask", "taken", key));
-    }
-    if (!e.off) for (const [path, type] of holesOf(ev, e)) {
-      const mine = `${e.id}|${path}` in st.things, { by, p } = how(e.user ? {} : d.parameters[path]), v = value(ev, st, e, path), with_p = (label) => label + (p != null ? " " + two(p) : "");
-      if (v == null && !mine && /\bNone\b/.test(type)) continue;
-      const routes = [["the words", "in the words"], ["the result of", "a result"], ["d1", "d1"], [null, "open"]].filter(([id]) => id !== "the result of" || by === id);
-      route.push(join, word(path, "plain", key), ...routes.map(([id, label]) => word(!mine && by === id && id ? with_p(label) : label, !mine && by === id ? "taken" : "out", key)));
-      if (mine) route.push(word(v ? "you" : "you: open", "taken", key));
-    }
-    if (check != null && !e.off && !e.user) route.push(join, word(check >= 0.5 ? `reply did it ${two(check)}` : "reply did it", check >= 0.5 ? "taken" : "out", key), word(check >= 0.5 ? "did not" : `did not ${two(check)}`, check >= 0.5 ? "out" : "taken", key));
-    if (route.length) route[0] = { ...route[0], br: true, near: true };  // the route starts its own line, 4 under its function
-    out.push(...route);
-  }
+  });
+  out.sort((a, b) => a.start - b.start);
+  derived.set(ev, out);
   return out;
 }
-function layout(ev, st, W, reply) {
-  const parts = partsOf(ev), wide = W >= 720, bubbleMax = wide ? Math.min(440, Math.round(W * 0.42)) : W, ix = wide ? bubbleMax + 24 : 0;
-  let y = 0;
-  const rows = st.asks.map((_, n) => {
-    if (n === parts.length && !st.asks[n].length) return null;
-    const lines = n < parts.length ? wrap(wordsOf(ev, n), FONT.body, bubbleMax - 24) : ["The message as a whole"];
-    const bubble = { w: Math.max(...lines.map((l) => tw(l, FONT.body))) + 24, h: lines.length * 24 + 16 }, items = flow(tokensOf(ev, st, n, reply), W - ix);
-    const under = !wide && items.tokens.length, h = wide ? Math.max(bubble.h, items.h + 12) : bubble.h + (under ? 4 + items.h : 0);
-    const row = { n, y, h, lines, bubble, tokens: items.tokens.map((t) => ({ ...t, x: ix + t.x, y: y + (wide ? 6 : bubble.h + 4) + t.y })) };
-    y += h + 16;
-    return row;
-  }).filter(Boolean);
-  y -= 16;
-  let tray = null, types = [];
-  if (OPEN) {
-    // the world, as the source that you drag from: the functions that no part asks for, then the types of the holes above with their named things
-    const rest = FNS.filter((fn) => !st.asks.some((list) => list.some((e) => e.fn === fn && !e.off)));
-    const chips = flow(rest.map((fn) => fnToken(ev, { id: "t" + FNS.indexOf(fn), fn, user: true }, null, true)), W - 24);
-    y += 24;
-    tray = { y, h: 12 + 24 + (rest.length ? 8 + chips.h : 0) + 12, tokens: chips.tokens.map((t) => ({ ...t, x: 12 + t.x, y: y + 12 + 24 + 8 + t.y })) };
-    y += tray.h;
-    const needed = TYPES.filter((type) => WORLD.types[type].sum && rows.some((r) => r.tokens.some((t) => t.kind === "hole" && accepts(t.type, type))));
-    for (const type of needed) {
-      const ti = TYPES.indexOf(type), row = flow([{ kind: "type", type, ti, w: 12 + tw(type, FONT.chip), h: 28 }, ...WORLD.types[type].sum.map((thing, vi) => ({ kind: "thing", type, ti, vi, thing, shown: short(thing, 34), w: 8 + tw(short(thing, 34), FONT.chipText) + 8, h: 28 }))], W);
-      y += types.length ? 8 : 24;
-      types.push(...row.tokens.map((t) => ({ ...t, y: y + t.y })));
-      y += row.h;
-    }
+// d1's reading as the state that the board edits. For each part: its functions, things {"<function>.<hole path>": value, null when open}, and by {key: the piece that fills it}.
+function decided(ev) {
+  const P = piecesOf(ev);
+  return { parts: partsOf(ev).map((_, n) => {
+    const s = { fns: [], things: {}, by: {} };
+    ev.demands.forEach((d, k) => {
+      if (partOf(ev, d) !== n || s.fns.some((f) => f.fn === d.function)) return;
+      s.fns.push({ id: "d" + k, fn: d.function });
+      for (const [path, x] of Object.entries(d.parameters)) {
+        if (x.value == null && optional(x.type)) continue;  // a hole that may stay empty is drawn faint, and is no key
+        const key = `${d.function}.${path}`, p = P.find((p) => p.to?.demand === k && p.to.path === path);
+        s.things[key] = x.value == null ? null : x.by === "the result of" ? `${x.value}()` : String(x.value);
+        if (p) s.by[key] = p.id;
+      }
+    });
+    return s;
+  }) };
+}
+const readingOf = (st, n) => ({ demands: st.parts[n].fns.map((f) => f.fn), things: st.parts[n].things });
+const sig = (st, n) => JSON.stringify([st.parts[n].fns.map((f) => f.fn), Object.entries(st.parts[n].things).sort()]);
+const differ = (ev, a, b) => partsOf(ev).map((_, n) => n).filter((n) => sig(a, n) !== sig(b, n));
+// The line that Claude receives with the next message, in the wording of harness.py.
+const lineOf = (ev, st, n) => { const r = readingOf(st, n); return `The user says that "${wordsOf(ev, n).slice(0, 90)}" asks for ${r.demands.join(" + ") || "nothing"}${Object.entries(r.things).map(([k, v]) => (v == null ? `, ${k} is open` : `, ${k} is "${v}"`)).join("")}. d1 said otherwise.`; };
+const reading = (i) => store[i] || decided(EVENTS[i]);
+const unsaved = (i) => partsOf(EVENTS[i]).map((_, n) => n).filter((n) => !!EVENTS[i].parts?.length && sig(reading(i), n) !== (saved[i]?.[n] ?? sig(decided(EVENTS[i]), n)));
+
+// ---------- the states that a drop can produce ----------
+const addFn = (ev, st, n, fn) => edit(st, (s) => { const p = s.parts[n]; p.fns.push({ id: "u" + ++UID, fn }); for (const [path, t] of holesOf(ev, fn)) if (!optional(t)) p.things[`${fn}.${path}`] = null; });
+const dropFn = (st, n, f) => edit(st, (s) => { const p = s.parts[n]; p.fns = p.fns.filter((g) => g.id !== f.id); for (const k of Object.keys(p.things)) if (k.startsWith(f.fn + ".")) { delete p.things[k]; delete p.by[k]; } });
+const moveFn = (st, a, b, f) => edit(dropFn(st, a, f), (s) => { const p = s.parts[b]; p.fns.push(f); for (const [k, v] of Object.entries(st.parts[a].things)) if (k.startsWith(f.fn + ".")) { p.things[k] = v; if (k in st.parts[a].by) p.by[k] = st.parts[a].by[k]; } });
+const empty = (st, n, key) => edit(st, (s) => { s.parts[n].things[key] = null; delete s.parts[n].by[key]; });
+const unlink = (st, pid) => edit(st, (s) => { for (const p of s.parts) for (const k in p.by) if (p.by[k] === pid) { p.things[k] = null; delete p.by[k]; } });
+const fill = (st, n, key, v, pid) => edit(pid == null ? st : unlink(st, pid), (s) => { s.parts[n].things[key] = v; if (pid == null) delete s.parts[n].by[key]; else s.parts[n].by[key] = pid; });
+
+// ---------- the layout: where each thing is drawn for 1 state, on a board W wide ----------
+const LH = 28;
+function textFlow(ev, a, b, P, maxW, tags) {  // the words from a to b as typed, with each piece and each tag in its place, wrapped at maxW
+  const items = [], space = tw(" ", FONT.body);
+  let x = 0, line = 0, gap = 0, w = 0;
+  const place = (it, iw) => {
+    if (x > 0 && x + gap + iw > maxW) { line++; x = 0; } else if (x > 0) x += gap;
+    const last = items.at(-1);
+    if (it.kind === "run" && last?.kind === "run" && last.y === line * LH) { last.text += (x > last.x + last.w ? " " : "") + it.text; last.w = x + iw - last.x; }
+    else items.push({ ...it, x, y: line * LH, w: iw });
+    x += iw; w = Math.max(w, x); gap = 0;
+  };
+  const words = (s) => { for (let seg of s.match(/\n|[^\S\n]+|\S+/g) || []) {
+    if (seg === "\n") { line++; x = 0; gap = 0; continue; }
+    if (/^\s/.test(seg)) { gap = space; continue; }
+    while (seg.length > 1 && tw(seg, FONT.body) > maxW) { let k = seg.length; while (k > 1 && tw(seg.slice(0, k), FONT.body) > maxW) k--; place({ kind: "run", text: seg.slice(0, k) }, tw(seg.slice(0, k), FONT.body)); seg = seg.slice(k); }
+    place({ kind: "run", text: seg }, tw(seg, FONT.body));
+  } };
+  const marks = [...P.filter((p) => p.start >= a && p.end <= b).map((p) => ({ at: p.start, p })), ...tags].sort((m, k) => m.at - k.at || (m.p ? 1 : -1));
+  let i = a;
+  for (const m of marks) {
+    words(ev.text.slice(i, m.at));
+    if (m.p) { place({ kind: "piece", p: m.p }, tw(m.p.words, FONT.body) + (OPEN ? 12 + (m.p.of ? 6 + tw(short(m.p.value, 20), FONT.code) : 0) : 0)); i = m.p.end; }
+    else { gap = space * 2; place({ kind: "tag", text: m.text }, tw(m.text, FONT.code)); i = Math.max(i, m.at); }
   }
-  return { W, rows, tray, types, holes: rows.flatMap((r) => r.tokens.filter((t) => t.kind === "hole")), height: Math.max(y, 24) };
+  words(ev.text.slice(i, b));
+  return { items, w, h: (line + 1) * LH };
+}
+function flowRow(ts, maxW) {  // chips in a row that wraps. br starts a new line, top is the space above it
+  let x = 0, y = 0, lh = 0, w = 0;
+  for (const t of ts) { if (x > 0 && (t.br || x + t.w > maxW)) { y += lh + (t.top ?? 8); x = 0; lh = 0; } t.x = x; t.y = y; x += t.w + 8; lh = Math.max(lh, t.h); w = Math.max(w, x - 8); }
+  return { w, h: y + lh };
+}
+// A function on a part, as a brick: its name, d1's probability, and each hole: path=, the mark of its type, and its value or its type.
+function brick(ev, st, n, f, maxW) {
+  const p = st.parts[n], d = f.id[0] === "d" ? ev.demands[+f.id.slice(1)] : null, score = d ? two(d.p) : "";
+  const head = { kind: "name", w: tw(f.fn, FONT.codeB) + (score ? 8 + tw(score, FONT.code) : 0), h: 28, score };
+  const holes = holesOf(ev, f.fn).map(([path, type]) => {
+    const key = `${f.fn}.${path}`, v = p.things[key], pid = p.by[key], label = tw(path + "=", FONT.code);
+    const sw = 30 + (v == null ? tw(names(type).join(" | "), FONT.code) : tw(short(v), FONT.strong) + (pid != null ? 22 : 0)) + 8;
+    return { kind: "hole", key, path, type, v, pid, faint: !(key in p.things), label, sw, w: label + 4 + sw, h: 28 };
+  });
+  const r = flowRow([head, ...holes], maxW - 16);
+  return { w: r.w + 16, h: r.h + 16, tokens: [head, ...holes] };
+}
+function layout(ev, st) {
+  const parts = partsOf(ev), P = piecesOf(ev), L = { els: [], box: {} };
+  const add = (e) => { L.els.push(e); if (e.id) L.box[e.id] = e; return e; };
+  const bubble = (key, a, b, maxW, tags, y) => {
+    const f = textFlow(ev, a, b, P, maxW - 24, tags);
+    add({ kind: "bubble", id: "b-" + key, x: 0, y, w: f.w + 24, h: f.h + 8 });
+    f.items.forEach((it, k) => add({ ...it, id: it.kind === "piece" ? "pc-" + it.p.id : `t-${key}-${k}-${sid(it.text)}`, x: 12 + it.x, y: y + 4 + it.y }));
+    return f.h + 8;
+  };
+  let y = 0;
+  if (!OPEN) {  // the message as typed. At the end of each sentence: its tag, the functions it asks for, or d1's choice
+    const tags = parts.map((part, n) => {
+      const fns = st.parts[n].fns.map((f) => f.fn), c = choiceOf(part), tag = fns.length ? fns.join(" + ") : FNS.includes(c) ? "nothing" : c;
+      return { at: part.end, text: tag + (tag === c && part.scores?.[c] != null ? " " + two(part.scores[c]) : "") };
+    });
+    y = bubble("all", 0, ev.text.trimEnd().length, W >= 720 ? Math.round(W * 0.7) : W, tags, 0);
+  } else {  // each sentence its own bubble, and beside it (under it on a narrow board) the functions that it asks for
+    const wide = W >= 720, bmax = wide ? Math.min(440, Math.round(W * 0.45)) : W, cx = wide ? bmax + 24 : 0, cw = W - cx;
+    parts.forEach((part, n) => {
+      const y0 = y, row = add({ kind: "row", id: "p-" + n, x: 0, y: y0 - 8, w: W, h: 0 }), bh = bubble(n, part.start, part.end, bmax, [], y0);
+      let by = wide ? y0 : y0 + bh + 8;
+      if (!st.parts[n].fns.length) {
+        const c = choiceOf(part), text = c + (part.scores?.[c] != null ? " " + two(part.scores[c]) : "");
+        add({ kind: c === "none" ? "abstain" : "tag", id: `c-${n}-${sid(text)}`, text, x: cx, y: by, w: tw(text, FONT.code) + (c === "none" ? 16 : 0), h: 28 });
+        by += 36;
+      }
+      for (const f of st.parts[n].fns) {
+        const b = add({ kind: "brick", id: "f-" + f.id, f, n, x: cx, y: by, ...brick(ev, st, n, f, cw) });
+        for (const t of b.tokens) if (t.kind === "hole") L.box[`h-${f.id}-${t.key}`] = { x: cx + 8 + t.x + t.label + 4, y: by + 8 + t.y, w: t.sw, h: 28 };
+        by += b.h + 8;
+      }
+      const rh = Math.max(wide ? bh : 0, by - 8 - y0);
+      row.h = rh + 16; y = y0 + rh + 16;
+    });
+    // the world: its functions, then each type with the mark that it has everywhere, and the members of a sum type
+    y += 16;
+    const ty = y, items = FNS.map((fn) => ({ kind: "tfn", id: "tf-" + fn, fn, w: tw(fn, FONT.codeB) + 16, h: 28 }));
+    TYPES.forEach((type, ti) => {
+      items.push({ kind: "type", id: "ty-" + ti, type, br: true, top: ti ? 8 : 16, w: 30 + tw(type, FONT.code) + 8, h: 28 });
+      (WORLD.types[type]?.sum ?? []).forEach((m, vi) => items.push({ kind: "member", id: `m-${ti}-${vi}`, type, m, w: tw(short(m, 30), FONT.strong) + 16, h: 28 }));
+    });
+    const r = flowRow(items, W - 24);
+    add({ kind: "tray", id: "tray", x: 0, y: ty, w: W, h: r.h + 24 });
+    for (const t of items) add({ ...t, x: 12 + t.x, y: ty + 12 + t.y });
+    y = ty + r.h + 24;
+  }
+  L.height = Math.max(y, LH);
+  return L;
 }
 
-// ---------- the drag layer. This is the only function that uses the drag library (Dragology 0.2.0). ----------
-// A draggable is a pure function from a state to SVG. The library calls it on each state that a drop could produce, and draws the nearest one
-// while the pointer moves (the preview). Between 2 states an element with the same id may change numbers only (place, size, opacity).
-// So a mark such as "crossed out" is always drawn, and only its opacity changes. A text that changes has its text in its id.
-let boardRoot = null, dragging = null;
-function mountBoard(host, ev, reply, W, state, { onDrop, onPreview, say }) {
-  const { React, createRoot, DraggableRenderer, translate, runAmb, amb } = window.Dragology, h = React.createElement;
-  const T = { bg: css("--bg"), surface: css("--surface"), t1: css("--text-1"), t2: css("--text-2"), accent: css("--accent"), on: css("--on-accent") };
-  const CODE = css("--font-code"), TEXT = css("--font-text"), parts = partsOf(ev);
-  const color = (type) => { const i = TYPES.indexOf(type); return i >= 0 && i < 12 ? css(`--class-${i + 1}`) : null; };
-  const text = (x, y, str, props) => h("text", { transform: translate(x, y), fontFamily: TEXT, fontSize: 16, fontWeight: 400, fill: T.t1, ...props }, str);
-  const code = (x, y, str, props) => text(x, y, str, { fontFamily: CODE, fontSize: 14, ...props });
-  const box = (w, props) => h("rect", { width: w, height: 28, rx: 2, fill: T.surface, ...props });
-  const edge = (w, id, draggedId) => h("rect", { className: "edge", x: 1, y: 1, width: w - 2, height: 26, rx: 1, fill: "none", stroke: T.t1, strokeWidth: 2, strokeOpacity: draggedId === id ? 1 : 0 });
-  const mark = (x, type) => h("rect", { x, y: 10, width: 8, height: 8, fill: color(type) || T.t2 });
-  const tell = (words) => ({ onPointerEnter: () => dragging || Date.now() < HOLD || say(words), onPointerLeave: () => dragging || say(null) });
-  // What a press does is said under the pointer and on focus. The class, role and tab stop of an element never change between states (the library blends states).
-  const press = (cls, words, act) => ({ className: cls, role: "button", tabIndex: 0, ...tell(words), onFocus: () => say(words), onBlur: () => say(null),
-    onClick: () => act && act(), onKeyDown: (k) => { if (act && (k.key === "Enter" || k.key === " ")) { k.preventDefault(); act(); } } });
-  const outline = (x, y, w, hh) => h("rect", { transform: translate(x, y), width: w, height: hh, rx: 2, fill: "none", stroke: T.accent, strokeWidth: 2 });
+// ---------- the board: a pure function from a state to SVG (Dragology 0.2.0). ----------
+// Each thing that can be picked up lists the states that a drop can produce, each as d.dropTarget(the id of the place, the state).
+// While the pointer is inside a place, the library draws that state (the speculative preview); outside every place it draws the state of whenFar.
+// The dragged thing floats under the pointer, its ghost stays where the preview puts it, and withOverlay marks every place that takes it.
+// An element with an id keeps its class, role and tab stop in every state: the library blends the states of a drop.
+function draggable({ state: st, d, draggedId }) {
+  const ev = EVENTS[MSGS[at]], L = layout(ev, st), P = piecesOf(ev);
+  const used = new Set(st.parts.flatMap((p) => Object.values(p.by))), num = new Map(P.filter((p) => used.has(p.id)).map((p, k) => [p.id, k + 1]));
+  const txt = (x, y, s, props) => h("text", { transform: translate(x, y), fontFamily: C.text, fontSize: 16, fill: C.t1, ...props }, s);
+  const code = (x, y, s, props) => txt(x, y, s, { fontFamily: C.code, fontSize: 14, ...props });
+  const edge = (w, hh) => h("rect", { className: "edge", x: -2, y: -2, width: w + 4, height: hh + 4, rx: 3, fill: "transparent", stroke: C.t1, strokeWidth: 2, strokeOpacity: 0 });
+  const jig = (id, wide, ...kids) => h("g", { className: `jig${wide ? " wide" : ""}${sid(id) % 2 ? " late" : ""}` }, ...kids);
+  const mark = (x, type) => h("rect", { x, y: 10, width: 8, height: 8, fill: color(type) });
+  const badge = (id, x, y, k, c) => h("g", { id, transform: translate(x, y) }, h("circle", { r: 8, fill: C.bg, stroke: c, strokeWidth: 2 }), code(0, 4, String(k), { fontSize: 11, fontWeight: 600, textAnchor: "middle" }));
+  const outline = (b, now) => h("rect", { transform: translate(b.x - 4, b.y - 4), width: b.w + 8, height: b.h + 8, rx: 4, fill: C.accent, fillOpacity: now ? 0.12 : 0, stroke: C.accent, strokeWidth: now ? 3 : 2 });
+  const hint = (words) => (words ? { onPointerEnter: () => DRAGGING || HELD || say(words), onPointerLeave: () => DRAGGING || HELD || say(LINE) } : {});
+  const grab = (id, label, options, far = st) => ({
+    className: "grab", role: "button", tabIndex: 0, "aria-label": label,
+    dragologyOnDrag: () => {
+      const o = options();
+      DRAGGING = true;
+      return d.closest(o.map((x) => d.dropTarget(x.target, x.state, { boundsState: st }))).whenFar(far).withFloating({ ghost: true })
+        .withOverlay(h("g", null, ...o.map((x) => L.box[x.target]).filter(Boolean).map((b) => outline(b))));
+    },
+    dragologyZIndex: draggedId === id ? "/1" : false,
+    onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); hold(id, [...options(), ...(far !== st ? [{ target: id, state: far }] : [])]); } },
+  });
+  // the places that take a thing of this type: every hole whose type has it
+  const holes = (type, skip) => L.els.filter((e) => e.kind === "brick").flatMap((e) => e.tokens.filter((t) => t.kind === "hole" && names(t.type).includes(type) && !skip(e, t)).map((t) => ({ e, t, target: `h-${e.f.id}-${t.key}` })));
+  const freeParts = (fn, not) => partsOf(ev).map((_, n) => n).filter((n) => n !== not && !st.parts[n].fns.some((g) => g.fn === fn));
 
-  const draggable = ({ state: st, d, draggedId }) => {
-    const L = layout(ev, st, W, reply);
-    // Each place to drop is a branch. The nearest branch is the preview, and its mark is drawn over it (an overlay goes outside the floating).
-    const grab = (id, what, branches) => ({ dragologyOnDrag: () => { dragging = what; return d.closest(branches()).whenFar(d.fixed(st).withFloating()); }, dragologyZIndex: draggedId === id ? "/1" : false });
-    const rowOf = (n) => L.rows.find((r) => r.n === n);
-    // a function: from the functions that no part asks for onto a part, from part to part, or back
-    const fnChip = (t) => {
-      const e = t.e, id = "f-" + e.id, mine = e.user && !t.tray, d1s = !e.user;
-      const targets = () => [
-        ...(d1s ? [] : runAmb(() => { const n = amb(parts.map((_, k) => k)); if (n === t.n || live(st, n).some((x) => x.fn === e.fn)) return null; return n; }).filter((n) => n != null)
-          .map((n) => d.dropTarget("p-" + n, onPart(st, n, e), { boundsState: st }).withFloating().withOverlay(outline(-4, rowOf(n).y - 4, W + 8, rowOf(n).h + 8)))),
-        ...(!t.tray && !e.off && L.tray ? [d.dropTarget("tray", offPart(st, e), { boundsState: st }).withFloating().withOverlay(outline(0, L.tray.y, W, L.tray.h))] : [])];
-      const words = t.tray ? `Drag ${e.fn} onto a part: that part asks the reader to ${(WORLD.functions[e.fn] || {}).asks || e.fn}.${e.fn in ev.p ? ` d1 said ${two(ev.p[e.fn])} for the whole message.` : ""}`
-        : e.off ? `Press: part ${t.n + 1} asks for ${e.fn} again.`
-        : t.n >= parts.length ? `d1 found ${e.fn} in the message and in no part of it.`
-        : `Press: part ${t.n + 1} does not ask for ${e.fn}.${OPEN ? (mine ? " Drag: move it to another part." : " Drag it down to the functions that no part asks for: the same.") : ""}`;
-      const act = t.tray || t.n >= parts.length ? null : () => onDrop(offPart(st, e), true);
-      const x0 = 8 + (mine ? t.you + 4 : 0);
-      return h("g", { id, transform: translate(t.x, t.y), ...press(OPEN ? "grab" : "press", words, act), ...(OPEN && (t.tray || (!e.off && t.n < parts.length)) ? grab(id, { kind: "fn", label: e.fn }, targets) : {}) },
-        box(t.w), edge(t.w, id, draggedId),
-        text(8, 19, e.user ? "you" : "", { fontSize: 14, fillOpacity: mine ? 1 : 0 }),
-        code(x0, 19, e.fn, { fontWeight: 600 }),
-        h("rect", { x: x0, y: 13, width: t.name, height: 2, fill: T.t1, fillOpacity: e.off || t.tray ? 1 : 0 }),
-        code(x0 + t.name + 8, 19, e.user && e.fn in ev.p ? two(ev.p[e.fn]) : "", { fillOpacity: t.tray ? 1 : 0 }));
-    };
-    // a hole: a box with a border while it is open, a chip when a value fills it
-    const holeId = (t) => `h-${t.e.id}-${t.pi}`;
-    const hole = (t) => {
-      const filled = t.v != null, x0 = 8 + t.label + (t.cls ? 12 : 0);
-      const words = filled ? `Press: empty ${t.path} of ${t.e.fn}.` : sums(t.type).length ? `${t.path} of ${t.e.fn} is open. Drag a ${sums(t.type).join(" or ")} here${OPEN ? "" : " (show the decisions first)"}.` : `${t.path} of ${t.e.fn} is open: the message has no ${t.type} for it.`;
-      return h("g", { id: holeId(t), transform: translate(t.x, t.y), ...press("press", words, filled ? () => onDrop(fill(ev, st, t.e, t.path, null), true) : null) },
-        box(t.w, { fillOpacity: filled ? 1 : 0 }),
-        h("rect", { x: 1, y: 1, width: t.w - 2, height: 26, rx: 1, fill: "none", stroke: T.t1, strokeWidth: 2, strokeOpacity: filled ? 0 : 1 }),
-        edge(t.w, null, 0),
-        code(8, 19, OPEN ? t.path : ""), t.cls ? mark(8 + t.label, t.cls) : null, code(x0, 19, t.cls || t.type),
-        h("g", { id: `${holeId(t)}-${sid(t.shown)}`, transform: translate(x0 + t.typeW + 8, 0) }, text(0, 19, t.shown, { fontSize: 14, fontWeight: 600 })));
-    };
-    const into = (type, v, self) => L.holes.filter((t) => accepts(t.type, type) && t.e.id !== self && t.v !== v);
-    const lit = (type, self) => h("g", null, ...L.holes.filter((t) => accepts(t.type, type) && t.e.id !== self).map((t) => outline(t.x - 3, t.y - 3, t.w + 6, 34)));
-    // the result of a function: onto a hole of its type in another function
-    const ret = (t) => {
-      const id = "r-" + t.e.id, v = `${t.e.fn}()`, words = `Drag the result of ${t.e.fn} onto a hole of type ${t.type} of another function.`;
-      return h("g", { id, transform: translate(t.x, t.y), className: "grab", ...tell(words),
-          dragologyOnDrag: () => { dragging = { kind: "thing", type: t.type, label: `The result of ${t.e.fn}` }; return d.closest(into(t.type, v, t.e.id).map((o) => d.dropTarget(holeId(o), fill(ev, st, o.e, o.path, v), { boundsState: st }))).whenFar(st).withFloating().withOverlay(lit(t.type, t.e.id)); },
-          dragologyZIndex: draggedId === id ? "/1" : false },
-        box(t.w), edge(t.w, id, draggedId), code(8, 19, "->"), mark(8 + tw("->", FONT.code) + 8, t.type), code(8 + tw("->", FONT.code) + 8 + 12, 19, t.type));
-    };
-    // a named thing of a sum type: onto a hole of that type. Only those holes are marked.
-    const thing = (t) => {
-      const id = `n-${t.ti}-${t.vi}`, words = `Drag "${t.thing}" onto a hole of type ${t.type}.`;
-      return h("g", { id, transform: translate(t.x, t.y), className: "grab", ...tell(words),
-          dragologyOnDrag: () => { dragging = { kind: "thing", type: t.type, label: `"${t.thing}"` }; return d.closest(into(t.type, t.thing).map((o) => d.dropTarget(holeId(o), fill(ev, st, o.e, o.path, t.thing), { boundsState: st }))).whenFar(st).withFloating().withOverlay(lit(t.type)); },
-          dragologyZIndex: draggedId === id ? "/1" : false },
-        box(t.w), edge(t.w, id, draggedId), text(8, 19, t.shown, { fontSize: 14, fontWeight: 600 }));
-    };
-    const q = (t) => {
-      const words = t.off ? (st.none[t.n] ? `Press: part ${t.n + 1} asks for something again.` : `You put a function on part ${t.n + 1}.`) : `d1 abstains: part ${t.n + 1} asks for something, and no function of the world fits it. Press: this part asks nothing.`;
-      return h("g", { id: "q-" + t.n, transform: translate(t.x, t.y), ...press("press", words, t.off && !st.none[t.n] ? null : () => onDrop(edit(st, (s) => { s.none[t.n] = !s.none[t.n]; }), true)) },
-        box(t.w), edge(t.w, null, 0), code(8, 19, "?", { fontWeight: 600 }), h("rect", { x: 6, y: 13, width: t.w - 12, height: 2, fill: T.t1, fillOpacity: t.off ? 1 : 0 }));
-    };
-    const wordOf = (t, j) => h("g", { id: `w-${t.key}-${j}-${sid(t.text + t.how)}`, transform: translate(t.x, t.y) },
-      text(0, 17, t.text, { fontWeight: t.how === "taken" ? 600 : 400, fill: t.how === "out" ? T.t2 : T.t1 }),
-      t.how === "out" ? h("rect", { y: 11, width: t.w, height: 2, fill: T.t2 }) : null);
-    const joinOf = (t, r, j) => h("g", { id: `j-${r.n}-${j}`, transform: translate(t.x, t.y) }, h("rect", { y: 11, width: 16, height: 2, fill: T.t1 }));
-    const token = (r) => (t, j) => ({ fn: fnChip, hole, ret, q, word: (w) => wordOf(w, j), join: (w) => joinOf(w, r, j) })[t.kind](t);
-
-    return h("g", null,
-      ...L.rows.map((r) => h("g", { id: "p-" + r.n, transform: translate(0, r.y) }, h("rect", { width: W, height: r.h, fill: "transparent" }))),
-      ...L.rows.map((r) => (r.n < parts.length
-        ? h("g", { id: "b-" + r.n, transform: translate(0, r.y) }, h("rect", { width: r.bubble.w, height: r.bubble.h, rx: 20, fill: T.accent }), ...r.lines.map((l, k) => text(12, 8 + 17 + 24 * k, l, { fill: T.on })))
-        : h("g", { id: "b-" + r.n, transform: translate(0, r.y) }, text(0, 8 + 17, r.lines[0], { fill: T.t2 })))),
-      L.tray ? h("g", { id: "tray", transform: translate(0, L.tray.y) },
-        h("rect", { x: 1, y: 1, width: W - 2, height: L.tray.h - 2, rx: 2, fill: "none", stroke: T.t1, strokeWidth: 2 }),
-        text(12, 12 + 17, L.tray.tokens.length ? "No part asks for these" : "Every function of the world is asked for", { fontWeight: 600 })) : null,
-      ...L.types.filter((t) => t.kind === "type").map((t) => h("g", { id: "y-" + t.ti, transform: translate(t.x, t.y) }, mark(0, t.type), code(12, 19, t.type, { fontWeight: 600 }))),
-      ...L.rows.flatMap((r) => r.tokens.map(token(r))),
-      ...(L.tray ? L.tray.tokens.map(fnChip) : []),
-      ...L.types.filter((t) => t.kind === "thing").map(thing));
+  const draw = {
+    row: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, fill: "transparent" }),
+    bubble: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, rx: 20, fill: C.surface }),
+    run: (e) => txt(e.x, e.y + 19, e.text, { id: e.id }),
+    tag: (e) => code(e.x, e.y + 19, e.text, { id: e.id, fill: C.t2 }),
+    abstain: (e) => h("g", { id: e.id, transform: translate(e.x, e.y) }, h("rect", { width: e.w, height: 28, rx: 2, fill: "none", stroke: C.t2, strokeWidth: 2, strokeDasharray: "4 3" }), code(8, 19, e.text, { fill: C.t2 })),
+    piece: (e) => {
+      const p = e.p, c = color(p.type), k = num.get(p.id);
+      if (!OPEN) return h("g", { id: e.id, transform: translate(e.x, e.y), "data-link": "p" + p.id }, h("rect", { x: -2, y: 3, width: e.w + 4, height: 22, rx: 2, fill: c, fillOpacity: 0.2 }), h("rect", { x: -2, y: 23, width: e.w + 4, height: 2, fill: c }), txt(0, 19, p.words));
+      const options = () => [...holes(p.type, (_, t) => t.pid === p.id).map((o) => ({ target: o.target, state: fill(st, o.e.n, o.t.key, p.value, p.id) })), ...(k ? [{ target: "tray", state: unlink(st, p.id) }] : [])];
+      return h("g", { id: e.id, transform: translate(e.x, e.y), "data-link": "p" + p.id, ...grab(e.id, p.words, options) },
+        jig(e.id, false, h("rect", { y: 2, width: e.w, height: 24, rx: 2, fill: C.bg, stroke: c, strokeWidth: 2 }), edge(e.w, 28), txt(6, 19, p.words),
+          p.of ? code(12 + tw(p.words, FONT.body), 19, short(p.value, 20), { fill: C.t2 }) : null),
+        k ? badge(`${e.id}-k${k}`, e.w, 3, k, c) : null);
+    },
+    brick: (e) => {
+      const f = e.f, options = () => [...freeParts(f.fn, e.n).map((m) => ({ target: "p-" + m, state: moveFn(st, e.n, m, f) })), { target: "tray", state: dropFn(st, e.n, f) }];
+      return h("g", { id: e.id, transform: translate(e.x, e.y), ...grab(e.id, f.fn, options), ...hint(WORLD.functions[f.fn]?.asks) },
+        jig(e.id, true, h("rect", { width: e.w, height: e.h, rx: 2, fill: C.surface }), edge(e.w, e.h),
+          ...e.tokens.map((t) => (t.kind === "name"
+            ? h("g", { transform: translate(8 + t.x, 8 + t.y) }, code(0, 19, f.fn, { fontWeight: 600 }), t.score ? code(tw(f.fn, FONT.codeB) + 8, 19, t.score, { fill: C.t2 }) : null)
+            : hole(e, t)))));
+    },
+    tray: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, rx: 2, fill: "none", stroke: C.rule, strokeWidth: 2 }),
+    tfn: (e) => h("g", { id: e.id, transform: translate(e.x, e.y), ...grab(e.id, e.fn, () => freeParts(e.fn).map((n) => ({ target: "p-" + n, state: addFn(ev, st, n, e.fn) }))), ...hint(WORLD.functions[e.fn]?.asks) },
+      jig(e.id, false, h("rect", { width: e.w, height: 28, rx: 2, fill: C.surface }), edge(e.w, 28), code(8, 19, e.fn, { fontWeight: 600 }))),
+    type: (e) => h("g", { id: e.id, transform: translate(e.x, e.y), ...grab(e.id, e.type, () => holes(e.type, (_, t) => t.v == null && !t.faint).map((o) => ({ target: o.target, state: empty(st, o.e.n, o.t.key) }))), ...hint(WORLD.types[e.type]?.doc) },
+      jig(e.id, false, h("rect", { width: e.w, height: 28, rx: 2, fill: C.bg, stroke: color(e.type), strokeWidth: 2, strokeDasharray: "4 3" }), edge(e.w, 28), mark(8, e.type), code(22, 19, e.type))),
+    member: (e) => h("g", { id: e.id, transform: translate(e.x, e.y), ...grab(e.id, e.m, () => holes(e.type, (_, t) => t.v === e.m && t.pid == null).map((o) => ({ target: o.target, state: fill(st, o.e.n, o.t.key, e.m, null) }))) },
+      jig(e.id, false, h("rect", { width: e.w, height: 28, rx: 2, fill: C.bg, stroke: color(e.type), strokeWidth: 2 }), edge(e.w, 28), txt(8, 19, short(e.m, 30), { fontWeight: 600 }))),
   };
-  boardRoot = boardRoot || createRoot(host);
-  boardRoot.render(h(DraggableRenderer, { key: GEN, draggable, state, width: W, height: layout(ev, state, W, reply).height, onDropState: (next) => onDrop(next, false), onDragState: onPreview }));
+  // a hole: dashed with the name of its type while it is open, solid with its value when a thing fills it. A hole that may stay empty is faint until a thing or a type is put in it.
+  function hole(e, t) {
+    const id = `h-${e.f.id}-${t.key}`, c = color(t.type), sx = t.label + 4, filled = t.v != null;
+    return h("g", { id, transform: translate(8 + t.x, 8 + t.y), opacity: t.faint ? 0.45 : 1 },
+      code(0, 19, t.path + "=", { fill: C.t2 }),
+      h("rect", { x: sx, width: t.sw, height: 28, rx: 2, fill: C.bg, stroke: c, strokeWidth: 2, strokeOpacity: filled ? 1 : 0 }),
+      h("rect", { x: sx, width: t.sw, height: 28, rx: 2, fill: "none", stroke: c, strokeWidth: 2, strokeDasharray: "4 3", strokeOpacity: filled ? 0 : 1 }),
+      mark(sx + 8, t.type),
+      filled ? value(e, t, sx + 22) : h("g", { id: `${id}-o`, transform: translate(sx + 22, 0) }, code(0, 19, names(t.type).join(" | "), { fill: C.t2 })));
+  }
+  // a thing in a hole: drag it to another hole of its type, or anywhere else to pull it out (the hole is then open)
+  function value(e, t, x) {
+    const id = `v-${e.f.id}-${t.key}-${sid(t.v)}`, k = t.pid != null ? num.get(t.pid) : 0, wv = tw(short(t.v), FONT.strong);
+    const type = t.pid != null ? P.find((p) => p.id === t.pid)?.type ?? names(t.type)[0] : names(t.type)[0], out = empty(st, e.n, t.key);
+    const options = () => holes(type, (e2, t2) => e2 === e && t2 === t).map((o) => ({ target: o.target, state: fill(out, o.e.n, o.t.key, t.v, t.pid) }));
+    return h("g", { id, transform: translate(x, 0), "data-link": t.pid != null ? "p" + t.pid : "none", ...grab(id, t.v, options, out) },
+      jig(id, false, edge(wv + (k ? 22 : 0), 24), txt(0, 19, short(t.v), { fontWeight: 600 })),
+      k ? badge(`${id}-k${k}`, wv + 12, 14, k, color(type)) : null);
+  }
+  const held = HELD ? HELD.opts.map((o, k) => L.box[o.target] && outline(L.box[o.target], k === HELD.i)).filter(Boolean) : [];
+  return h("g", null, ...L.els.map((e) => draw[e.kind](e)), h("g", { id: "held" }, ...held));
 }
 
 // ---------- the page ----------
-let at = 0, GEN = 0, OPEN = true, resting = "", savedNote = "", HOLD = 0;  // HOLD: until then the sentence says what a drop or a press did, not what the next press does
-const store = {}, saved = {};  // by message: your reading {asks, none, things}, and the reading of each part that the log already has
-const current = () => MSGS[at];
-const reading = (i) => store[i] || decided(EVENTS[i]);
-const base = (i, n) => (saved[i] && n in saved[i] ? saved[i][n] : sig(EVENTS[i], decided(EVENTS[i]), n));
-const unsaved = (i) => partsOf(EVENTS[i]).map((_, n) => n).filter((n) => !partsOf(EVENTS[i])[n].old && sig(EVENTS[i], reading(i), n) !== base(i, n));
-const say = (words) => { $("status").textContent = words ?? resting; };
-
-function load(data) {
-  ({ world: WORLD, events: LOG, measure: MEASURE } = data);
-  WORLD = { types: WORLD.types || {}, functions: WORLD.functions || {} };
-  EVENTS = LOG.filter((e) => e.event !== "Disagree");
-  MSGS = EVENTS.map((ev, i) => (asked(ev) ? i : -1)).filter((i) => i >= 0);
-  FNS = Object.keys(WORLD.functions); TYPES = Object.keys(WORLD.types);
-  for (const k of Object.keys(store)) { delete store[k]; delete saved[k]; }
-  for (const r of LOG.filter((e) => e.event === "Disagree" && Number.isInteger(e.part))) {  // the readings that you saved before, 1 part each
-    const i = MSGS.findLast((m) => EVENTS[m].session === r.session && EVENTS[m].text === r.text), ev = EVENTS[i];
-    if (i == null || !ev.parts || r.part >= ev.parts.length) continue;
-    const st = store[i] || decided(ev), n = r.part;
-    st.asks[n] = st.asks[n].filter((e) => !e.user).map((e) => ({ ...e, off: !r.demands.includes(e.fn) }));
-    for (const fn of r.demands) if (FNS.includes(fn) && !st.asks[n].some((e) => e.fn === fn)) st.asks[n].push({ id: st.asks.flat().some((e) => e.id === "t" + FNS.indexOf(fn)) ? `u${n}-${FNS.indexOf(fn)}` : "t" + FNS.indexOf(fn), fn, off: false, user: true });
-    st.none[n] = !r.demands.length && !!ev.parts[n].hole;
-    for (const e of live(st, n)) for (const [path] of holesOf(ev, e)) if (path in (r.things || {}) && r.things[path] !== d1Value(ev, e, path)) st.things[`${e.id}|${path}`] = r.things[path];
-    store[i] = st; (saved[i] = saved[i] || {})[n] = sig(ev, st, n);
-  }
-  // Your own log opens on the newest message. The recorded one opens on the message of 5 parts or fewer that has the most of: a filled hole, an abstention, a part that asks nothing.
-  const has = (ev) => [ev.demands.some((d) => Object.values(d.parameters).some((p) => p.value)), partsOf(ev).some((p) => p.hole), partsOf(ev).some((p) => !p.hole && !p.demands.length)].filter(Boolean).length;
-  const few = (ev) => partsOf(ev).length <= 5;
-  const demo = MSGS.map((m, k) => [EVENTS[m], k]).sort((a, b) => few(b[0]) - few(a[0]) || has(b[0]) - has(a[0]) || a[0].text.length - b[0].text.length)[0];
-  at = MEASURE && demo ? demo[1] : Math.max(0, MSGS.length - 1);
-  resting = savedNote = "";
-  draw();
-}
-
-function drawFoot(st) {
-  const i = current(), ev = EVENTS[i], parts = partsOf(ev), reply = replyOf(i), n = parts.filter((_, k) => asks(ev, st, k)).length, todo = unsaved(i);
-  $("count").textContent = `${n} of ${parts.length} ${parts.length === 1 ? "part asks" : "parts ask"}.${reply.back ? " The reply was sent back." : ""} ${OPEN ? "Hide the decisions" : "Show the decisions"}`;
-  $("count").setAttribute("aria-expanded", OPEN);
-  $("save").hidden = !LOCAL || (!todo.length && !savedNote);
-  $("save").disabled = !todo.length;
-  $("save").textContent = todo.length ? `Save ${todo.length === 1 ? `your reading of part ${todo[0] + 1}` : `your reading of ${todo.length} parts`} for Claude` : savedNote;
-  $("undo").hidden = !changed(ev, st).length;
-  $("block").hidden = !OPEN;
-  $("block").textContent = block(ev, st);
-}
-
+const say = (words) => { $("say").textContent = words ?? ""; };
 function draw() {
-  GEN++;
-  for (const id of ["what", "install"]) $(id).hidden = LOCAL;
   $("nav").hidden = MSGS.length < 2;
-  if (!MSGS.length) { for (const id of ["board", "foot", "block"]) $(id).hidden = true; resting = "No messages yet. Send Claude a message in a folder where the harness is installed."; return say(null); }
-  const i = current(), ev = EVENTS[i], host = $("board");
+  if (!MSGS.length) { for (const id of ["board", "foot"]) $(id).hidden = true; return say("No messages yet. Send Claude a message in a folder where the harness is installed."); }
+  const i = MSGS[at], host = $("board");
   $("where").textContent = `Message ${at + 1} of ${MSGS.length}`;
   $("prev").disabled = at === 0; $("next").disabled = at === MSGS.length - 1;
-  FONT = { body: `400 16px ${css("--font-text")}`, strong: `600 16px ${css("--font-text")}`, chipText: `600 14px ${css("--font-text")}`, chip: `600 14px ${css("--font-code")}`, code: `400 14px ${css("--font-code")}` };
-  const W = Math.max(280, host.clientWidth), reply = replyOf(i);
+  FONT = { body: `400 16px ${css("--font-text")}`, strong: `600 16px ${css("--font-text")}`, code: `400 14px ${css("--font-code")}`, codeB: `600 14px ${css("--font-code")}` };
+  C = { bg: css("--bg"), surface: css("--surface"), t1: css("--text-1"), t2: css("--text-2"), rule: css("--rule"), accent: css("--accent"), text: css("--font-text"), code: css("--font-code") };
+  W = Math.max(280, host.clientWidth);
+  host.classList.toggle("open", OPEN);
   host.style.minHeight = "";
-  mountBoard(host, ev, reply, W, reading(i), {
-    say,
-    // while the pointer moves: the count, the block and the sentence are those of the state that a drop here would produce
-    onPreview: (next) => {
-      if (!dragging) return;
-      const would = sentences(ev, reading(i), next);
-      host.style.minHeight = layout(ev, next, W, reply).height + "px";
-      drawFoot(next);
-      say(would.length ? "Drop here: " + would.join(" ") : dragging && dragging.kind === "thing" ? `${dragging.label} fits a hole of type ${dragging.type}. The holes that it fits are marked.` : "Drop it on a part, or on the functions that no part asks for.");
-    },
-    onDrop: (next, pressed) => {
-      const did = sentences(ev, reading(i), next), was = dragging;
-      dragging = null;
-      if (changed(ev, next).length) store[i] = next; else delete store[i];
-      if (did.length) savedNote = "";
-      resting = did.length ? did.join(" ") + (LOCAL && unsaved(i).length ? " Not saved yet." : "") : !pressed && was ? refusal || "Nothing changed." : resting;
-      refusal = ""; HOLD = Date.now() + 3000;
-      draw(); say(null);
-    },
-  });
-  drawFoot(reading(i));
+  const st = HELD ? HELD.opts[HELD.i].state : reading(i);
+  root ??= createRoot(host);
+  root.render(h(DraggableRenderer, { key: i, draggable, state: st, width: W, height: layout(EVENTS[i], st).height, onDropState: dropped, onDragState: previewed }));
+  const todo = unsaved(i);
+  $("mode").setAttribute("aria-pressed", OPEN);
+  $("save").hidden = !OPEN && !todo.length;
+  $("save").disabled = !todo.length;
 }
-function go(k) { const next = Math.max(0, Math.min(MSGS.length - 1, k)); if (next === at) return; at = next; resting = savedNote = ""; draw(); say(null); }
-
-// A thing that is dropped on a hole of another type is refused. The reason is said.
-let refusal = "";
-addEventListener("pointerup", (up) => {
-  if (!dragging || !MSGS.length) return;
-  setTimeout(() => {  // a drop that changes nothing: say so, with the reason if there is one
-    if (!dragging) return;
-    dragging = null; resting = refusal || "Nothing changed."; refusal = ""; HOLD = Date.now() + 3000;
-    $("board").style.minHeight = ""; drawFoot(reading(current())); say(null);
-  }, 400);
-  if (dragging.kind !== "thing") return;
-  const svg = $("board").querySelector("svg"), r = svg.getBoundingClientRect(), x = up.clientX - r.left, y = up.clientY - r.top, i = current();
-  const hit = layout(EVENTS[i], reading(i), Math.max(280, $("board").clientWidth), replyOf(i)).holes.find((t) => x >= t.x && x <= t.x + t.w && y >= t.y && y <= t.y + t.h);
-  refusal = hit && !accepts(hit.type, dragging.type) ? `Not placed: ${hit.path} of ${hit.e.fn} takes ${hit.type}. ${dragging.label} is ${dragging.type}.` : "";
+// while the pointer moves: the line that a drop here records
+function previewed(next) {
+  if (!DRAGGING) return;
+  const ev = EVENTS[MSGS[at]], ch = differ(ev, reading(MSGS[at]), next);
+  say(ch.length ? lineOf(ev, next, ch[0]) : "");
+  $("board").style.minHeight = layout(ev, next).height + "px";
+}
+function dropped(next) {
+  const i = MSGS[at], ev = EVENTS[i], ch = differ(ev, reading(i), next);
+  DRAGGING = false;
+  if (ch.length) { store[i] = next; LINE = lineOf(ev, next, ch[0]); }
+  draw(); say(LINE);
+}
+addEventListener("pointerup", () => setTimeout(() => { if (DRAGGING) { DRAGGING = false; $("board").style.minHeight = ""; say(LINE); } }, 50), true);
+// The keyboard: Enter or Space picks a thing up, the arrow keys go from place to place (each shows its state), Enter drops it, Escape puts it back.
+function hold(src, opts) {
+  if (!opts.length) return;
+  HELD = { src, opts, i: 0 };
+  heldSay(); draw();
+}
+const heldSay = () => { const ev = EVENTS[MSGS[at]], next = HELD.opts[HELD.i].state, ch = differ(ev, reading(MSGS[at]), next); say(ch.length ? lineOf(ev, next, ch[0]) : ""); };
+document.addEventListener("keydown", (k) => {
+  if (!HELD) return;
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1, Tab: k.shiftKey ? -1 : 1 }[k.key];
+  if (step) HELD.i = (HELD.i + step + HELD.opts.length) % HELD.opts.length;
+  else if (k.key === "Enter" || k.key === " " || k.key === "Escape") {
+    const { src, opts, i } = HELD;
+    HELD = null;
+    if (k.key === "Escape") { draw(); say(LINE); } else dropped(opts[i].state);
+    requestAnimationFrame(() => (document.getElementById(src) || $("board")).focus());
+    return k.preventDefault();
+  } else return;
+  k.preventDefault(); heldSay(); draw();
 }, true);
 
-const hint = (id, words) => { for (const [a, b] of [["pointerenter", words], ["focus", words], ["pointerleave", null], ["blur", null]]) $(id).addEventListener(a, () => say(typeof b === "function" ? b() : b)); };
-hint("count", () => (OPEN ? "Press: show the parts and what each asks for, and nothing else." : "Press: show how d1 decided each part, the functions that no part asks for, and the block that Claude received. Dragging works there."));
-hint("save", () => ($("save").disabled ? null : `Press: add ${unsaved(current()).length === 1 ? "1 line" : unsaved(current()).length + " lines"} to .scriptt/events.jsonl. Claude receives your reading with your next message.`));
-hint("undo", () => "Press: drop your changes to this message and show d1's reading.");
-$("count").addEventListener("click", () => { OPEN = !OPEN; draw(); });
-$("undo").addEventListener("click", () => { delete store[current()]; resting = "This is d1's reading again." + (LOCAL && unsaved(current()).length ? " Not saved yet." : ""); savedNote = ""; draw(); say(null); });
-$("save").addEventListener("click", async () => {
-  const i = current(), ev = EVENTS[i], st = reading(i), todo = unsaved(i);
-  $("save").disabled = true; $("save").textContent = "Saving";
+function restore(r) {  // a reading that you saved before (a Disagree line of the log), 1 part each
+  const i = MSGS.findLast((m) => EVENTS[m].session === r.session && EVENTS[m].text === r.text), ev = EVENTS[i];
+  if (ev == null || !(r.part < partsOf(ev).length)) return;
+  const st = reading(i), old = st.parts[r.part], p = { fns: [], things: {}, by: {} };
+  for (const fn of r.demands || []) if (!p.fns.some((f) => f.fn === fn)) p.fns.push(old.fns.find((f) => f.fn === fn) ?? { id: "u" + ++UID, fn });
+  for (const [k, v] of Object.entries(r.things || {})) {
+    const fn = r.demands.find((fn) => k.startsWith(fn + ".")) ? "" : r.demands.find((fn) => holesOf(ev, fn).some(([path]) => path === k)), key = fn === "" ? k : fn ? `${fn}.${k}` : null;  // form 2 keys were the hole path alone
+    if (!key) continue;
+    p.things[key] = v;
+    const piece = piecesOf(ev).find((x) => x.part === r.part && v != null && x.value === v);
+    if (piece) p.by[key] = piece.id;
+  }
+  for (const f of p.fns) for (const [path, t] of holesOf(ev, f.fn)) if (!optional(t) && !(`${f.fn}.${path}` in p.things)) p.things[`${f.fn}.${path}`] = null;
+  st.parts[r.part] = p; store[i] = st; (saved[i] ??= {})[r.part] = sig(st, r.part);
+}
+function load(data) {
+  WORLD = { types: data.world?.types || {}, functions: data.world?.functions || {} };
+  EVENTS = data.events.filter((e) => e.event === "UserPromptSubmit");
+  MSGS = EVENTS.map((_, i) => i);
+  FNS = Object.keys(WORLD.functions);
+  const holeTypes = FNS.flatMap((fn) => Object.values(WORLD.functions[fn].holes || {}).flatMap(names));
+  TYPES = [...Object.keys(WORLD.types).filter((t) => WORLD.types[t].sum), ...["str", "int", "Path", "bool"].filter((t) => holeTypes.includes(t))];
+  for (const k of Object.keys(store)) { delete store[k]; delete saved[k]; }
+  for (const r of data.events) if (r.event === "Disagree" && Number.isInteger(r.part)) restore(r);
+  // Your own log opens on the newest message. The recorded one opens on the message of 5 parts or fewer with the most pieces in holes, then the most pieces.
+  const rank = (ev) => (partsOf(ev).length <= 5) * 100 + piecesOf(ev).filter((p) => p.to).length * 10 + piecesOf(ev).length * 3 - ev.text.length / 1e4;
+  at = LOCAL ? Math.max(0, MSGS.length - 1) : MSGS.reduce((best, m) => (rank(EVENTS[m]) > rank(EVENTS[MSGS[best]]) ? m : best), 0);
+  LINE = "";
+  draw(); say(LINE);
+}
+function go(k) { const next = Math.max(0, Math.min(MSGS.length - 1, k)); if (next === at) return; at = next; HELD = null; LINE = ""; $("sent").hidden = true; draw(); say(LINE); }
+
+$("mode").addEventListener("click", () => { OPEN = !OPEN; HELD = null; draw(); say(LINE); });
+$("save").addEventListener("click", async () => {  // the local page adds 1 Disagree line for each part. The public page has no harness: it shows the lines only.
+  const i = MSGS[at], ev = EVENTS[i], st = reading(i), todo = unsaved(i);
   try {
-    for (const n of todo) {
-      const r = partReading(ev, st, n);
-      const answer = await fetch("/disagree", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session: ev.session, text: ev.text, part: n, demands: r.demands, things: r.things }) });
+    if (LOCAL) for (const n of todo) {
+      const answer = await fetch("/disagree", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session: ev.session, text: ev.text, part: n, ...readingOf(st, n) }) });
       if (!answer.ok) throw new Error(answer.status);
-      (saved[i] = saved[i] || {})[n] = sig(ev, st, n);
     }
-    savedNote = `Saved ${todo.length === 1 ? "part " + (todo[0] + 1) : todo.length + " parts"}`;
-    resting = `Saved: ${todo.length === 1 ? "1 line" : todo.length + " lines"} in .scriptt/events.jsonl. Claude receives ${todo.length === 1 ? "it" : "them"} with your next message.`;
-  } catch (error) { savedNote = ""; resting = `Not saved: the page could not reach harness.py (${error.message}).`; }
-  drawFoot(reading(i)); say(null);
+    for (const n of todo) (saved[i] ??= {})[n] = sig(st, n);
+    $("sent").textContent = todo.map((n) => lineOf(ev, st, n)).join("\n"); $("sent").hidden = false; LINE = "";
+  } catch (error) { LINE = String(error.message); }
+  draw(); say(LINE);
 });
 $("prev").addEventListener("click", () => go(at - 1));
 $("next").addEventListener("click", () => go(at + 1));
@@ -545,11 +494,14 @@ $("copy").addEventListener("click", async () => {
   $("copy").textContent = "Copied"; $("copy").dataset.copied = words.length;
   setTimeout(() => { $("copy").textContent = "Copy the prompt"; }, 4000);
 });
-document.addEventListener("keydown", (k) => { if (k.target.closest?.("#board")) return; if (k.key === "ArrowLeft") go(at - 1); if (k.key === "ArrowRight") go(at + 1); });
+// a piece and the hole that takes it light up together
+const lit = (target, on) => { const k = target?.closest?.("[data-link]")?.getAttribute("data-link"); if (k && k !== "none") for (const el of $("board").querySelectorAll(`[data-link="${k}"]`)) el.classList.toggle("lit", on); };
+for (const [name, on] of [["pointerover", true], ["pointerout", false], ["focusin", true], ["focusout", false]]) $("board").addEventListener(name, (e) => lit(e.target, on));
+document.addEventListener("keydown", (k) => { if (HELD || k.target.closest?.("#board")) return; if (k.key === "ArrowLeft") go(at - 1); if (k.key === "ArrowRight") go(at + 1); });
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => MSGS.length && draw());
-let boardWidth = 0, resizing = 0;
-addEventListener("resize", () => { clearTimeout(resizing); resizing = setTimeout(() => { if (MSGS.length && $("board").clientWidth !== boardWidth) { boardWidth = $("board").clientWidth; draw(); } }, 150); });
-if (["127.0.0.1", "localhost"].includes(location.hostname)) fetch("/data").then((r) => r.json()).then((own) => { LOCAL = true; load(own); }, () => load(DATA));  // your own events, in place of the recorded ones
+let resizing = 0;
+addEventListener("resize", () => { clearTimeout(resizing); resizing = setTimeout(() => { if (MSGS.length && Math.max(280, $("board").clientWidth) !== W) draw(); }, 150); });
+if (["127.0.0.1", "localhost"].includes(location.hostname)) fetch("/data").then((r) => r.json()).then((own) => { LOCAL = true; load(own); }, () => load(DATA));  // your own log, in place of the recorded one
 else load(DATA);
 </script>
 </body>
