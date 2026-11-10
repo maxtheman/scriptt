@@ -1,10 +1,10 @@
 {
   "hooks": {
     "UserPromptSubmit": [
-      {"hooks": [{"type": "command", "command": "\"${SCRIPTT_PYTHON:-python3}\" \"${CLAUDE_PLUGIN_ROOT}/scriptt_hook.py\"", "timeout": 60}]}
+      {"hooks": [{"type": "command", "command": "\"${SCRIPTT_PYTHON:-python3.14}\" \"${CLAUDE_PLUGIN_ROOT}/scriptt_hook.py\"", "timeout": 60}]}
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "\"${SCRIPTT_PYTHON:-python3}\" \"${CLAUDE_PLUGIN_ROOT}/scriptt_hook.py\"", "timeout": 60}]}
+      {"hooks": [{"type": "command", "command": "\"${SCRIPTT_PYTHON:-python3.14}\" \"${CLAUDE_PLUGIN_ROOT}/scriptt_hook.py\"", "timeout": 60}]}
     ]
   }
 }

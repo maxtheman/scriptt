@@ -20,6 +20,7 @@ records the event and prints nothing.
 - `d1.py`: a System One endpoint, or recorded answers
 - `tests/`: 36 recorded events and the answer each one must give
 - `skills/scriptt-hook/SKILL.md`, `hooks/hooks.json`, `.claude-plugin/plugin.json`: the same hook as a Claude Code plugin with a skill
+- `mod/`: the same hook as a mod for the Claude desktop app. It runs `scriptt_hook.py` on each prompt, shows one line of what it found, and attaches the rest for the model
 
 It needs Python 3.14 or later (it uses t-string templates) and only the standard library.
 
@@ -80,7 +81,9 @@ Set these in the environment that Claude Code runs in:
 - `SCRIPTT_D1_ANSWERS`: a JSON file of recorded answers `{"ClassName": ["words", ...]}`, used in place of an endpoint
 - `SCRIPTT_HOOK_HOME`: where the hook writes its state and `events.jsonl` (default `~/.claude/scriptt-hook`)
 - `SCRIPTT_HOOK_BLOCK`: `1` to let the Stop event block
-- `SCRIPTT_PYTHON`: the Python 3.14+ interpreter for the plugin's hooks (default `python3`)
+- `SCRIPTT_PYTHON`: the Python 3.14+ interpreter for the plugin's hooks (default `python3.14`)
+
+The same names can be in `config.json` in `SCRIPTT_HOOK_HOME`, for example `{"SCRIPTT_D1_URL": "http://127.0.0.1:8790"}`. The environment wins.
 
 A System One endpoint is any server that answers this request:
 

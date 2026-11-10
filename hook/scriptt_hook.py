@@ -72,8 +72,17 @@ def handle(event, d1):
     return answer
 
 
+def load_config():
+    """Settings can also be in config.json in the hook's home: {"SCRIPTT_D1_URL": "...", ...}. The environment wins."""
+    config = pathlib.Path(os.environ.get("SCRIPTT_HOOK_HOME", pathlib.Path.home() / ".claude/scriptt-hook")) / "config.json"
+    if config.exists():
+        for name, value in json.loads(config.read_text()).items():
+            os.environ.setdefault(name, str(value))
+
+
 if __name__ == "__main__":
     try:
+        load_config()
         answer = handle(json.load(sys.stdin), d1_from_environment())
     except Exception as error:  # a hook must not break the session: say what failed and let Claude go on
         print(f"scriptt hook: {type(error).__name__}: {error}", file=sys.stderr)
