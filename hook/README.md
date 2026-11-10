@@ -1,125 +1,82 @@
-# The scriptt hook
+# scriptt 1.1: the harness
 
-A Claude Code hook that reads each message as a typed template.
+Each message to an agent is a demand for computation. This harness has a small decision model, **d1**, decide
+which computations a message demands, before Claude reads it. You see the decision, and you drag to disagree.
 
-- A message is a demand for a computation. The hook finds the ranges of the message that stand for something,
-  and assigns each one a class from **the world** (`world.py`).
-- A range that the world has a value for is **given**. A range with only a class is a **hole**: the message
-  wants it. A verb that names a function of the world wants the result of that function.
-- When Claude stops, the hook reads the reply the same way and checks that it has something of each wanted class.
+It is 2 files in a folder `.scriptt/` of your project. Python 3.14 or later, standard library only.
 
-**The public release of the d1 model is pending.** The hook asks a d1 model for ranges of text. Until the
-release, connect it to any System One endpoint (below) or run it with recorded answers. With neither, the hook
-records the event and prints nothing.
-
-## Files
-
-- `scriptt_hook.py`: the script that Claude Code runs: one event as JSON on stdin, its answer as JSON on stdout
-- `world.py`: the classes, the things that have a name, and the functions between classes
-- `program.py`: `read` (the two loops) and `result`
-- `d1.py`: a System One endpoint, or recorded answers
-- `tests/`: 36 recorded events and the answer each one must give
-- `skills/scriptt-hook/SKILL.md`, `hooks/hooks.json`, `.claude-plugin/plugin.json`: the same hook as a Claude Code plugin with a skill
-- `mod/`: the same hook as a mod for the Claude desktop app. It runs `scriptt_hook.py` on each prompt, shows one line of what it found, and attaches the rest for the model
-
-It needs Python 3.14 or later (it uses t-string templates) and only the standard library.
-
-## Events
-
-### UserPromptSubmit
-
-Reads `prompt` and `session_id`. For each class of the world it asks d1 "Which words are <the docstring of the
-class>?" again and again until d1 finds no more. It prints:
-
-```json
-{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "scriptt hook: this message, read as types.\nwanted: Notebook (the result of delete, from \"get rid of\")\ngiven: Notebook \"the old cells\"\nnot typed: Oh, can you please | ?"}}
-```
-
-Claude receives the `additionalContext` with the message.
-
-### Stop
-
-Reads `last_assistant_message`, `session_id` and `stop_hook_active`. It reads the reply the same way and compares
-its classes with what the last message wanted. By default it prints nothing. With `SCRIPTT_HOOK_BLOCK=1`, and when
-a wanted class is missing, it prints:
-
-```json
-{"decision": "block", "reason": "scriptt hook: the message wanted these and the reply has none of them: Notebook"}
-```
-
-It never blocks when `stop_hook_active` is true, so it cannot loop.
-
-Every event is also written to `events.jsonl` in `SCRIPTT_HOOK_HOME`, with its slots, its holes and each question
-that d1 was asked. The website shows these records.
+- `world.py` is the whitelist: classes of text, things that have a name, and functions between classes.
+  A message can demand only a function that is there. The docstrings are the questions that d1 answers.
+- `harness.py` is everything else: 2 hooks for Claude Code, the installer, and a local page.
 
 ## Install
 
-As a plugin:
-
 ```bash
-claude --plugin-dir /path/to/scriptt-release/hook
+curl -fsSL https://scriptt.ai/install.sh | sh
 ```
 
-Or in `~/.claude/settings.json`:
+It makes `.scriptt/` with `harness.py`, `world.py` and `SKILL.md`, adds 2 hooks to `.claude/settings.local.json`
+and the skill to `.claude/skills/scriptt/`. From a clone: `cp -r hook .scriptt && python3.14 .scriptt/harness.py install`.
+
+Then say where d1 is, in `.scriptt/config.json`:
 
 ```json
-{
-  "hooks": {
-    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "python3 /path/to/hook/scriptt_hook.py", "timeout": 60}]}],
-    "Stop": [{"hooks": [{"type": "command", "command": "python3 /path/to/hook/scriptt_hook.py", "timeout": 60}]}]
-  }
-}
+{"url": "http://127.0.0.1:8791/v1/systemone", "body": {"model": "d1-2B-MLX-8bit"}, "block": false}
 ```
 
-## Connect a d1 model
+- `url`: a System One endpoint (`.../v1/systemone`, questions as a dict) or a CoreAI endpoint (`.../v1/decide`, questions as a list).
+- `key` or `key_file`: a Bearer token, if the endpoint needs one.
+- `body`: fields that go into each request, for example the model.
+- `block`: `true` lets the Stop hook send back a reply that does none of what the message demanded.
 
-Set these in the environment that Claude Code runs in:
+**The public release of the d1 model is pending.** `tests/systemone_local.py` is a 30-line System One endpoint for
+a Mac that has an MLX build of d1-2B. With no d1 the hooks print 1 line on stderr and Claude goes on.
 
-- `SCRIPTT_D1_URL`: a System One endpoint, for example `http://127.0.0.1:8790`
-- `SCRIPTT_D1_MODEL`: the model name to send (default `d1-2B-MLX-8bit`)
-- `SCRIPTT_D1_KEY`: an API key, sent as a Bearer token, if the endpoint needs one
-- `SCRIPTT_D1_ANSWERS`: a JSON file of recorded answers `{"ClassName": ["words", ...]}`, used in place of an endpoint
-- `SCRIPTT_HOOK_HOME`: where the hook writes its state and `events.jsonl` (default `~/.claude/scriptt-hook`)
-- `SCRIPTT_HOOK_BLOCK`: `1` to let the Stop event block
-- `SCRIPTT_PYTHON`: the Python 3.14+ interpreter for the plugin's hooks (default `python3.14`)
+## What it does
 
-The same names can be in `config.json` in `SCRIPTT_HOOK_HOME`, for example `{"SCRIPTT_D1_URL": "http://127.0.0.1:8790"}`. The environment wins.
+**UserPromptSubmit.** The message gets the brand `Asked`. Then 2 requests to d1:
 
-A System One endpoint is any server that answers this request:
+1. A yes/no question for each function of the world: "Does the message ask the reader to *docstring*?"
+   A function with 0.5 or more is demanded.
+2. For each parameter of a demanded function (a hole of a class): if the message contains the name of a thing
+   of that class, code fills the hole. If not, d1 gets a yes/no question for each named thing of the class.
+   If none has 0.5, the hole stays open. d1 also points at the words that ask for each function.
+
+Claude receives:
 
 ```
-POST {SCRIPTT_D1_URL}/v1/systemone
-{"model": "d1-2B-MLX-8bit", "state": "<the text>", "questions": {"q": {"type": "text", "instructions": "Which words are the notebook, or cells of it?"}}}
+scriptt: d1 read this message as a demand for these computations of the world (.scriptt/world.py).
+- delete(notebook=Notebook "the old cells") -> Notebook   [d1 0.99, from "old cells"]
+A "?" is a hole that the message does not fill. If this reading is wrong, say so in 1 line.
 ```
 
-with
+**Stop.** The reply gets the brand `Written`. For each demand of the last message, d1 answers: "The message asks
+the reader to *docstring*. Does the reply do it, or say that it is done?" The answers go in the log. With
+`"block": true`, a reply that does none of the demands is sent back once.
 
-```json
-{"answers": {"q": {"type": "text", "text": "the old cells", "span": [29, 42], "found": 0.9}}}
-```
+**The log.** `events.jsonl` is the only state: 1 line for each event, with each probability that d1 gave.
 
-`span` is a range of `state`. `found` is a probability or a boolean; the hook counts 0.5 or more as found.
-One question returns one range, so the hook asks again with the found words blanked out.
-
-For a test on a Mac that has an MLX build of d1-2B, `tests/systemone_local.py` is a 30-line endpoint.
+**The page.** `python3.14 .scriptt/harness.py serve` shows the log on `http://127.0.0.1:8787`. Drag a function
+to the other side, or a named thing into a hole, and press Save. Claude receives your reading with your next message.
+[scriptt.ai](https://scriptt.ai) shows the same page with the recorded events of this repository.
 
 ## Test
 
 ```bash
-python3 tests/test_hook.py
+python3.14 tests/test_harness.py
 ```
 
-It runs the 36 recorded events through the hook in order, each with its recorded d1 answers, and compares the
-output with the recorded one. It also checks that each message has the holes that were written down for it.
-`python3 tests/test_hook.py --record` writes the outputs of the current code into the event files.
+It runs 36 events of a real conversation through the harness with the recorded answers of the real d1-2b, and
+compares each record with `tests/recorded.json`. `--record config.json` asks a real d1 again and also writes
+`web/site/data.js`, the data of the page.
 
-`tests/try_d1.py` reads the same messages with a real d1 and writes `tests/d1_real.json`: for each message, the
-ranges that d1 found beside the recorded ones.
+## What is measured, and what is not
 
-## What is recorded and what is real
-
-- The 34 first events are one hour of a real conversation. Their d1 answers were written by hand, by the same
-  agent that wrote the expected results. So the tests show that the program works end to end with perfect
-  answers. They do not show how well d1 reads.
-- The comparison is by class: "the reply has an Explanation" does not check that it is the right explanation.
-- The world in `world.py` was made for that one conversation.
+- `tests/recorded.json` has the answers of d1-2b (MLX, on a Mac) of 9 Nov 2026, not hand-written answers.
+- For 19 messages a person wrote which classes the message wants. d1 has the same set for 7. Counted by class:
+  19 in both readings, 9 only in the person's, 11 only in d1's. The person's reading is 1 reading, not the truth.
+- The reply check sent back 1 of 13 real replies when it must send back none, and it sent back the 1 reply that
+  does not do the work ("Why do you want that?").
+- The world in `world.py` was made for that 1 conversation. Write your own.
+- d1 points at words badly: 4 wordings of "which words are a *class*" found words for 4 to 15 of 38 hand-marked
+  ranges. So the harness gives d1 yes/no questions over the things that the world lists, and uses words for display only.

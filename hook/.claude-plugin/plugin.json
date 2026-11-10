@@ -1,5 +1,0 @@
-{
-  "name": "scriptt-hook",
-  "version": "0.1.0",
-  "description": "Reads each message into a typed template (what it wants, what it supplies) and compares Claude's reply with it."
-}

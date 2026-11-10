@@ -1,11 +1,13 @@
-"""THE WORLD: every class that a slot of a text can have, the things that have a name, and the functions between classes.
+"""THE WORLD: the whitelist. A message can demand only what is in this file.
 
-This file grows as texts are loaded. The docstring of a class is what d1 is asked for.
+- A class is a kind of text. Its docstring is what d1 is asked for: "Which words are <docstring>?"
+- NAMED lists the things that exist and have a name. Words that are not here do not point at an existing thing.
+- A function is a computation that a message can demand. Its docstring is what d1 is asked:
+  "Does the message ask the reader to <docstring>?" Its parameters are the holes that the message must fill.
+  The bodies are not written: the reader of the message does the work.
+
+Edit this file to fit your work. The harness reads it again for each message.
 """
-
-
-class Action(str):
-    """an action that the reader is told to do"""
 
 
 class Explanation(str):
@@ -56,9 +58,6 @@ class Helper(str):
     """another agent that does part of the work"""
 
 
-CLASSES = [Action, Explanation, Answer, Notebook, Code, Types, Questions, Concepts, Model, Message, World, File, Helper]
-
-# Things in the world that have a name. Words that are not here do not point at an existing thing.
 NAMED = {
     Notebook: {"the old cells", "these cells", "this notebook", "this whole notebook", "this version"},
     Code: {"the functions", "t-strings", "t strings", "the template"},
@@ -72,42 +71,41 @@ NAMED = {
 }
 
 
-# Functions of the world. Each goes from classes of the world to a class of the world. The bodies are not written.
-def restate(questions: Questions, concepts: Concepts) -> Explanation: ...
-def implement(questions: Questions) -> Notebook: ...
-def mock(model: Model) -> Model: ...
-def delete(notebook: Notebook) -> Notebook: ...
-def solve(types: Types, message: Message) -> Code: ...
-def rewrite(notebook: Notebook, code: Code) -> Notebook: ...
+def explain() -> Explanation:
+    """explain something, or say why, how or what"""
 
 
-# The words that name each function.
-ACTIONS = {"restate": restate, "implement": implement, "mock": mock, "mock d1": mock, "get rid of": delete, "delete": delete, "solve": solve, "rewrite": rewrite}
+def restate(questions: Questions, concepts: Concepts) -> Explanation:
+    """restate something in other terms"""
 
 
-def make(cls, words, who):
-    """A value of the class for these words, or the class itself when the world has none (a hole)."""
-    if cls is Action:
-        return ACTIONS.get(words.lower(), cls)
-    if who == "assistant":  # a reply supplies what it says
-        return cls(words)
-    return cls(words) if words.lower() in NAMED.get(cls, ()) else cls
+def answer() -> Answer:
+    """confirm or deny something, with a yes or a no"""
 
 
-def describe():
-    """The world as plain data, for the website and for a reader."""
-    import typing
+def implement(questions: Questions) -> Notebook:
+    """implement something in the notebook"""
 
-    functions = {}
-    for function in dict.fromkeys(ACTIONS.values()):
-        hints = typing.get_type_hints(function)
-        functions[function.__name__] = {
-            "returns": hints.pop("return").__name__,
-            "parameters": {name: cls.__name__ for name, cls in hints.items()},
-            "words": sorted(words for words, f in ACTIONS.items() if f is function),
-        }
-    return {
-        "classes": {cls.__name__: cls.__doc__ for cls in CLASSES},
-        "named": {cls.__name__: sorted(names) for cls, names in NAMED.items()},
-        "functions": functions,
-    }
+
+def delete(notebook: Notebook) -> Notebook:
+    """delete or get rid of cells of the notebook"""
+
+
+def rewrite(notebook: Notebook, code: Code) -> Notebook:
+    """rewrite the notebook or a cell of it"""
+
+
+def mock(model: Model) -> Model:
+    """mock the d1 model"""
+
+
+def solve(types: Types, message: Message) -> Code:
+    """write or change code"""
+
+
+def write(message: Message) -> File:
+    """write a file"""
+
+
+def extend(world: World) -> World:
+    """add classes or functions to the world"""
