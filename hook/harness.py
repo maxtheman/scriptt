@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The scriptt harness, version 1.1. 1 file, beside world.py. Python 3.14 or later, standard library only.
+"""The scriptt harness, version 0.1.1. 1 file, beside world.py. Python 3.14 or later, standard library only.
 
 Claude Code runs it as a hook, with 1 event as JSON on stdin:
   UserPromptSubmit   d1 decides which computations of the world the message demands. Claude receives them.
