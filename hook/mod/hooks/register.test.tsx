@@ -28,7 +28,7 @@ const WORLD = { functions: { delete: { asks: 'remove cells from a notebook' }, e
 const ROW = { plugin: 'scriptt', component: 'UserMessage', props: { text: TEXT, origin: { kind: 'composer' }, isExpanded: false } } as const
 
 // Stands for the machine: an interpreter, the harness and its log. `ran` gets each harness call; `status` each status line.
-const machine = (on: On, readingExit = () => 0, pythons = ['python3.14']) => {
+const machine = (on: On, readingExit = () => 0, pythons = ['python3.14'], folder = '/project') => {
   const ran: { argv: readonly string[]; stdin?: string }[] = []
   const status: (string | undefined)[] = []
   const out = (exitCode: number, stdout = '', stderr = '') => ({
@@ -45,6 +45,10 @@ const machine = (on: On, readingExit = () => 0, pythons = ['python3.14']) => {
   })
   on('process.run', (_, e) => {
     const [python = '', ...args] = e.argv
+
+    if (python === 'sh') {
+      return folder ? out(0, folder) : out(1)
+    }
 
     if (!pythons.includes(python)) {
       return out(127, '', 'not found')
@@ -129,7 +133,7 @@ test('a reading that the log does not take puts the item back and the status lin
 
   await ui.press({ key: 'fn-0-delete' })
   expect((await ui.find({ type: 'Text', text: /^delete\(/ }))?.props).toMatchObject({ strikethrough: false })
-  expect(status.at(-1)).toBe('scriptt did not save your reading: StopIteration')
+  expect(status.at(-1)).toBe('StopIteration: your reading was not saved')
   await ui.unmount()
 })
 
@@ -166,8 +170,14 @@ test('with no interpreter the row stays the engine\'s own and the status line sa
     return <Text>engine</Text>
   })
   expect(await send($)).toMatchObject({ text: TEXT })
-  expect(status).toEqual(['scriptt did not read this message: python3.14 was not found'])
+  expect(status).toEqual(['python3.14 was not found: this message was not read'])
   const ui = await $.ui.mount({ ...ROW, surface: 'desktop' })
   expect((await ui.find({ type: 'Text' }))?.text).toBe('engine')
   await ui.unmount()
+})
+
+test('with no .scriptt/ in the folder or above it the status line says so first', async ($, on) => {
+  const { status } = machine(on, () => 0, ['python3.14'], '')
+  expect(await send($)).toMatchObject({ text: TEXT })
+  expect(status).toEqual(['no .scriptt/ in this folder or above it: this message was not read'])
 })

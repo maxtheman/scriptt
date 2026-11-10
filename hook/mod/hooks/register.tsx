@@ -25,8 +25,21 @@ const interpreter = atom({ plugin: 'scriptt', key: 'python' } as const, '')
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error))
 const lastLine = (text: string) => (text.trim().split('\n').pop() ?? '').replace(/^scriptt: /, '').slice(0, 120)
 
-// Runs the harness with the first interpreter that starts, and keeps that one for the session.
+// The folder that has .scriptt/harness.py: the folder of the session, or the nearest folder above it.
+const UP = 'd=$PWD; while :; do [ -f "$d/.scriptt/harness.py" ] && printf %s "$d" && exit 0; [ "$d" = / ] && exit 1; d=$(dirname "$d"); done'
+const home = async ($: EngineInterface) => {
+  const found = await $.process.run(['sh', '-c', UP])
+
+  if (found.exitCode !== 0 || !found.stdout) {
+    throw new Error('no .scriptt/ in this folder or above it')
+  }
+
+  return found.stdout
+}
+
+// Runs the harness in that folder with the first interpreter that starts, and keeps that one for the session.
 const harness = async ($: EngineInterface, args: string[], init?: ProcessRunInit) => {
+  const cwd = await home($)
   let python = await read($, interpreter)
 
   if (!python) {
@@ -49,7 +62,7 @@ const harness = async ($: EngineInterface, args: string[], init?: ProcessRunInit
     await update($, interpreter, () => found)
   }
 
-  return $.process.run([python, HARNESS, ...args], init)
+  return $.process.run([python, HARNESS, ...args], { ...init, cwd })
 }
 
 export const register: Register = on => {
@@ -83,7 +96,7 @@ export const register: Register = on => {
 
       if (ran.exitCode === 0 && ran.stdout.trim()) {
         context = JSON.parse(ran.stdout).hookSpecificOutput?.additionalContext
-        const log = (await $.fs.read('.scriptt/events.jsonl')).trim().split('\n')
+        const log = (await $.fs.read(`${await home($)}/.scriptt/events.jsonl`)).trim().split('\n')
         const record: Reading = JSON.parse(log[log.length - 1] ?? '')
         await update($, readings, all => ({ ...all, [e.text]: record }))
         lastText = e.text
@@ -97,7 +110,7 @@ export const register: Register = on => {
 
     // The row of this message stays the engine's own: it has no reading.
     if (failed) {
-      $.ui.status(`scriptt did not read this message: ${failed}`)
+      $.ui.status(`${failed}: this message was not read`)
     }
 
     return next(context ? { ...e, context: [...(e.context ?? []), context] } : e)
@@ -112,7 +125,7 @@ export const register: Register = on => {
       try {
         const event = { hook_event_name: 'Stop', session_id: id, last_assistant_message: ended.text }
         await harness($, [], { stdin: JSON.stringify(event), timeoutMs: 60000 })
-        const log = (await $.fs.read('.scriptt/events.jsonl')).trim().split('\n')
+        const log = (await $.fs.read(`${await home($)}/.scriptt/events.jsonl`)).trim().split('\n')
         const record = JSON.parse(log[log.length - 1] ?? '')
 
         if (record.event === 'Stop' && record.checks) {
@@ -173,7 +186,7 @@ export const register: Register = on => {
 
           return { ...all, [text]: was.before === undefined ? rest : { ...rest, [part]: was.before } }
         })
-        $.ui.status(`scriptt did not save your reading: ${failed}`)
+        $.ui.status(`${failed}: your reading was not saved`)
       } else {
         $.ui.status(undefined)
       }

@@ -23,7 +23,7 @@ In the desktop app: click + next to the prompt box, then Plugins, Add marketplac
 
 ## Setup
 
-The folder of the session needs `.scriptt/harness.py` and `.scriptt/world.py`, and Python 3.14. The mod tries `python3.14`, then `/opt/homebrew/bin/python3.14`, then `/usr/local/bin/python3.14`.
+The folder of the session, or a folder above it, needs `.scriptt/harness.py` and `.scriptt/world.py`, and Python 3.14. The mod uses the nearest one. The mod tries `python3.14`, then `/opt/homebrew/bin/python3.14`, then `/usr/local/bin/python3.14`.
 
 ## Tests
 
