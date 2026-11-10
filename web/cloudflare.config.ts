@@ -1,4 +1,4 @@
-// The scriptt.ai site: static files only. build.sh puts the landing page and the docs into public/.
+// The scriptt.ai site: static files only. build.sh copies web/site into public/.
 import { defineConfig } from "cf/config";
 
 export default defineConfig({
