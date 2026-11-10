@@ -1,4 +1,4 @@
-# scriptt 0.2.0: the harness
+# scriptt 0.1.2: the harness
 
 Each message to an agent is a demand for computation. This harness has a small decision model, **d1**, decide
 which computations a message demands, before Claude reads it. You see the decision, and you drag to disagree.
