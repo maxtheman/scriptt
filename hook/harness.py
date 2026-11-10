@@ -13,13 +13,16 @@ You run it for the rest:
 Everything is beside this file: world.py (the whitelist), config.json (where d1 is), events.jsonl (the log).
 """
 
+import dataclasses
 import datetime
+import enum
 import hashlib
 import inspect
 import json
 import pathlib
 import re
 import sys
+import types
 import typing
 import urllib.request
 from string.templatelib import Interpolation, Template
@@ -31,7 +34,7 @@ LOG = HOME / "events.jsonl"
 sys.path.insert(0, str(HOME))
 import world
 
-CLASSES = {name: cls for name, cls in vars(world).items() if isinstance(cls, type) and issubclass(cls, str)}
+TYPES = {name: tp for name, tp in vars(world).items() if isinstance(tp, type) and tp.__module__ == "world"}  # the sum types and the product types
 FUNCTIONS = {name: f for name, f in vars(world).items() if inspect.isfunction(f)}
 
 
@@ -85,9 +88,46 @@ def history() -> list:
     return [migrate(json.loads(line)) for line in LOG.read_text().splitlines()] if LOG.exists() else []
 
 
+def kind(tp) -> str:
+    return tp.__name__ if isinstance(tp, type) else str(tp).replace("pathlib._local.", "")  # a class by its name, a union as written
+
+
 def holes(name: str) -> dict:
-    """The parameters of a function of the world, with the class of each. They are the holes that a message must fill."""
-    return {parameter: cls for parameter, cls in typing.get_type_hints(FUNCTIONS[name]).items() if parameter != "return"}
+    """The holes of a function of the world, as {path: type}: each parameter, and for a product type (a dataclass) each of its fields."""
+    def leaves(path, tp):
+        if dataclasses.is_dataclass(tp):
+            return [leaf for field, inner in typing.get_type_hints(tp).items() for leaf in leaves(f"{path}.{field}", inner)]
+        return [(path, tp)]
+
+    return dict(leaf for parameter, tp in typing.get_type_hints(FUNCTIONS[name]).items() if parameter != "return" for leaf in leaves(parameter, tp))
+
+
+def in_words(tp, words: str) -> str | None:
+    """The value for a hole of this type that the words contain, found by code. None when they contain none."""
+    match tp:
+        case enum.EnumType():  # a sum type: the member whose name is in the words, the longest name first
+            return next((words[at:at + len(m.value)].lower() for m in sorted(tp, key=lambda m: -len(m.value)) if (at := words.lower().find(m.value)) >= 0), None)
+        case types.UnionType():  # a sum of types: the first that the words fill
+            return next((value for inner in typing.get_args(tp) if (value := in_words(inner, words))), None)
+        case type() if tp is int:
+            return (found := re.search(r"\b\d+\b", words)) and found[0]
+        case type() if tp is pathlib.Path:
+            return (found := re.search(r"(?:[~.]{0,2}/)?[\w.-]+(?:/[\w.-]+)+|\b[\w-]+\.[a-z]{1,5}\b", words)) and found[0]
+    return None
+
+
+def to_ask(tp, parameter: str) -> dict:
+    """The questions for d1 about a hole of this type that code did not fill: {the value that a yes means, or "" for a text read: question}."""
+    match tp:
+        case enum.EnumType():
+            return {m.value: {"type": "boolean", "instructions": f"Does the message refer to {m.value} ({tp.__doc__})?"} for m in tp}
+        case types.UnionType():
+            return {value: q for inner in typing.get_args(tp) for value, q in to_ask(inner, parameter).items()}
+        case type() if tp is bool:
+            return {"yes": {"type": "boolean", "instructions": f"Does the message say: {parameter.replace('_', ' ')}?"}}
+        case type() if tp is str:
+            return {"": {"type": "text", "instructions": f"Which words of the message say the {parameter.replace('_', ' ')}?"}}
+    return {}
 
 
 class Hole(Brand):
@@ -138,25 +178,25 @@ def read(text: Asked, ask) -> tuple[Template, list, list, dict]:
             if not fits:
                 abstained[n] = round(asks[f"part{n}"]["p_true"], 3)
 
-    def words_for(cls, demand):
-        """The words that name a thing of this class: in the part of the demand first, then in the whole message."""
-        for where in ([quoted[demand["part"]]] if demand["part"] is not None else []) + [text]:
-            for thing in sorted(world.NAMED.get(cls, ()), key=len, reverse=True):
-                if (at := where.lower().find(thing)) >= 0:
-                    return where[at:at + len(thing)]
+    # 4. The holes. First by code, in the words of the part and then of the message. Then 1 request to d1 for the holes that are left.
+    said = {(n, path): next((value for words in ([quoted[d["part"]]] if d["part"] is not None else []) + [text] if (value := in_words(tp, words))), None)
+            for n, d in enumerate(found) for path, tp in holes(d["function"]).items()}
+    left = {(n, path, value): q for n, d in enumerate(found) for path, tp in holes(d["function"]).items() if not said[n, path] for value, q in to_ask(tp, path.split(".")[-1]).items()}
+    told = ask(text, {f"{n} {path} {value}": q for (n, path, value), q in left.items()}) if left else {}
 
-    said = {(d["function"], d["part"], cls): words_for(cls, d) for d in found for cls in holes(d["function"]).values()}
-    open_classes = {cls for (_, _, cls), words in said.items() if not words}
-    chosen = ask(text, {f"{cls.__name__}: {thing}": yes_no(f"Does the message refer to {thing} ({cls.__doc__})?") for cls in open_classes for thing in sorted(world.NAMED.get(cls, ()))}) if open_classes else {}
+    def fill(n: int, path: str, tp) -> dict:
+        if said[n, path]:
+            return {"type": kind(tp), "value": said[n, path], "by": "the words"}
+        answers = {value: told[f"{n} {path} {value}"] for (m, other, value) in left if (m, other) == (n, path)}
+        if "" in answers:  # a text read: the words that d1 points at, if the message has them
+            a = answers[""]
+            return {"type": kind(tp), "value": a["text"], "by": f"d1 {a['found']:.2f}"} if a["found"] >= 0.5 and a["text"] and a["text"] in text else {"type": kind(tp), "value": None, "by": None}
+        best = max(answers, key=lambda value: answers[value]["p_true"], default=None)
+        sure = best is not None and answers[best]["p_true"] >= 0.5
+        return {"type": kind(tp), "value": best if sure else None, "by": f"d1 {answers[best]['p_true']:.2f}" if sure else None}
 
-    def fill(cls, demand) -> dict:
-        if words := said[demand["function"], demand["part"], cls]:
-            return {"class": cls.__name__, "thing": words.lower(), "by": "the words"}
-        best = max(((chosen[f"{cls.__name__}: {thing}"]["p_true"], thing) for thing in world.NAMED.get(cls, ())), default=(0, None))
-        return {"class": cls.__name__, "thing": best[1] if best[0] >= 0.5 else None, "by": f"d1 {best[0]:.2f}" if best[0] >= 0.5 else None}
-
-    demands = [d | {"returns": typing.get_type_hints(FUNCTIONS[d["function"]])["return"].__name__, "words": quoted[d["part"]] if d["part"] is not None else None,
-                    "parameters": {parameter: fill(cls, d) for parameter, cls in holes(d["function"]).items()}} for d in found]
+    demands = [d | {"returns": kind(typing.get_type_hints(FUNCTIONS[d["function"]])["return"]), "words": quoted[d["part"]] if d["part"] is not None else None,
+                    "parameters": {path: fill(n, path, tp) for path, tp in holes(d["function"]).items()}} for n, d in enumerate(found)]
     parts = [{"start": a, "end": b, "demands": [d["function"] for d in demands if d["part"] == n], "hole": abstained.get(n)} for n, (a, b) in enumerate(spans)]
     pieces, at = [], 0
     for part, words in zip(parts, quoted):  # the whole message as a template: a part that demands or abstains is a slot, the rest is plain text
@@ -168,7 +208,7 @@ def read(text: Asked, ask) -> tuple[Template, list, list, dict]:
 
 
 def call(demand: dict) -> str:
-    arguments = (f'{parameter}={hole["class"]} "{hole["thing"]}"' if hole["thing"] else f'{parameter}={hole["class"]} ?' for parameter, hole in demand["parameters"].items())
+    arguments = (f'{path}="{hole["value"]}"' if hole["value"] else f'{path}={hole["type"]} ?' for path, hole in demand["parameters"].items() if hole["value"] or "None" not in hole["type"])
     return f'{demand["function"]}({", ".join(arguments)})'
 
 
@@ -190,13 +230,13 @@ def handle(event: dict, ask=d1) -> dict | None:
             lines += [f"-. {call(d)} {d['p']:.2f}   (the message as a whole)" for d in demands if d["part"] is None]
             if any(part["hole"] for part in parts):
                 lines += ['For each "?": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.']
-            if any(not hole["thing"] for d in demands for hole in d["parameters"].values()):
-                lines += ['A "name=Class ?" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing.']
+            if any(not hole["value"] and "None" not in hole["type"] for d in demands for hole in d["parameters"].values()):
+                lines += ['A "name=Type ?" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing.']
             if asked:  # what came after the last message: the reply check, and the corrections of the user (the last one for each message)
                 after = mine[asked[-1]:]
                 lines += [f"d1 says your last reply did not do: {', '.join(name for name, q in r['checks'].items() if q < 0.5)}." for r in after if r["event"] == "Stop" and any(q < 0.5 for q in r.get("checks", {}).values())][-1:]
                 for r in {(r["text"], r["part"]): r for r in after if r["event"] == "Disagree"}.values():  # the last reading of each part
-                    things = "".join(f', {cls} is "{thing}"' if thing else f", {cls} is open" for cls, thing in r["things"].items())
+                    things = "".join(f', {path} is "{value}"' if value else f", {path} is open" for path, value in r["things"].items())
                     lines += [f'The user says that "{r["words"][:90]}" asks for {" + ".join(r["demands"]) or "nothing"}{things}. d1 said otherwise.']
             answer = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "\n".join(lines)}}
         case Written() if asked and ((last := mine[asked[-1]])["demands"] or any(part["hole"] for part in last["parts"])):
@@ -215,8 +255,15 @@ def handle(event: dict, ask=d1) -> dict | None:
 
 def describe() -> dict:
     """The world as data, for the page."""
-    return {"classes": {name: cls.__doc__ for name, cls in CLASSES.items()}, "named": {cls.__name__: sorted(names) for cls, names in world.NAMED.items()},
-            "functions": {name: {"asks": f.__doc__, "returns": typing.get_type_hints(f)["return"].__name__, "parameters": {k: cls.__name__ for k, cls in holes(name).items()}} for name, f in FUNCTIONS.items()}}
+    def shape(tp) -> dict:
+        match tp:
+            case enum.EnumType():
+                return {"sum": [m.value for m in tp], "doc": tp.__doc__}
+            case _:
+                return {"product": {field: kind(inner) for field, inner in typing.get_type_hints(tp).items()}, "doc": tp.__doc__}
+
+    return {"types": {name: shape(tp) for name, tp in TYPES.items()},
+            "functions": {name: {"asks": f.__doc__, "returns": kind(typing.get_type_hints(f)["return"]), "holes": {path: kind(tp) for path, tp in holes(name).items()}} for name, f in FUNCTIONS.items()}}
 
 
 def install():
@@ -279,7 +326,7 @@ def serve(port: int):
 
 def reading(mine: dict) -> None:
     """Add the user's own reading of 1 part of 1 message to the log. Claude receives it with the next message of that session.
-    mine = {"session", "text", "part": its number from 0, "demands": [function names], "things": {class: thing}}"""
+    mine = {"session", "text", "part": its number from 0, "demands": [function names], "things": {hole path: value}}"""
     message = next(r for r in reversed(history()) if r["event"] == "UserPromptSubmit" and r["session"] == mine["session"] and r["text"] == mine["text"])
     part = message["parts"][mine["part"]]
     record = stamp() | {"event": "Disagree", "session": mine["session"], "text": mine["text"], "part": mine["part"], "words": mine["text"][part["start"]:part["end"]],

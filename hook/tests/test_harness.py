@@ -59,7 +59,7 @@ def test_recorded():
             assert demand["function"] in harness.FUNCTIONS and (demand["words"] or "") in record["text"]
             assert demand["part"] is None or demand["function"] in record["parts"][demand["part"]]["demands"]
             for hole in demand["parameters"].values():
-                assert hole["thing"] is None or hole["thing"] in harness.world.NAMED[harness.CLASSES[hole["class"]]]
+                assert hole["value"] is None or hole["by"] != "the words" or hole["value"].lower() in record["text"].lower()
     assert records[-1]["answer"]["decision"] == "block" and records[-2]["answer"]["hookSpecificOutput"]
     old = {"event": "UserPromptSubmit", "session": "s", "text": "x", "demands": [{"function": "delete", "p": 0.9}]}  # a line of 0.1.1
     assert harness.migrate(old)["demands"][0]["part"] is None and harness.migrate(old)["form"] == harness.FORM

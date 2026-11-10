@@ -10,7 +10,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -21,7 +21,7 @@
      "p": 0.867,
      "by": "the message",
      "part": 0,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "Take all ten of these and restate them using the computer science concepts.",
      "parameters": {}
     },
@@ -30,17 +30,17 @@
      "p": 0.974,
      "by": "the message",
      "part": 0,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "Take all ten of these and restate them using the computer science concepts.",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": "all ten of these",
+       "type": "Questions",
+       "value": "all ten of these",
        "by": "the words"
       },
       "concepts": {
-       "class": "Concepts",
-       "thing": "the computer science concepts",
+       "type": "Concepts",
+       "value": "the computer science concepts",
        "by": "the words"
       }
      }
@@ -53,15 +53,15 @@
      "returns": "Notebook",
      "words": "Take all ten of these and restate them using the computer science concepts.",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "this notebook",
-       "by": "d1 0.64"
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "these cells",
+       "by": "d1 0.73"
       },
-      "code": {
-       "class": "Code",
-       "thing": null,
-       "by": null
+      "change.code": {
+       "type": "Code",
+       "value": "t strings",
+       "by": "d1 0.52"
       }
      }
     },
@@ -73,14 +73,14 @@
      "returns": "Notebook",
      "words": "I want the exact same headers here in your next message.",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "this notebook",
-       "by": "d1 0.64"
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "these cells",
+       "by": "d1 0.71"
       },
-      "code": {
-       "class": "Code",
-       "thing": null,
+      "change.code": {
+       "type": "Code",
+       "value": null,
        "by": null
       }
      }
@@ -90,7 +90,7 @@
      "p": 0.734,
      "by": "the part",
      "part": 2,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "So what kind of result?",
      "parameters": {}
     },
@@ -99,7 +99,7 @@
      "p": 0.849,
      "by": "the part",
      "part": 3,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "Cool. Are you talking like how do you break that?",
      "parameters": {}
     },
@@ -108,7 +108,7 @@
      "p": 0.578,
      "by": "the part",
      "part": 4,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "How would you think about getting information about that?",
      "parameters": {}
     },
@@ -117,7 +117,7 @@
      "p": 0.888,
      "by": "the part",
      "part": 8,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "What does it have to do with what you've done?",
      "parameters": {}
     },
@@ -126,17 +126,17 @@
      "p": 0.592,
      "by": "the part",
      "part": 8,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "What does it have to do with what you've done?",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": "all ten of these",
+       "type": "Questions",
+       "value": "all ten of these",
        "by": "the words"
       },
       "concepts": {
-       "class": "Concepts",
-       "thing": "the computer science concepts",
+       "type": "Concepts",
+       "value": "the computer science concepts",
        "by": "the words"
       }
      }
@@ -146,7 +146,7 @@
      "p": 0.931,
      "by": "the part",
      "part": 11,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "How does this have to do with any of the research that you've done?",
      "parameters": {}
     }
@@ -298,14 +298,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 12. Parts that ask for something: 8.\n1. explain() 0.87 + restate(questions=Questions \"all ten of these\", concepts=Concepts \"the computer science concepts\") 0.97 + rewrite(notebook=Notebook \"this notebook\", code=Code ?) 0.87   \"Take all ten of these and restate them using the computer science concepts.\"\n2. rewrite(notebook=Notebook \"this notebook\", code=Code ?) 0.53   \"I want the exact same headers here in your next message.\"\n3. explain() 0.73   \"So what kind of result?\"\n4. explain() 0.85   \"Cool. Are you talking like how do you break that?\"\n5. explain() 0.58   \"How would you think about getting information about that?\"\n8. ?  no function of the world fits (d1 abstains)   \"Go look at the research.\"\n9. explain() 0.89 + restate(questions=Questions \"all ten of these\", concepts=Concepts \"the computer science concepts\") 0.59   \"What does it have to do with what you've done?\"\n12. explain() 0.93   \"How does this have to do with any of the research that you've done?\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 12. Parts that ask for something: 8.\n1. explain() 0.87 + restate(questions=\"all ten of these\", concepts=\"the computer science concepts\") 0.97 + rewrite(change.notebook=\"these cells\", change.code=\"t strings\") 0.87   \"Take all ten of these and restate them using the computer science concepts.\"\n2. rewrite(change.notebook=\"these cells\", change.code=Code ?) 0.53   \"I want the exact same headers here in your next message.\"\n3. explain() 0.73   \"So what kind of result?\"\n4. explain() 0.85   \"Cool. Are you talking like how do you break that?\"\n5. explain() 0.58   \"How would you think about getting information about that?\"\n8. ?  no function of the world fits (d1 abstains)   \"Go look at the research.\"\n9. explain() 0.89 + restate(questions=\"all ten of these\", concepts=\"the computer science concepts\") 0.59   \"What does it have to do with what you've done?\"\n12. explain() 0.93   \"How does this have to do with any of the research that you've done?\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -321,7 +321,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -332,7 +332,7 @@
      "p": 0.575,
      "by": "the message",
      "part": 0,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "Okay. Why don't we just implement all ten of these with the smallest amount of code possible?",
      "parameters": {}
     },
@@ -345,9 +345,14 @@
      "words": "Okay. Why don't we just implement all ten of these with the smallest amount of code possible?",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": "all ten of these",
+       "type": "Questions",
+       "value": "all ten of these",
        "by": "the words"
+      },
+      "cells": {
+       "type": "int | None",
+       "value": null,
+       "by": null
       }
      }
     },
@@ -359,14 +364,14 @@
      "returns": "Notebook",
      "words": "Can you please put each of these in a cell?",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "these cells",
-       "by": "d1 0.93"
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "this notebook",
+       "by": "d1 0.94"
       },
-      "code": {
-       "class": "Code",
-       "thing": "the template",
+      "change.code": {
+       "type": "Code",
+       "value": "the template",
        "by": "d1 0.72"
       }
      }
@@ -380,14 +385,9 @@
      "words": "Okay. Why don't we just implement all ten of these with the smallest amount of code possible?",
      "parameters": {
       "types": {
-       "class": "Types",
-       "thing": "demand",
-       "by": "d1 0.74"
-      },
-      "message": {
-       "class": "Message",
-       "thing": "the message",
-       "by": "the words"
+       "type": "Types",
+       "value": "demand",
+       "by": "d1 0.61"
       }
      }
     }
@@ -456,14 +456,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 3.\n1. explain() 0.57 + implement(questions=Questions \"all ten of these\") 0.94 + solve(types=Types \"demand\", message=Message \"the message\") 0.65   \"Okay. Why don't we just implement all ten of these with the smallest amount of code possib\"\n2. rewrite(notebook=Notebook \"these cells\", code=Code \"the template\") 0.51   \"Can you please put each of these in a cell?\"\n3. ?  no function of the world fits (d1 abstains)   \"And I and make it so I can plug the message in and play with them and see what they tell u\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nd1 says your last reply did not do: rewrite, part 8."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 3.\n1. explain() 0.57 + implement(questions=\"all ten of these\") 0.94 + solve(types=\"demand\") 0.65   \"Okay. Why don't we just implement all ten of these with the smallest amount of code possib\"\n2. rewrite(change.notebook=\"this notebook\", change.code=\"the template\") 0.51   \"Can you please put each of these in a cell?\"\n3. ?  no function of the world fits (d1 abstains)   \"And I and make it so I can plug the message in and play with them and see what they tell u\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nd1 says your last reply did not do: rewrite, part 8."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -483,7 +483,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -498,8 +498,8 @@
      "words": "Mock d1, Please stop this sick obsession with the model.",
      "parameters": {
       "model": {
-       "class": "Model",
-       "thing": "the model",
+       "type": "Model",
+       "value": "the model",
        "by": "the words"
       }
      }
@@ -536,14 +536,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. mock(model=Model \"the model\") 0.94   \"Mock d1, Please stop this sick obsession with the model.\"\nd1 says your last reply did not do: explain, implement, rewrite, solve, part 3."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. mock(model=\"the model\") 0.94   \"Mock d1, Please stop this sick obsession with the model.\"\nd1 says your last reply did not do: explain, implement, rewrite, solve, part 3."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -556,7 +556,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -571,8 +571,13 @@
      "words": "Oh, can you please get rid of the old cells?",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
+       "by": null
+      },
+      "cells": {
+       "type": "int | None",
+       "value": null,
        "by": null
       }
      }
@@ -586,8 +591,8 @@
      "words": "Oh, can you please get rid of the old cells?",
      "parameters": {
       "notebook": {
-       "class": "Notebook",
-       "thing": "the old cells",
+       "type": "Notebook",
+       "value": "the old cells",
        "by": "the words"
       }
      }
@@ -625,14 +630,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. implement(questions=Questions ?) 0.53 + delete(notebook=Notebook \"the old cells\") 0.98   \"Oh, can you please get rid of the old cells?\"\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. implement(questions=Questions ?) 0.53 + delete(notebook=\"the old cells\") 0.98   \"Oh, can you please get rid of the old cells?\"\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -646,7 +651,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -657,7 +662,7 @@
      "p": 0.989,
      "by": "the message",
      "part": 0,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "Why is result types defined the way it is here?",
      "parameters": {}
     },
@@ -666,7 +671,7 @@
      "p": 0.962,
      "by": "the part",
      "part": 1,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "What is this supposed to be accomplishing?",
      "parameters": {}
     }
@@ -722,7 +727,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -735,7 +740,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -746,7 +751,7 @@
      "p": 0.696,
      "by": "the message",
      "part": 5,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "It's based on the functions that we have in the com in the context, but where do those come from precisely?",
      "parameters": {}
     }
@@ -839,7 +844,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -852,7 +857,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -863,7 +868,7 @@
      "p": 0.585,
      "by": "the message",
      "part": 10,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "Like what happens?",
      "parameters": {}
     },
@@ -876,8 +881,13 @@
      "words": "Just mock a function and and put it in instead of being so indirect and hiding this.",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
+       "by": null
+      },
+      "cells": {
+       "type": "int | None",
+       "value": null,
        "by": null
       }
      }
@@ -891,8 +901,8 @@
      "words": "Okay. Um well I don't think we're learning anything with these cells, so maybe you can delete them and put in a simpler context.",
      "parameters": {
       "notebook": {
-       "class": "Notebook",
-       "thing": "these cells",
+       "type": "Notebook",
+       "value": "these cells",
        "by": "the words"
       }
      }
@@ -905,15 +915,15 @@
      "returns": "Notebook",
      "words": "Okay. Um well I don't think we're learning anything with these cells, so maybe you can delete them and put in a simpler context.",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "these cells",
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "these cells",
        "by": "the words"
       },
-      "code": {
-       "class": "Code",
-       "thing": "the functions",
-       "by": "d1 0.96"
+      "change.code": {
+       "type": "Code",
+       "value": "the functions",
+       "by": "d1 0.97"
       }
      }
     },
@@ -926,14 +936,9 @@
      "words": "Just mock a function and and put it in instead of being so indirect and hiding this.",
      "parameters": {
       "types": {
-       "class": "Types",
-       "thing": "the types",
+       "type": "Types",
+       "value": "the types",
        "by": "d1 0.74"
-      },
-      "message": {
-       "class": "Message",
-       "thing": null,
-       "by": null
       }
      }
     },
@@ -942,13 +947,13 @@
      "p": 0.531,
      "by": "the message",
      "part": 1,
-     "returns": "World",
+     "returns": "NoneType",
      "words": "You know, feel free to just throw some functions at the top.",
      "parameters": {
-      "world": {
-       "class": "World",
-       "thing": "the world",
-       "by": "d1 0.52"
+      "what": {
+       "type": "str",
+       "value": null,
+       "by": null
       }
      }
     },
@@ -957,7 +962,7 @@
      "p": 0.643,
      "by": "the part",
      "part": 4,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "And then think deeper about my boundary and what that has to do with holes and kinds and all the other stuff that you spend all that time putting down into the notebook and the challenges that I've been having and brands and all that and come back with a more integrated proposal covering only these two things.",
      "parameters": {}
     },
@@ -969,15 +974,15 @@
      "returns": "Notebook",
      "words": "And then think deeper about my boundary and what that has to do with holes and kinds and all the other stuff that you spend all that time putting down into the notebook and the challenges that I've been having and brands and all that and come back with a more integrated proposal covering only these two things.",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "these cells",
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "these cells",
        "by": "the words"
       },
-      "code": {
-       "class": "Code",
-       "thing": "the functions",
-       "by": "d1 0.96"
+      "change.code": {
+       "type": "Code",
+       "value": "the functions",
+       "by": "d1 0.95"
       }
      }
     },
@@ -986,7 +991,7 @@
      "p": 0.836,
      "by": "the part",
      "part": 6,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "What happens in that case?",
      "parameters": {}
     },
@@ -999,14 +1004,9 @@
      "words": "Can we just do lambda with types?",
      "parameters": {
       "types": {
-       "class": "Types",
-       "thing": "the types",
-       "by": "d1 0.74"
-      },
-      "message": {
-       "class": "Message",
-       "thing": null,
-       "by": null
+       "type": "Types",
+       "value": "demand",
+       "by": "d1 0.62"
       }
      }
     }
@@ -1162,14 +1162,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 11. Parts that ask for something: 10.\n1. delete(notebook=Notebook \"these cells\") 0.98 + rewrite(notebook=Notebook \"these cells\", code=Code \"the functions\") 0.97   \"Okay. Um well I don't think we're learning anything with these cells, so maybe you can del\"\n2. extend(world=World \"the world\") 0.53   \"You know, feel free to just throw some functions at the top.\"\n4. implement(questions=Questions ?) 0.68 + solve(types=Types \"the types\", message=Message ?) 0.71   \"Just mock a function and and put it in instead of being so indirect and hiding this.\"\n5. explain() 0.64 + rewrite(notebook=Notebook \"these cells\", code=Code \"the functions\") 0.84   \"And then think deeper about my boundary and what that has to do with holes and kinds and a\"\n6. ?  no function of the world fits (d1 abstains)   \"Assume we have functions - Heck, assume we don't have any functions.\"\n7. explain() 0.84   \"What happens in that case?\"\n8. ?  no function of the world fits (d1 abstains)   \"We probably have a ()?\"\n9. ?  no function of the world fits (d1 abstains)   \"Or a lambda?\"\n10. solve(types=Types \"the types\", message=Message ?) 0.58   \"Can we just do lambda with types?\"\n11. explain() 0.58   \"Like what happens?\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 11. Parts that ask for something: 10.\n1. delete(notebook=\"these cells\") 0.98 + rewrite(change.notebook=\"these cells\", change.code=\"the functions\") 0.97   \"Okay. Um well I don't think we're learning anything with these cells, so maybe you can del\"\n2. extend(what=str ?) 0.53   \"You know, feel free to just throw some functions at the top.\"\n4. implement(questions=Questions ?) 0.68 + solve(types=\"the types\") 0.71   \"Just mock a function and and put it in instead of being so indirect and hiding this.\"\n5. explain() 0.64 + rewrite(change.notebook=\"these cells\", change.code=\"the functions\") 0.84   \"And then think deeper about my boundary and what that has to do with holes and kinds and a\"\n6. ?  no function of the world fits (d1 abstains)   \"Assume we have functions - Heck, assume we don't have any functions.\"\n7. explain() 0.84   \"What happens in that case?\"\n8. ?  no function of the world fits (d1 abstains)   \"We probably have a ()?\"\n9. ?  no function of the world fits (d1 abstains)   \"Or a lambda?\"\n10. solve(types=\"demand\") 0.58   \"Can we just do lambda with types?\"\n11. explain() 0.58   \"Like what happens?\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1190,7 +1190,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1201,7 +1201,7 @@
      "p": 0.742,
      "by": "the message",
      "part": 0,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "Sure. Why not?",
      "parameters": {}
     },
@@ -1214,8 +1214,13 @@
      "words": "Start from demand and work out by what process you actually got to it from the message Solve the inverse problem for me in this notebook using actually legible code, the least amount of it.",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
+       "by": null
+      },
+      "cells": {
+       "type": "int | None",
+       "value": null,
        "by": null
       }
      }
@@ -1228,15 +1233,15 @@
      "returns": "Notebook",
      "words": "Start from demand and work out by what process you actually got to it from the message Solve the inverse problem for me in this notebook using actually legible code, the least amount of it.",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "this notebook",
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "this notebook",
        "by": "the words"
       },
-      "code": {
-       "class": "Code",
-       "thing": "the functions",
-       "by": "d1 0.71"
+      "change.code": {
+       "type": "Code",
+       "value": "the functions",
+       "by": "d1 0.67"
       }
      }
     },
@@ -1249,13 +1254,8 @@
      "words": "Start from demand and work out by what process you actually got to it from the message Solve the inverse problem for me in this notebook using actually legible code, the least amount of it.",
      "parameters": {
       "types": {
-       "class": "Types",
-       "thing": "demand",
-       "by": "the words"
-      },
-      "message": {
-       "class": "Message",
-       "thing": "the message",
+       "type": "Types",
+       "value": "demand",
        "by": "the words"
       }
      }
@@ -1313,14 +1313,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 2.\n1. explain() 0.74   \"Sure. Why not?\"\n3. implement(questions=Questions ?) 0.96 + rewrite(notebook=Notebook \"this notebook\", code=Code \"the functions\") 0.60 + solve(types=Types \"demand\", message=Message \"the message\") 0.94   \"Start from demand and work out by what process you actually got to it from the message Sol\"\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 2.\n1. explain() 0.74   \"Sure. Why not?\"\n3. implement(questions=Questions ?) 0.96 + rewrite(change.notebook=\"this notebook\", change.code=\"the functions\") 0.60 + solve(types=\"demand\") 0.94   \"Start from demand and work out by what process you actually got to it from the message Sol\"\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1336,7 +1336,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1351,8 +1351,8 @@
      "words": "Sorry, just delete this whole notebook and uh give me a fresh one with a single cell that uh communicates what you're saying more clearly.",
      "parameters": {
       "notebook": {
-       "class": "Notebook",
-       "thing": "this whole notebook",
+       "type": "Notebook",
+       "value": "this whole notebook",
        "by": "the words"
       }
      }
@@ -1365,14 +1365,14 @@
      "returns": "Notebook",
      "words": "Sorry, just delete this whole notebook and uh give me a fresh one with a single cell that uh communicates what you're saying more clearly.",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "this whole notebook",
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "this whole notebook",
        "by": "the words"
       },
-      "code": {
-       "class": "Code",
-       "thing": null,
+      "change.code": {
+       "type": "Code",
+       "value": null,
        "by": null
       }
      }
@@ -1410,14 +1410,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. delete(notebook=Notebook \"this whole notebook\") 0.94 + rewrite(notebook=Notebook \"this whole notebook\", code=Code ?) 0.65   \"Sorry, just delete this whole notebook and uh give me a fresh one with a single cell that \"\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. delete(notebook=\"this whole notebook\") 0.94 + rewrite(change.notebook=\"this whole notebook\", change.code=Code ?) 0.65   \"Sorry, just delete this whole notebook and uh give me a fresh one with a single cell that \"\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1431,7 +1431,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1445,15 +1445,15 @@
      "returns": "Notebook",
      "words": null,
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "this version",
-       "by": "d1 0.61"
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "this version",
+       "by": "d1 0.66"
       },
-      "code": {
-       "class": "Code",
-       "thing": "the functions",
-       "by": "d1 0.54"
+      "change.code": {
+       "type": "Code",
+       "value": null,
+       "by": null
       }
      }
     },
@@ -1465,15 +1465,15 @@
      "returns": "Notebook",
      "words": "Can you do this more elegantly with some of the computer science concepts that we've been talking about that I keep telling you to use, but you don't really use?",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "this version",
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "this version",
        "by": "d1 0.61"
       },
-      "code": {
-       "class": "Code",
-       "thing": "the functions",
-       "by": "d1 0.54"
+      "change.code": {
+       "type": "Code",
+       "value": null,
+       "by": null
       }
      }
     },
@@ -1486,14 +1486,9 @@
      "words": "Can you do this more elegantly with some of the computer science concepts that we've been talking about that I keep telling you to use, but you don't really use?",
      "parameters": {
       "types": {
-       "class": "Types",
-       "thing": "the roles",
+       "type": "Types",
+       "value": "the roles",
        "by": "the words"
-      },
-      "message": {
-       "class": "Message",
-       "thing": null,
-       "by": null
       }
      }
     }
@@ -1548,14 +1543,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 2.\n2. ?  no function of the world fits (d1 abstains)   \"Can you do this without introducing the roles?\"\n3. rewrite(notebook=Notebook \"this version\", code=Code \"the functions\") 0.88 + solve(types=Types \"the roles\", message=Message ?) 0.51   \"Can you do this more elegantly with some of the computer science concepts that we've been \"\n-. rewrite(notebook=Notebook \"this version\", code=Code \"the functions\") 0.77   (the message as a whole)\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing.\nd1 says your last reply did not do: delete."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 2.\n2. ?  no function of the world fits (d1 abstains)   \"Can you do this without introducing the roles?\"\n3. rewrite(change.notebook=\"this version\", change.code=Code ?) 0.88 + solve(types=\"the roles\") 0.51   \"Can you do this more elegantly with some of the computer science concepts that we've been \"\n-. rewrite(change.notebook=\"this version\", change.code=Code ?) 0.77   (the message as a whole)\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing.\nd1 says your last reply did not do: delete."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1570,7 +1565,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1621,7 +1616,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1631,7 +1626,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1646,14 +1641,9 @@
      "words": "Okay. What about uh if we build that with t-strings then though?",
      "parameters": {
       "types": {
-       "class": "Types",
-       "thing": "the types",
-       "by": "d1 0.56"
-      },
-      "message": {
-       "class": "Message",
-       "thing": null,
-       "by": null
+       "type": "Types",
+       "value": "the type of the result",
+       "by": "d1 0.53"
       }
      }
     }
@@ -1703,14 +1693,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 1.\n2. solve(types=Types \"the types\", message=Message ?) 0.54   \"Okay. What about uh if we build that with t-strings then though?\"\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 1.\n2. solve(types=\"the type of the result\") 0.54   \"Okay. What about uh if we build that with t-strings then though?\""
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1726,7 +1716,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1740,14 +1730,14 @@
      "returns": "Notebook",
      "words": "Go ahead and rewrite this version to use T strings And the template, yeah.",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "this version",
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "this version",
        "by": "the words"
       },
-      "code": {
-       "class": "Code",
-       "thing": "the template",
+      "change.code": {
+       "type": "Code",
+       "value": "the template",
        "by": "the words"
       }
      }
@@ -1761,14 +1751,9 @@
      "words": "Go ahead and rewrite this version to use T strings And the template, yeah.",
      "parameters": {
       "types": {
-       "class": "Types",
-       "thing": "demand",
-       "by": "d1 0.54"
-      },
-      "message": {
-       "class": "Message",
-       "thing": "the entire message",
-       "by": "the words"
+       "type": "Types",
+       "value": "the types",
+       "by": "d1 0.51"
       }
      }
     }
@@ -1824,14 +1809,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 1.\n1. rewrite(notebook=Notebook \"this version\", code=Code \"the template\") 0.93 + solve(types=Types \"demand\", message=Message \"the entire message\") 0.82   \"Go ahead and rewrite this version to use T strings And the template, yeah.\"\nd1 says your last reply did not do: solve."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 1.\n1. rewrite(change.notebook=\"this version\", change.code=\"the template\") 0.93 + solve(types=\"the types\") 0.82   \"Go ahead and rewrite this version to use T strings And the template, yeah.\"\nd1 says your last reply did not do: solve."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1880,7 +1865,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -1893,7 +1878,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -1904,7 +1889,7 @@
      "p": 0.539,
      "by": "the message",
      "part": null,
-     "returns": "Explanation",
+     "returns": "str",
      "words": null,
      "parameters": {}
     },
@@ -1913,13 +1898,13 @@
      "p": 0.602,
      "by": "the message",
      "part": 2,
-     "returns": "World",
+     "returns": "NoneType",
      "words": "If not paths, it would be something else, but we have to at some point pull from the world, right?",
      "parameters": {
-      "world": {
-       "class": "World",
-       "thing": "the world",
-       "by": "the words"
+      "what": {
+       "type": "str",
+       "value": null,
+       "by": null
       }
      }
     },
@@ -1928,7 +1913,7 @@
      "p": 0.797,
      "by": "the part",
      "part": 1,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "Because at some point we need to make a decision about what Classes we are using for the types.",
      "parameters": {}
     },
@@ -1937,13 +1922,13 @@
      "p": 0.526,
      "by": "the part",
      "part": 1,
-     "returns": "World",
+     "returns": "NoneType",
      "words": "Because at some point we need to make a decision about what Classes we are using for the types.",
      "parameters": {
-      "world": {
-       "class": "World",
-       "thing": "the world",
-       "by": "the words"
+      "what": {
+       "type": "str",
+       "value": null,
+       "by": null
       }
      }
     }
@@ -2007,14 +1992,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 2.\n2. explain() 0.80 + extend(world=World \"the world\") 0.53   \"Because at some point we need to make a decision about what Classes we are using for the t\"\n3. extend(world=World \"the world\") 0.60   \"If not paths, it would be something else, but we have to at some point pull from the world\"\n-. explain() 0.54   (the message as a whole)\nd1 says your last reply did not do: part 1."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 2.\n2. explain() 0.80 + extend(what=str ?) 0.53   \"Because at some point we need to make a decision about what Classes we are using for the t\"\n3. extend(what=str ?) 0.60   \"If not paths, it would be something else, but we have to at some point pull from the world\"\n-. explain() 0.54   (the message as a whole)\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing.\nd1 says your last reply did not do: part 1."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -2028,7 +2013,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2043,9 +2028,14 @@
      "words": "Turn this into a real program.",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
        "by": null
+      },
+      "cells": {
+       "type": "int | None",
+       "value": "1",
+       "by": "the words"
       }
      }
     },
@@ -2057,14 +2047,14 @@
      "returns": "Notebook",
      "words": "Turn this into a real program.",
      "parameters": {
-      "notebook": {
-       "class": "Notebook",
-       "thing": "this notebook",
+      "change.notebook": {
+       "type": "Notebook",
+       "value": "this notebook",
        "by": "the words"
       },
-      "code": {
-       "class": "Code",
-       "thing": "the template",
+      "change.code": {
+       "type": "Code",
+       "value": "the template",
        "by": "the words"
       }
      }
@@ -2078,8 +2068,8 @@
      "words": "2. mock D1 and I want to pay special attention to how we're using it and what the prompts are.",
      "parameters": {
       "model": {
-       "class": "Model",
-       "thing": "d1",
+       "type": "Model",
+       "value": "d1",
        "by": "the words"
       }
      }
@@ -2093,13 +2083,8 @@
      "words": "Turn this into a real program.",
      "parameters": {
       "types": {
-       "class": "Types",
-       "thing": "classes",
-       "by": "the words"
-      },
-      "message": {
-       "class": "Message",
-       "thing": "the messages",
+       "type": "Types",
+       "value": "classes",
        "by": "the words"
       }
      }
@@ -2109,13 +2094,13 @@
      "p": 0.635,
      "by": "the message",
      "part": 7,
-     "returns": "World",
+     "returns": "NoneType",
      "words": "Turn this into a real program.",
      "parameters": {
-      "world": {
-       "class": "World",
-       "thing": "the world",
-       "by": "the words"
+      "what": {
+       "type": "str",
+       "value": null,
+       "by": null
       }
      }
     },
@@ -2128,9 +2113,14 @@
      "words": "And that's something that we can put in the code.",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
        "by": null
+      },
+      "cells": {
+       "type": "int | None",
+       "value": "1",
+       "by": "the words"
       }
      }
     },
@@ -2143,13 +2133,8 @@
      "words": "And that's something that we can put in the code.",
      "parameters": {
       "types": {
-       "class": "Types",
-       "thing": "classes",
-       "by": "the words"
-      },
-      "message": {
-       "class": "Message",
-       "thing": "the messages",
+       "type": "Types",
+       "value": "classes",
        "by": "the words"
       }
      }
@@ -2163,9 +2148,14 @@
      "words": "So here's what I'd like you to do.",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
        "by": null
+      },
+      "cells": {
+       "type": "int | None",
+       "value": "1",
+       "by": "the words"
       }
      }
     },
@@ -2174,18 +2164,18 @@
      "p": 0.587,
      "by": "the part",
      "part": 8,
-     "returns": "Explanation",
+     "returns": "str",
      "words": "Generalize it.",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
        "by": null
       },
       "concepts": {
-       "class": "Concepts",
-       "thing": "the computer science concepts",
-       "by": "d1 0.55"
+       "type": "Concepts",
+       "value": "the computer science concepts",
+       "by": "d1 0.54"
       }
      }
     },
@@ -2198,9 +2188,14 @@
      "words": "3. use this program that you've written to go from the messages to uh the things you'd expect using the mocked D1.",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
        "by": null
+      },
+      "cells": {
+       "type": "int | None",
+       "value": "3",
+       "by": "the words"
       }
      }
     },
@@ -2213,8 +2208,8 @@
      "words": "3. use this program that you've written to go from the messages to uh the things you'd expect using the mocked D1.",
      "parameters": {
       "model": {
-       "class": "Model",
-       "thing": "d1",
+       "type": "Model",
+       "value": "d1",
        "by": "the words"
       }
      }
@@ -2377,14 +2372,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 15. Parts that ask for something: 6.\n6. implement(questions=Questions ?) 0.74 + solve(types=Types \"classes\", message=Message \"the messages\") 0.89   \"And that's something that we can put in the code.\"\n7. implement(questions=Questions ?) 0.56   \"So here's what I'd like you to do.\"\n8. implement(questions=Questions ?) 0.95 + rewrite(notebook=Notebook \"this notebook\", code=Code \"the template\") 0.74 + solve(types=Types \"classes\", message=Message \"the messages\") 0.96 + extend(world=World \"the world\") 0.64   \"Turn this into a real program.\"\n9. restate(questions=Questions ?, concepts=Concepts \"the computer science concepts\") 0.59   \"Generalize it.\"\n12. mock(model=Model \"d1\") 0.82   \"2. mock D1 and I want to pay special attention to how we're using it and what the prompts \"\n13. implement(questions=Questions ?) 0.58 + mock(model=Model \"d1\") 0.59   \"3. use this program that you've written to go from the messages to uh the things you'd exp\"\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing.\nd1 says your last reply did not do: extend."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 15. Parts that ask for something: 6.\n6. implement(questions=Questions ?, cells=\"1\") 0.74 + solve(types=\"classes\") 0.89   \"And that's something that we can put in the code.\"\n7. implement(questions=Questions ?, cells=\"1\") 0.56   \"So here's what I'd like you to do.\"\n8. implement(questions=Questions ?, cells=\"1\") 0.95 + rewrite(change.notebook=\"this notebook\", change.code=\"the template\") 0.74 + solve(types=\"classes\") 0.96 + extend(what=str ?) 0.64   \"Turn this into a real program.\"\n9. restate(questions=Questions ?, concepts=\"the computer science concepts\") 0.59   \"Generalize it.\"\n12. mock(model=\"d1\") 0.82   \"2. mock D1 and I want to pay special attention to how we're using it and what the prompts \"\n13. implement(questions=Questions ?, cells=\"3\") 0.58 + mock(model=\"d1\") 0.59   \"3. use this program that you've written to go from the messages to uh the things you'd exp\"\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing.\nd1 says your last reply did not do: extend."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -2402,7 +2397,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2413,13 +2408,13 @@
      "p": 0.557,
      "by": "the message",
      "part": 1,
-     "returns": "World",
+     "returns": "NoneType",
      "words": "Can we just build up functions between those classes?",
      "parameters": {
-      "world": {
-       "class": "World",
-       "thing": "the world",
-       "by": "d1 0.82"
+      "what": {
+       "type": "str",
+       "value": null,
+       "by": null
       }
      }
     }
@@ -2473,14 +2468,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 2.\n1. ?  no function of the world fits (d1 abstains)   \"Do we have functions still?\"\n2. extend(world=World \"the world\") 0.56   \"Can we just build up functions between those classes?\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 3. Parts that ask for something: 2.\n1. ?  no function of the world fits (d1 abstains)   \"Do we have functions still?\"\n2. extend(what=str ?) 0.56   \"Can we just build up functions between those classes?\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -2494,7 +2489,7 @@
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2509,8 +2504,13 @@
      "words": "Please build up a file of the types that we'll introduce as you go along - And you're welcome to keep using the naive uh two loops read message and just play and uh you know fudge the calibration basically because it's still mock and um I just want to make sure that it works end to end even if we had the best possible calibration and Didn't need to worry about the search",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
+       "by": null
+      },
+      "cells": {
+       "type": "int | None",
+       "value": null,
        "by": null
       }
      }
@@ -2524,8 +2524,8 @@
      "words": "Um get rid of these And go grab all of my messages to you and your replies  From the last hour and start loading them in one by one and adjusting the program and the calibration and saving each of the results until you have generated a gold set program that runs through and does the matching correctly With your hard coded correct calibration values from D1.",
      "parameters": {
       "notebook": {
-       "class": "Notebook",
-       "thing": "these cells",
+       "type": "Notebook",
+       "value": "these cells",
        "by": "d1 0.78"
       }
      }
@@ -2535,13 +2535,13 @@
      "p": 0.599,
      "by": "the message",
      "part": 2,
-     "returns": "File",
+     "returns": "Path",
      "words": "Please build up a file of the types that we'll introduce as you go along - And you're welcome to keep using the naive uh two loops read message and just play and uh you know fudge the calibration basically because it's still mock and um I just want to make sure that it works end to end even if we had the best possible calibration and Didn't need to worry about the search",
      "parameters": {
-      "message": {
-       "class": "Message",
-       "thing": "all of my messages to you and your replies",
-       "by": "the words"
+      "path": {
+       "type": "Path",
+       "value": null,
+       "by": null
       }
      }
     }
@@ -2609,14 +2609,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 3.\n2. delete(notebook=Notebook \"these cells\") 0.95   \"Um get rid of these And go grab all of my messages to you and your replies  From the last \"\n3. implement(questions=Questions ?) 0.51 + write(message=Message \"all of my messages to you and your replies\") 0.60   \"Please build up a file of the types that we'll introduce as you go along - And you're welc\"\n4. ?  no function of the world fits (d1 abstains)   \"In parallel, go uh have a Sonnet agent look up how prompting should work for this model.\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 4. Parts that ask for something: 3.\n2. delete(notebook=\"these cells\") 0.95   \"Um get rid of these And go grab all of my messages to you and your replies  From the last \"\n3. implement(questions=Questions ?) 0.51 + write(path=Path ?) 0.60   \"Please build up a file of the types that we'll introduce as you go along - And you're welc\"\n4. ?  no function of the world fits (d1 abstains)   \"In parallel, go uh have a Sonnet agent look up how prompting should work for this model.\"\nFor each \"?\": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "UserPromptSubmit",
    "session": "gold",
    "brand": "Asked",
@@ -2631,8 +2631,13 @@
      "words": "Oh, can you please get rid of the old cells?",
      "parameters": {
       "questions": {
-       "class": "Questions",
-       "thing": null,
+       "type": "Questions",
+       "value": null,
+       "by": null
+      },
+      "cells": {
+       "type": "int | None",
+       "value": null,
        "by": null
       }
      }
@@ -2646,8 +2651,8 @@
      "words": "Oh, can you please get rid of the old cells?",
      "parameters": {
       "notebook": {
-       "class": "Notebook",
-       "thing": "the old cells",
+       "type": "Notebook",
+       "value": "the old cells",
        "by": "the words"
       }
      }
@@ -2685,14 +2690,14 @@
    "answer": {
     "hookSpecificOutput": {
      "hookEventName": "UserPromptSubmit",
-     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. implement(questions=Questions ?) 0.53 + delete(notebook=Notebook \"the old cells\") 0.98   \"Oh, can you please get rid of the old cells?\"\nA \"name=Class ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
+     "additionalContext": "scriptt: d1 read this message against .scriptt/world.py. Parts: 1. Parts that ask for something: 1.\n1. implement(questions=Questions ?) 0.53 + delete(notebook=\"the old cells\") 0.98   \"Oh, can you please get rid of the old cells?\"\nA \"name=Type ?\" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."
     }
    }
   },
   {
    "form": 2,
    "harness": "0.1.5",
-   "world": "858bc9a7ea46",
+   "world": "f6fb5d956d4c",
    "event": "Stop",
    "session": "gold",
    "brand": "Written",
@@ -3746,69 +3751,49 @@
     }
    }
   },
-  "8a009d501cf029a0c99dc3cc2d76023de6950bcb": {
-   "Code: t strings": {
-    "id": "Code: t strings",
+  "c8704947e5ab7b2f60d348de469dcbdaae10a8b9": {
+   "2 change.notebook the old cells": {
+    "id": "2 change.notebook the old cells",
     "type": "boolean",
     "value": false,
-    "p_true": 0.22778037776106796,
+    "p_true": 0.4260660802740442,
     "probabilities": {
-     "false": 0.772219622238932,
-     "true": 0.22778037776106796
+     "false": 0.5739339197259559,
+     "true": 0.4260660802740442
     }
    },
-   "Code: t-strings": {
-    "id": "Code: t-strings",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.21175948740487843,
-    "probabilities": {
-     "false": 0.7882405125951215,
-     "true": 0.21175948740487843
-    }
-   },
-   "Code: the functions": {
-    "id": "Code: the functions",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.4737371501817587,
-    "probabilities": {
-     "false": 0.5262628498182413,
-     "true": 0.4737371501817587
-    }
-   },
-   "Code: the template": {
-    "id": "Code: the template",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.4389694031297399,
-    "probabilities": {
-     "false": 0.56103059687026,
-     "true": 0.4389694031297399
-    }
-   },
-   "Notebook: the old cells": {
-    "id": "Notebook: the old cells",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.42463824105910913,
-    "probabilities": {
-     "false": 0.5753617589408908,
-     "true": 0.42463824105910913
-    }
-   },
-   "Notebook: these cells": {
-    "id": "Notebook: these cells",
+   "2 change.notebook these cells": {
+    "id": "2 change.notebook these cells",
     "type": "boolean",
     "value": true,
-    "p_true": 0.6339284089103526,
+    "p_true": 0.7262226284474309,
     "probabilities": {
-     "false": 0.3660715910896474,
-     "true": 0.6339284089103526
+     "false": 0.2737773715525691,
+     "true": 0.7262226284474309
     }
    },
-   "Notebook: this notebook": {
-    "id": "Notebook: this notebook",
+   "2 change.notebook this notebook": {
+    "id": "2 change.notebook this notebook",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6925307448609351,
+    "probabilities": {
+     "false": 0.30746925513906487,
+     "true": 0.6925307448609351
+    }
+   },
+   "2 change.notebook this whole notebook": {
+    "id": "2 change.notebook this whole notebook",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6257572159752679,
+    "probabilities": {
+     "false": 0.3742427840247321,
+     "true": 0.6257572159752679
+    }
+   },
+   "2 change.notebook this version": {
+    "id": "2 change.notebook this version",
     "type": "boolean",
     "value": true,
     "p_true": 0.6420232550997825,
@@ -3817,24 +3802,134 @@
      "true": 0.6420232550997825
     }
    },
-   "Notebook: this version": {
-    "id": "Notebook: this version",
+   "2 change.code the functions": {
+    "id": "2 change.code the functions",
     "type": "boolean",
-    "value": true,
-    "p_true": 0.6119798462352583,
+    "value": false,
+    "p_true": 0.20501451419672612,
     "probabilities": {
-     "false": 0.38802015376474175,
-     "true": 0.6119798462352583
+     "false": 0.7949854858032739,
+     "true": 0.20501451419672612
     }
    },
-   "Notebook: this whole notebook": {
-    "id": "Notebook: this whole notebook",
+   "2 change.code t-strings": {
+    "id": "2 change.code t-strings",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.15833252677127282,
+    "probabilities": {
+     "false": 0.8416674732287271,
+     "true": 0.15833252677127282
+    }
+   },
+   "2 change.code t strings": {
+    "id": "2 change.code t strings",
     "type": "boolean",
     "value": true,
-    "p_true": 0.6008263805982519,
+    "p_true": 0.5175175223976402,
     "probabilities": {
-     "false": 0.3991736194017481,
-     "true": 0.6008263805982519
+     "false": 0.48248247760235985,
+     "true": 0.5175175223976402
+    }
+   },
+   "2 change.code the template": {
+    "id": "2 change.code the template",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.35395915710315934,
+    "probabilities": {
+     "false": 0.6460408428968407,
+     "true": 0.35395915710315934
+    }
+   },
+   "3 change.notebook the old cells": {
+    "id": "3 change.notebook the old cells",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5422503521805421,
+    "probabilities": {
+     "false": 0.4577496478194579,
+     "true": 0.5422503521805421
+    }
+   },
+   "3 change.notebook these cells": {
+    "id": "3 change.notebook these cells",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.7144560864772557,
+    "probabilities": {
+     "false": 0.28554391352274433,
+     "true": 0.7144560864772557
+    }
+   },
+   "3 change.notebook this notebook": {
+    "id": "3 change.notebook this notebook",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6447039033725469,
+    "probabilities": {
+     "false": 0.3552960966274531,
+     "true": 0.6447039033725469
+    }
+   },
+   "3 change.notebook this whole notebook": {
+    "id": "3 change.notebook this whole notebook",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5824816542885557,
+    "probabilities": {
+     "false": 0.4175183457114443,
+     "true": 0.5824816542885557
+    }
+   },
+   "3 change.notebook this version": {
+    "id": "3 change.notebook this version",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.62438820655207,
+    "probabilities": {
+     "false": 0.37561179344793005,
+     "true": 0.62438820655207
+    }
+   },
+   "3 change.code the functions": {
+    "id": "3 change.code the functions",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.2288095220733742,
+    "probabilities": {
+     "false": 0.7711904779266258,
+     "true": 0.2288095220733742
+    }
+   },
+   "3 change.code t-strings": {
+    "id": "3 change.code t-strings",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.17792199985499704,
+    "probabilities": {
+     "false": 0.822078000145003,
+     "true": 0.17792199985499704
+    }
+   },
+   "3 change.code t strings": {
+    "id": "3 change.code t strings",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.2489807340404618,
+    "probabilities": {
+     "false": 0.7510192659595382,
+     "true": 0.2489807340404618
+    }
+   },
+   "3 change.code the template": {
+    "id": "3 change.code the template",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.3380983892600761,
+    "probabilities": {
+     "false": 0.6619016107399238,
+     "true": 0.3380983892600761
     }
    }
   },
@@ -4188,155 +4283,155 @@
     }
    }
   },
-  "3905dbac025d7d9a328ea5382d749076231705e5": {
-   "Code: t strings": {
-    "id": "Code: t strings",
+  "2b164fe9af977f68bdca178ee924cc99359b1783": {
+   "2 change.notebook the old cells": {
+    "id": "2 change.notebook the old cells",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.720377223852489,
+    "probabilities": {
+     "false": 0.27962277614751097,
+     "true": 0.720377223852489
+    }
+   },
+   "2 change.notebook these cells": {
+    "id": "2 change.notebook these cells",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.9203869192080467,
+    "probabilities": {
+     "false": 0.07961308079195328,
+     "true": 0.9203869192080467
+    }
+   },
+   "2 change.notebook this notebook": {
+    "id": "2 change.notebook this notebook",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.9396607187201091,
+    "probabilities": {
+     "false": 0.060339281279890855,
+     "true": 0.9396607187201091
+    }
+   },
+   "2 change.notebook this whole notebook": {
+    "id": "2 change.notebook this whole notebook",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8097995327772701,
+    "probabilities": {
+     "false": 0.19020046722272987,
+     "true": 0.8097995327772701
+    }
+   },
+   "2 change.notebook this version": {
+    "id": "2 change.notebook this version",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8937138293079029,
+    "probabilities": {
+     "false": 0.10628617069209711,
+     "true": 0.8937138293079029
+    }
+   },
+   "2 change.code the functions": {
+    "id": "2 change.code the functions",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6325717392180384,
+    "probabilities": {
+     "false": 0.36742826078196156,
+     "true": 0.6325717392180384
+    }
+   },
+   "2 change.code t-strings": {
+    "id": "2 change.code t-strings",
     "type": "boolean",
     "value": false,
-    "p_true": 0.49707925072226233,
+    "p_true": 0.38802015376474186,
     "probabilities": {
-     "false": 0.5029207492777377,
-     "true": 0.49707925072226233
+     "false": 0.6119798462352581,
+     "true": 0.38802015376474186
     }
    },
-   "Code: t-strings": {
-    "id": "Code: t-strings",
+   "2 change.code t strings": {
+    "id": "2 change.code t strings",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5552681095153559,
+    "probabilities": {
+     "false": 0.4447318904846441,
+     "true": 0.5552681095153559
+    }
+   },
+   "2 change.code the template": {
+    "id": "2 change.code the template",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.720377223852489,
+    "probabilities": {
+     "false": 0.27962277614751097,
+     "true": 0.720377223852489
+    }
+   },
+   "3 types result types": {
+    "id": "3 types result types",
     "type": "boolean",
     "value": false,
-    "p_true": 0.37973069088063227,
+    "p_true": 0.0890781633340575,
     "probabilities": {
-     "false": 0.6202693091193677,
-     "true": 0.37973069088063227
+     "false": 0.9109218366659425,
+     "true": 0.0890781633340575
     }
    },
-   "Code: the functions": {
-    "id": "Code: the functions",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.6824913985607385,
-    "probabilities": {
-     "false": 0.3175086014392615,
-     "true": 0.6824913985607385
-    }
-   },
-   "Code: the template": {
-    "id": "Code: the template",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.7156463214362795,
-    "probabilities": {
-     "false": 0.2843536785637205,
-     "true": 0.7156463214362795
-    }
-   },
-   "Notebook: the old cells": {
-    "id": "Notebook: the old cells",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.7331357430775153,
-    "probabilities": {
-     "false": 0.2668642569224847,
-     "true": 0.7331357430775153
-    }
-   },
-   "Notebook: these cells": {
-    "id": "Notebook: these cells",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.9289247526785842,
-    "probabilities": {
-     "false": 0.07107524732141579,
-     "true": 0.9289247526785842
-    }
-   },
-   "Notebook: this notebook": {
-    "id": "Notebook: this notebook",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.9285381040974862,
-    "probabilities": {
-     "false": 0.07146189590251384,
-     "true": 0.9285381040974862
-    }
-   },
-   "Notebook: this version": {
-    "id": "Notebook: this version",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.9082801682355903,
-    "probabilities": {
-     "false": 0.09171983176440968,
-     "true": 0.9082801682355903
-    }
-   },
-   "Notebook: this whole notebook": {
-    "id": "Notebook: this whole notebook",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.8203627233663939,
-    "probabilities": {
-     "false": 0.17963727663360607,
-     "true": 0.8203627233663939
-    }
-   },
-   "Types: classes": {
-    "id": "Types: classes",
+   "3 types the type of the result": {
+    "id": "3 types the type of the result",
     "type": "boolean",
     "value": false,
-    "p_true": 0.10435964165761004,
+    "p_true": 0.1646601397036259,
     "probabilities": {
-     "false": 0.89564035834239,
-     "true": 0.10435964165761004
+     "false": 0.8353398602963741,
+     "true": 0.1646601397036259
     }
    },
-   "Types: demand": {
-    "id": "Types: demand",
+   "3 types demand": {
+    "id": "3 types demand",
     "type": "boolean",
     "value": true,
-    "p_true": 0.739936806983123,
+    "p_true": 0.6050218784012276,
     "probabilities": {
-     "false": 0.26006319301687697,
-     "true": 0.739936806983123
+     "false": 0.39497812159877244,
+     "true": 0.6050218784012276
     }
    },
-   "Types: result types": {
-    "id": "Types: result types",
+   "3 types the roles": {
+    "id": "3 types the roles",
     "type": "boolean",
     "value": false,
-    "p_true": 0.14700199318325902,
+    "p_true": 0.22778037776106813,
     "probabilities": {
-     "false": 0.852998006816741,
-     "true": 0.14700199318325902
+     "false": 0.7722196222389319,
+     "true": 0.22778037776106813
     }
    },
-   "Types: the roles": {
-    "id": "Types: the roles",
+   "3 types classes": {
+    "id": "3 types classes",
     "type": "boolean",
     "value": false,
-    "p_true": 0.1866275231539976,
+    "p_true": 0.19843029844201576,
     "probabilities": {
-     "false": 0.8133724768460024,
-     "true": 0.1866275231539976
+     "false": 0.8015697015579842,
+     "true": 0.19843029844201576
     }
    },
-   "Types: the type of the result": {
-    "id": "Types: the type of the result",
+   "3 types the types": {
+    "id": "3 types the types",
     "type": "boolean",
     "value": false,
-    "p_true": 0.14627101468692164,
+    "p_true": 0.21966500875332734,
     "probabilities": {
-     "false": 0.8537289853130784,
-     "true": 0.14627101468692164
-    }
-   },
-   "Types: the types": {
-    "id": "Types: the types",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.16871704071560045,
-    "probabilities": {
-     "false": 0.8312829592843995,
-     "true": 0.16871704071560045
+     "false": 0.7803349912466726,
+     "true": 0.21966500875332734
     }
    }
   },
@@ -4608,9 +4703,9 @@
     }
    }
   },
-  "acca4289e04f958999f34599948e018c28548b41": {
-   "Questions: all ten of these": {
-    "id": "Questions: all ten of these",
+  "cc3677e0ab76dea66ebb79a3effd00683d04c66e": {
+   "0 questions all ten of these": {
+    "id": "0 questions all ten of these",
     "type": "boolean",
     "value": false,
     "p_true": 0.1292877547207823,
@@ -6108,165 +6203,223 @@
     }
    }
   },
-  "6ee447dda1d9f75dbac2e6b2dd945385e4412464": {
-   "Code: t strings": {
-    "id": "Code: t strings",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.8233560166342602,
-    "probabilities": {
-     "false": 0.17664398336573983,
-     "true": 0.8233560166342602
-    }
-   },
-   "Code: t-strings": {
-    "id": "Code: t-strings",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.5980210956929739,
-    "probabilities": {
-     "false": 0.4019789043070261,
-     "true": 0.5980210956929739
-    }
-   },
-   "Code: the functions": {
-    "id": "Code: the functions",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.9598783541897272,
-    "probabilities": {
-     "false": 0.04012164581027278,
-     "true": 0.9598783541897272
-    }
-   },
-   "Code: the template": {
-    "id": "Code: the template",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.8522640074555784,
-    "probabilities": {
-     "false": 0.1477359925444216,
-     "true": 0.8522640074555784
-    }
-   },
-   "Questions: all ten of these": {
-    "id": "Questions: all ten of these",
+  "0123f8ec6d2a8b32108f1c055959912f96b7a5c1": {
+   "1 questions all ten of these": {
+    "id": "1 questions all ten of these",
     "type": "boolean",
     "value": false,
-    "p_true": 0.23400418704823764,
+    "p_true": 0.279622776147511,
     "probabilities": {
-     "false": 0.7659958129517623,
-     "true": 0.23400418704823764
+     "false": 0.720377223852489,
+     "true": 0.279622776147511
     }
    },
-   "Types: classes": {
-    "id": "Types: classes",
+   "3 change.code the functions": {
+    "id": "3 change.code the functions",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.9656279079851288,
+    "probabilities": {
+     "false": 0.034372092014871236,
+     "true": 0.9656279079851288
+    }
+   },
+   "3 change.code t-strings": {
+    "id": "3 change.code t-strings",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5014603870972109,
+    "probabilities": {
+     "false": 0.49853961290278914,
+     "true": 0.5014603870972109
+    }
+   },
+   "3 change.code t strings": {
+    "id": "3 change.code t strings",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5581513106567313,
+    "probabilities": {
+     "false": 0.4418486893432687,
+     "true": 0.5581513106567313
+    }
+   },
+   "3 change.code the template": {
+    "id": "3 change.code the template",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.8629597030498773,
+    "probabilities": {
+     "false": 0.13704029695012265,
+     "true": 0.8629597030498773
+    }
+   },
+   "4 types result types": {
+    "id": "4 types result types",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5102213145604012,
+    "probabilities": {
+     "false": 0.4897786854395988,
+     "true": 0.5102213145604012
+    }
+   },
+   "4 types the type of the result": {
+    "id": "4 types the type of the result",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6500379191190763,
+    "probabilities": {
+     "false": 0.34996208088092373,
+     "true": 0.6500379191190763
+    }
+   },
+   "4 types demand": {
+    "id": "4 types demand",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6147504720352001,
+    "probabilities": {
+     "false": 0.38524952796479994,
+     "true": 0.6147504720352001
+    }
+   },
+   "4 types the roles": {
+    "id": "4 types the roles",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6553346669641567,
+    "probabilities": {
+     "false": 0.34466533303584335,
+     "true": 0.6553346669641567
+    }
+   },
+   "4 types classes": {
+    "id": "4 types classes",
     "type": "boolean",
     "value": false,
-    "p_true": 0.3407178569933964,
+    "p_true": 0.32259344845570254,
     "probabilities": {
-     "false": 0.6592821430066036,
-     "true": 0.3407178569933964
+     "false": 0.6774065515442975,
+     "true": 0.32259344845570254
     }
    },
-   "Types: demand": {
-    "id": "Types: demand",
+   "4 types the types": {
+    "id": "4 types the types",
     "type": "boolean",
     "value": true,
-    "p_true": 0.5824816542885557,
+    "p_true": 0.7354152860405929,
     "probabilities": {
-     "false": 0.4175183457114443,
-     "true": 0.5824816542885557
+     "false": 0.2645847139594071,
+     "true": 0.7354152860405929
     }
    },
-   "Types: result types": {
-    "id": "Types: result types",
+   "5 what ": {
+    "id": "5 what ",
+    "type": "text",
+    "value": null,
+    "found": 0.3002547135852273,
+    "span": null,
+    "text": null
+   },
+   "7 change.code the functions": {
+    "id": "7 change.code the functions",
     "type": "boolean",
     "value": true,
-    "p_true": 0.6230172061837034,
+    "p_true": 0.9497079352767821,
     "probabilities": {
-     "false": 0.3769827938162966,
-     "true": 0.6230172061837034
+     "false": 0.0502920647232179,
+     "true": 0.9497079352767821
     }
    },
-   "Types: the roles": {
-    "id": "Types: the roles",
+   "7 change.code t-strings": {
+    "id": "7 change.code t-strings",
     "type": "boolean",
     "value": true,
-    "p_true": 0.676128691710173,
+    "p_true": 0.6147504720352001,
     "probabilities": {
-     "false": 0.323871308289827,
-     "true": 0.676128691710173
+     "false": 0.38524952796479994,
+     "true": 0.6147504720352001
     }
    },
-   "Types: the type of the result": {
-    "id": "Types: the type of the result",
+   "7 change.code t strings": {
+    "id": "7 change.code t strings",
     "type": "boolean",
     "value": true,
-    "p_true": 0.6420232550997825,
+    "p_true": 0.6325717392180384,
     "probabilities": {
-     "false": 0.35797674490021747,
-     "true": 0.6420232550997825
+     "false": 0.36742826078196156,
+     "true": 0.6325717392180384
     }
    },
-   "Types: the types": {
-    "id": "Types: the types",
+   "7 change.code the template": {
+    "id": "7 change.code the template",
     "type": "boolean",
     "value": true,
-    "p_true": 0.7388111381666137,
+    "p_true": 0.8551819046258005,
     "probabilities": {
-     "false": 0.2611888618333863,
-     "true": 0.7388111381666137
+     "false": 0.14481809537419954,
+     "true": 0.8551819046258005
     }
    },
-   "World: the world": {
-    "id": "World: the world",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.5248062683922595,
-    "probabilities": {
-     "false": 0.4751937316077405,
-     "true": 0.5248062683922595
-    }
-   },
-   "Message: all of my messages to you and your replies": {
-    "id": "Message: all of my messages to you and your replies",
+   "9 types result types": {
+    "id": "9 types result types",
     "type": "boolean",
     "value": false,
-    "p_true": 0.11579529997487624,
+    "p_true": 0.42178635507983503,
     "probabilities": {
-     "false": 0.8842047000251237,
-     "true": 0.11579529997487624
+     "false": 0.5782136449201649,
+     "true": 0.42178635507983503
     }
    },
-   "Message: the entire message": {
-    "id": "Message: the entire message",
+   "9 types the type of the result": {
+    "id": "9 types the type of the result",
     "type": "boolean",
-    "value": false,
-    "p_true": 0.2156859896810772,
+    "value": true,
+    "p_true": 0.6022265580743177,
     "probabilities": {
-     "false": 0.7843140103189228,
-     "true": 0.2156859896810772
+     "false": 0.3977734419256823,
+     "true": 0.6022265580743177
     }
    },
-   "Message: the message": {
-    "id": "Message: the message",
+   "9 types demand": {
+    "id": "9 types demand",
     "type": "boolean",
-    "value": false,
-    "p_true": 0.30996254630501663,
+    "value": true,
+    "p_true": 0.6161330128007482,
     "probabilities": {
-     "false": 0.6900374536949834,
-     "true": 0.30996254630501663
+     "false": 0.38386698719925183,
+     "true": 0.6161330128007482
     }
    },
-   "Message: the messages": {
-    "id": "Message: the messages",
+   "9 types the roles": {
+    "id": "9 types the roles",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.613366076535731,
+    "probabilities": {
+     "false": 0.38663392346426895,
+     "true": 0.613366076535731
+    }
+   },
+   "9 types classes": {
+    "id": "9 types classes",
     "type": "boolean",
     "value": false,
-    "p_true": 0.30128519222155964,
+    "p_true": 0.3811075490176915,
     "probabilities": {
-     "false": 0.6987148077784404,
-     "true": 0.30128519222155964
+     "false": 0.6188924509823085,
+     "true": 0.3811075490176915
+    }
+   },
+   "9 types the types": {
+    "id": "9 types the types",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6078103475842369,
+    "probabilities": {
+     "false": 0.3921896524157631,
+     "true": 0.6078103475842369
     }
    }
   },
@@ -6550,55 +6703,55 @@
     }
    }
   },
-  "418fef9afee43f4c8529fbaa2cb49b5f041c2452": {
-   "Code: t strings": {
-    "id": "Code: t strings",
+  "2116dad623416e64baffa8153fb25c9ca4abbb13": {
+   "1 questions all ten of these": {
+    "id": "1 questions all ten of these",
     "type": "boolean",
     "value": false,
-    "p_true": 0.4563000461975773,
+    "p_true": 0.22369649730962113,
     "probabilities": {
-     "false": 0.5436999538024228,
-     "true": 0.4563000461975773
+     "false": 0.7763035026903788,
+     "true": 0.22369649730962113
     }
    },
-   "Code: t-strings": {
-    "id": "Code: t-strings",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.2176689368737244,
-    "probabilities": {
-     "false": 0.7823310631262756,
-     "true": 0.2176689368737244
-    }
-   },
-   "Code: the functions": {
-    "id": "Code: the functions",
+   "2 change.code the functions": {
+    "id": "2 change.code the functions",
     "type": "boolean",
     "value": true,
-    "p_true": 0.7144560864772559,
+    "p_true": 0.6658122292900402,
     "probabilities": {
-     "false": 0.2855439135227441,
-     "true": 0.7144560864772559
+     "false": 0.33418777070995975,
+     "true": 0.6658122292900402
     }
    },
-   "Code: the template": {
-    "id": "Code: the template",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.5624687130476308,
-    "probabilities": {
-     "false": 0.4375312869523692,
-     "true": 0.5624687130476308
-    }
-   },
-   "Questions: all ten of these": {
-    "id": "Questions: all ten of these",
+   "2 change.code t-strings": {
+    "id": "2 change.code t-strings",
     "type": "boolean",
     "value": false,
-    "p_true": 0.14700199318325902,
+    "p_true": 0.18840749183281125,
     "probabilities": {
-     "false": 0.852998006816741,
-     "true": 0.14700199318325902
+     "false": 0.8115925081671888,
+     "true": 0.18840749183281125
+    }
+   },
+   "2 change.code t strings": {
+    "id": "2 change.code t strings",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.311213358901219,
+    "probabilities": {
+     "false": 0.6887866410987811,
+     "true": 0.311213358901219
+    }
+   },
+   "2 change.code the template": {
+    "id": "2 change.code the template",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5938011606201709,
+    "probabilities": {
+     "false": 0.40619883937982915,
+     "true": 0.5938011606201709
     }
    }
   },
@@ -6746,45 +6899,45 @@
     }
    }
   },
-  "af74c1e498b7d39371430faeaff09423cf465ee0": {
-   "Code: t strings": {
-    "id": "Code: t strings",
+  "7a6eb88f5987709aaceffce8b29a0fbc06ebb885": {
+   "1 change.code the functions": {
+    "id": "1 change.code the functions",
     "type": "boolean",
     "value": false,
-    "p_true": 0.24898073404046164,
+    "p_true": 0.24141329163883687,
     "probabilities": {
-     "false": 0.7510192659595384,
-     "true": 0.24898073404046164
+     "false": 0.7585867083611632,
+     "true": 0.24141329163883687
     }
    },
-   "Code: t-strings": {
-    "id": "Code: t-strings",
+   "1 change.code t-strings": {
+    "id": "1 change.code t-strings",
     "type": "boolean",
     "value": false,
-    "p_true": 0.23821850261132027,
+    "p_true": 0.18223436533747603,
     "probabilities": {
-     "false": 0.7617814973886797,
-     "true": 0.23821850261132027
+     "false": 0.8177656346625239,
+     "true": 0.18223436533747603
     }
    },
-   "Code: the functions": {
-    "id": "Code: the functions",
+   "1 change.code t strings": {
+    "id": "1 change.code t strings",
     "type": "boolean",
     "value": false,
-    "p_true": 0.35395915710315917,
+    "p_true": 0.2247125593888396,
     "probabilities": {
-     "false": 0.6460408428968408,
-     "true": 0.35395915710315917
+     "false": 0.7752874406111604,
+     "true": 0.2247125593888396
     }
    },
-   "Code: the template": {
-    "id": "Code: the template",
+   "1 change.code the template": {
+    "id": "1 change.code the template",
     "type": "boolean",
     "value": false,
-    "p_true": 0.3579767449002173,
+    "p_true": 0.3213182344459274,
     "probabilities": {
-     "false": 0.6420232550997826,
-     "true": 0.3579767449002173
+     "false": 0.6786817655540727,
+     "true": 0.3213182344459274
     }
    }
   },
@@ -7168,135 +7321,185 @@
     }
    }
   },
-  "9fad525d07f0ffb16b9651cb900858db9655ecfd": {
-   "Code: t strings": {
-    "id": "Code: t strings",
+  "43d42a8ccc6cda42698319c315b5e0b87828a772": {
+   "0 change.notebook the old cells": {
+    "id": "0 change.notebook the old cells",
     "type": "boolean",
     "value": false,
-    "p_true": 0.12066666893585737,
+    "p_true": 0.2843536785637207,
     "probabilities": {
-     "false": 0.8793333310641427,
-     "true": 0.12066666893585737
+     "false": 0.7156463214362794,
+     "true": 0.2843536785637207
     }
    },
-   "Code: t-strings": {
-    "id": "Code: t-strings",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.12380029722489042,
-    "probabilities": {
-     "false": 0.8761997027751096,
-     "true": 0.12380029722489042
-    }
-   },
-   "Code: the functions": {
-    "id": "Code: the functions",
+   "0 change.notebook these cells": {
+    "id": "0 change.notebook these cells",
     "type": "boolean",
     "value": true,
-    "p_true": 0.5422503521805421,
+    "p_true": 0.5349920935972962,
     "probabilities": {
-     "false": 0.4577496478194579,
-     "true": 0.5422503521805421
+     "false": 0.46500790640270384,
+     "true": 0.5349920935972962
     }
    },
-   "Code: the template": {
-    "id": "Code: the template",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.2186653326112484,
-    "probabilities": {
-     "false": 0.7813346673887516,
-     "true": 0.2186653326112484
-    }
-   },
-   "Notebook: the old cells": {
-    "id": "Notebook: the old cells",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.3473089825540283,
-    "probabilities": {
-     "false": 0.6526910174459717,
-     "true": 0.3473089825540283
-    }
-   },
-   "Notebook: these cells": {
-    "id": "Notebook: these cells",
+   "0 change.notebook this notebook": {
+    "id": "0 change.notebook this notebook",
     "type": "boolean",
     "value": true,
-    "p_true": 0.5581513106567313,
+    "p_true": 0.6339284089103526,
     "probabilities": {
-     "false": 0.4418486893432687,
-     "true": 0.5581513106567313
+     "false": 0.3660715910896474,
+     "true": 0.6339284089103526
     }
    },
-   "Notebook: this notebook": {
-    "id": "Notebook: this notebook",
+   "0 change.notebook this whole notebook": {
+    "id": "0 change.notebook this whole notebook",
     "type": "boolean",
     "value": true,
-    "p_true": 0.5881530649256214,
+    "p_true": 0.5073014371880823,
     "probabilities": {
-     "false": 0.41184693507437864,
-     "true": 0.5881530649256214
+     "false": 0.4926985628119177,
+     "true": 0.5073014371880823
     }
    },
-   "Notebook: this version": {
-    "id": "Notebook: this version",
+   "0 change.notebook this version": {
+    "id": "0 change.notebook this version",
     "type": "boolean",
     "value": true,
-    "p_true": 0.613366076535731,
+    "p_true": 0.6645111877557531,
     "probabilities": {
-     "false": 0.38663392346426895,
-     "true": 0.613366076535731
+     "false": 0.33548881224424687,
+     "true": 0.6645111877557531
     }
    },
-   "Notebook: this whole notebook": {
-    "id": "Notebook: this whole notebook",
+   "0 change.code the functions": {
+    "id": "0 change.code the functions",
     "type": "boolean",
     "value": false,
-    "p_true": 0.49123854940545747,
+    "p_true": 0.3149823184585913,
     "probabilities": {
-     "false": 0.5087614505945426,
-     "true": 0.49123854940545747
+     "false": 0.6850176815414086,
+     "true": 0.3149823184585913
     }
    },
-   "Message: all of my messages to you and your replies": {
-    "id": "Message: all of my messages to you and your replies",
+   "0 change.code t-strings": {
+    "id": "0 change.code t-strings",
     "type": "boolean",
     "value": false,
-    "p_true": 0.18049974637117902,
+    "p_true": 0.12191182586814366,
     "probabilities": {
-     "false": 0.819500253628821,
-     "true": 0.18049974637117902
+     "false": 0.8780881741318564,
+     "true": 0.12191182586814366
     }
    },
-   "Message: the entire message": {
-    "id": "Message: the entire message",
+   "0 change.code t strings": {
+    "id": "0 change.code t strings",
     "type": "boolean",
     "value": false,
-    "p_true": 0.23928019456145347,
+    "p_true": 0.18574240986924334,
     "probabilities": {
-     "false": 0.7607198054385466,
-     "true": 0.23928019456145347
+     "false": 0.8142575901307567,
+     "true": 0.18574240986924334
     }
    },
-   "Message: the message": {
-    "id": "Message: the message",
+   "0 change.code the template": {
+    "id": "0 change.code the template",
     "type": "boolean",
     "value": false,
-    "p_true": 0.4476188173813288,
+    "p_true": 0.16708479905958398,
     "probabilities": {
-     "false": 0.5523811826186712,
-     "true": 0.4476188173813288
+     "false": 0.832915200940416,
+     "true": 0.16708479905958398
     }
    },
-   "Message: the messages": {
-    "id": "Message: the messages",
+   "1 change.notebook the old cells": {
+    "id": "1 change.notebook the old cells",
     "type": "boolean",
     "value": false,
-    "p_true": 0.43035690978948465,
+    "p_true": 0.4693701855184969,
     "probabilities": {
-     "false": 0.5696430902105154,
-     "true": 0.43035690978948465
+     "false": 0.5306298144815031,
+     "true": 0.4693701855184969
+    }
+   },
+   "1 change.notebook these cells": {
+    "id": "1 change.notebook these cells",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5465969131922933,
+    "probabilities": {
+     "false": 0.4534030868077067,
+     "true": 0.5465969131922933
+    }
+   },
+   "1 change.notebook this notebook": {
+    "id": "1 change.notebook this notebook",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5073014371880823,
+    "probabilities": {
+     "false": 0.4926985628119177,
+     "true": 0.5073014371880823
+    }
+   },
+   "1 change.notebook this whole notebook": {
+    "id": "1 change.notebook this whole notebook",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.46500790640270406,
+    "probabilities": {
+     "false": 0.5349920935972959,
+     "true": 0.46500790640270406
+    }
+   },
+   "1 change.notebook this version": {
+    "id": "1 change.notebook this version",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6147504720352001,
+    "probabilities": {
+     "false": 0.38524952796479994,
+     "true": 0.6147504720352001
+    }
+   },
+   "1 change.code the functions": {
+    "id": "1 change.code the functions",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.37561179344793016,
+    "probabilities": {
+     "false": 0.6243882065520698,
+     "true": 0.37561179344793016
+    }
+   },
+   "1 change.code t-strings": {
+    "id": "1 change.code t-strings",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.1163947424794831,
+    "probabilities": {
+     "false": 0.8836052575205169,
+     "true": 0.1163947424794831
+    }
+   },
+   "1 change.code t strings": {
+    "id": "1 change.code t strings",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.18223436533747603,
+    "probabilities": {
+     "false": 0.8177656346625239,
+     "true": 0.18223436533747603
+    }
+   },
+   "1 change.code the template": {
+    "id": "1 change.code the template",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.2329587359873417,
+    "probabilities": {
+     "false": 0.7670412640126583,
+     "true": 0.2329587359873417
     }
    }
   },
@@ -7702,19 +7905,29 @@
     }
    }
   },
-  "36b393829a877f275898a6471561b48a2d606835": {
-   "Types: classes": {
-    "id": "Types: classes",
+  "302d9bf8e6e74e967a35c99bb8453a0f99117621": {
+   "0 types result types": {
+    "id": "0 types result types",
     "type": "boolean",
     "value": false,
-    "p_true": 0.09051045159150138,
+    "p_true": 0.28198220231176735,
     "probabilities": {
-     "false": 0.9094895484084986,
-     "true": 0.09051045159150138
+     "false": 0.7180177976882327,
+     "true": 0.28198220231176735
     }
    },
-   "Types: demand": {
-    "id": "Types: demand",
+   "0 types the type of the result": {
+    "id": "0 types the type of the result",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5277189843878358,
+    "probabilities": {
+     "false": 0.4722810156121642,
+     "true": 0.5277189843878358
+    }
+   },
+   "0 types demand": {
+    "id": "0 types demand",
     "type": "boolean",
     "value": false,
     "p_true": 0.40338396955083106,
@@ -7723,84 +7936,34 @@
      "true": 0.40338396955083106
     }
    },
-   "Types: result types": {
-    "id": "Types: result types",
+   "0 types the roles": {
+    "id": "0 types the roles",
     "type": "boolean",
     "value": false,
-    "p_true": 0.4766507352326408,
+    "p_true": 0.276106379323959,
     "probabilities": {
-     "false": 0.5233492647673592,
-     "true": 0.4766507352326408
+     "false": 0.723893620676041,
+     "true": 0.276106379323959
     }
    },
-   "Types: the roles": {
-    "id": "Types: the roles",
+   "0 types classes": {
+    "id": "0 types classes",
     "type": "boolean",
     "value": false,
-    "p_true": 0.28673713436939097,
+    "p_true": 0.13704029695012268,
     "probabilities": {
-     "false": 0.713262865630609,
-     "true": 0.28673713436939097
+     "false": 0.8629597030498773,
+     "true": 0.13704029695012268
     }
    },
-   "Types: the type of the result": {
-    "id": "Types: the type of the result",
+   "0 types the types": {
+    "id": "0 types the types",
     "type": "boolean",
     "value": true,
-    "p_true": 0.5408000348369789,
+    "p_true": 0.5218918636297146,
     "probabilities": {
-     "false": 0.4591999651630211,
-     "true": 0.5408000348369789
-    }
-   },
-   "Types: the types": {
-    "id": "Types: the types",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.559591454912428,
-    "probabilities": {
-     "false": 0.440408545087572,
-     "true": 0.559591454912428
-    }
-   },
-   "Message: all of my messages to you and your replies": {
-    "id": "Message: all of my messages to you and your replies",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.048644151748563035,
-    "probabilities": {
-     "false": 0.9513558482514369,
-     "true": 0.048644151748563035
-    }
-   },
-   "Message: the entire message": {
-    "id": "Message: the entire message",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.11109574429890108,
-    "probabilities": {
-     "false": 0.8889042557010989,
-     "true": 0.11109574429890108
-    }
-   },
-   "Message: the message": {
-    "id": "Message: the message",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.2668642569224847,
-    "probabilities": {
-     "false": 0.7331357430775153,
-     "true": 0.2668642569224847
-    }
-   },
-   "Message: the messages": {
-    "id": "Message: the messages",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.37973069088063227,
-    "probabilities": {
-     "false": 0.6202693091193677,
-     "true": 0.37973069088063227
+     "false": 0.4781081363702854,
+     "true": 0.5218918636297146
     }
    }
   },
@@ -7992,65 +8155,65 @@
     }
    }
   },
-  "793d36054de7439e6ef897c133673bdcaa89d616": {
-   "Types: classes": {
-    "id": "Types: classes",
+  "d10ff03d615f6cd936d8e64466180108bc9284bc": {
+   "1 types result types": {
+    "id": "1 types result types",
     "type": "boolean",
     "value": false,
-    "p_true": 0.09902442870466331,
+    "p_true": 0.3552960966274531,
     "probabilities": {
-     "false": 0.9009755712953367,
-     "true": 0.09902442870466331
+     "false": 0.6447039033725469,
+     "true": 0.3552960966274531
     }
    },
-   "Types: demand": {
-    "id": "Types: demand",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.5436999538024226,
-    "probabilities": {
-     "false": 0.45630004619757736,
-     "true": 0.5436999538024226
-    }
-   },
-   "Types: result types": {
-    "id": "Types: result types",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.5102213145604014,
-    "probabilities": {
-     "false": 0.48977868543959857,
-     "true": 0.5102213145604014
-    }
-   },
-   "Types: the roles": {
-    "id": "Types: the roles",
+   "1 types the type of the result": {
+    "id": "1 types the type of the result",
     "type": "boolean",
     "value": false,
-    "p_true": 0.242484689816126,
+    "p_true": 0.47519373160774026,
     "probabilities": {
-     "false": 0.757515310183874,
-     "true": 0.242484689816126
+     "false": 0.5248062683922597,
+     "true": 0.47519373160774026
     }
    },
-   "Types: the type of the result": {
-    "id": "Types: the type of the result",
-    "type": "boolean",
-    "value": false,
-    "p_true": 0.49561893837340293,
-    "probabilities": {
-     "false": 0.5043810616265971,
-     "true": 0.49561893837340293
-    }
-   },
-   "Types: the types": {
-    "id": "Types: the types",
+   "1 types demand": {
+    "id": "1 types demand",
     "type": "boolean",
     "value": true,
-    "p_true": 0.5116810042046667,
+    "p_true": 0.5073014371880821,
     "probabilities": {
-     "false": 0.48831899579533333,
-     "true": 0.5116810042046667
+     "false": 0.49269856281191793,
+     "true": 0.5073014371880821
+    }
+   },
+   "1 types the roles": {
+    "id": "1 types the roles",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.24898073404046164,
+    "probabilities": {
+     "false": 0.7510192659595384,
+     "true": 0.24898073404046164
+    }
+   },
+   "1 types classes": {
+    "id": "1 types classes",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.09393336363091367,
+    "probabilities": {
+     "false": 0.9060666363690864,
+     "true": 0.09393336363091367
+    }
+   },
+   "1 types the types": {
+    "id": "1 types the types",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.5073014371880823,
+    "probabilities": {
+     "false": 0.4926985628119177,
+     "true": 0.5073014371880823
     }
    }
   },
@@ -8568,6 +8731,24 @@
      "false": 0.47373715018175877,
      "true": 0.5262628498182412
     }
+   }
+  },
+  "ddf45fbd28efb2e537df00168708dbc2d156c68b": {
+   "1 what ": {
+    "id": "1 what ",
+    "type": "text",
+    "value": null,
+    "found": 0.4187179004992361,
+    "span": null,
+    "text": null
+   },
+   "3 what ": {
+    "id": "3 what ",
+    "type": "text",
+    "value": null,
+    "found": 0.39021136995283784,
+    "span": null,
+    "text": null
    }
   },
   "06ec353a0ea2d836aa6b908724476b0eab0d1714": {
@@ -9446,25 +9627,73 @@
     }
    }
   },
-  "c527e967733e1e83e722368617701e5adfc9be1b": {
-   "Questions: all ten of these": {
-    "id": "Questions: all ten of these",
+  "fd6992277a7e8f95a2c05d83ef2694a6bc4a50c0": {
+   "0 questions all ten of these": {
+    "id": "0 questions all ten of these",
     "type": "boolean",
     "value": false,
-    "p_true": 0.14481809537419965,
+    "p_true": 0.09747184977259034,
     "probabilities": {
-     "false": 0.8551819046258003,
-     "true": 0.14481809537419965
+     "false": 0.9025281502274096,
+     "true": 0.09747184977259034
     }
    },
-   "Concepts: the computer science concepts": {
-    "id": "Concepts: the computer science concepts",
+   "4 what ": {
+    "id": "4 what ",
+    "type": "text",
+    "value": null,
+    "found": 0.4166845306177433,
+    "span": null,
+    "text": null
+   },
+   "5 questions all ten of these": {
+    "id": "5 questions all ten of these",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.16186716838454834,
+    "probabilities": {
+     "false": 0.8381328316154517,
+     "true": 0.16186716838454834
+    }
+   },
+   "7 questions all ten of these": {
+    "id": "7 questions all ten of these",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.15258104258235203,
+    "probabilities": {
+     "false": 0.8474189574176479,
+     "true": 0.15258104258235203
+    }
+   },
+   "8 questions all ten of these": {
+    "id": "8 questions all ten of these",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.14590665632263358,
+    "probabilities": {
+     "false": 0.8540933436773664,
+     "true": 0.14590665632263358
+    }
+   },
+   "8 concepts the computer science concepts": {
+    "id": "8 concepts the computer science concepts",
     "type": "boolean",
     "value": true,
-    "p_true": 0.5538250999235709,
+    "p_true": 0.5408000348369789,
     "probabilities": {
-     "false": 0.4461749000764291,
-     "true": 0.5538250999235709
+     "false": 0.4591999651630211,
+     "true": 0.5408000348369789
+    }
+   },
+   "9 questions all ten of these": {
+    "id": "9 questions all ten of these",
+    "type": "boolean",
+    "value": false,
+    "p_true": 0.18707129706030773,
+    "probabilities": {
+     "false": 0.8129287029396923,
+     "true": 0.18707129706030773
     }
    }
   },
@@ -9776,16 +10005,14 @@
     }
    }
   },
-  "8abe4e91a4436990e545d22bcea8a65b0874af94": {
-   "World: the world": {
-    "id": "World: the world",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.8203627233663939,
-    "probabilities": {
-     "false": 0.17963727663360607,
-     "true": 0.8203627233663939
-    }
+  "977fc7e45fcc6504ef880c4fa581fa864ba657d2": {
+   "0 what ": {
+    "id": "0 what ",
+    "type": "text",
+    "value": null,
+    "found": 0.4642885473755725,
+    "span": null,
+    "text": null
    }
   },
   "2e6be8fb22d2c4dea5e2c98e654e43cdbf714e70": {
@@ -10098,65 +10325,65 @@
     }
    }
   },
-  "6611fe907456425b214b27db687e0977ff904522": {
-   "Questions: all ten of these": {
-    "id": "Questions: all ten of these",
+  "cd31ccda4b39931d6a50d09fe092ebdeba81d567": {
+   "0 questions all ten of these": {
+    "id": "0 questions all ten of these",
     "type": "boolean",
     "value": false,
-    "p_true": 0.23505289206625524,
+    "p_true": 0.236104848280501,
     "probabilities": {
-     "false": 0.7649471079337448,
-     "true": 0.23505289206625524
+     "false": 0.763895151719499,
+     "true": 0.236104848280501
     }
    },
-   "Notebook: the old cells": {
-    "id": "Notebook: the old cells",
+   "1 notebook the old cells": {
+    "id": "1 notebook the old cells",
     "type": "boolean",
     "value": true,
-    "p_true": 0.7833241776628522,
+    "p_true": 0.7823310631262756,
     "probabilities": {
-     "false": 0.21667582233714777,
-     "true": 0.7833241776628522
+     "false": 0.21766893687372435,
+     "true": 0.7823310631262756
     }
    },
-   "Notebook: these cells": {
-    "id": "Notebook: these cells",
+   "1 notebook these cells": {
+    "id": "1 notebook these cells",
     "type": "boolean",
     "value": true,
-    "p_true": 0.7833241776628522,
+    "p_true": 0.7843140103189229,
     "probabilities": {
-     "false": 0.21667582233714777,
-     "true": 0.7833241776628522
+     "false": 0.2156859896810771,
+     "true": 0.7843140103189229
     }
    },
-   "Notebook: this notebook": {
-    "id": "Notebook: this notebook",
+   "1 notebook this notebook": {
+    "id": "1 notebook this notebook",
     "type": "boolean",
     "value": true,
-    "p_true": 0.5494907201376013,
+    "p_true": 0.5509363814028428,
     "probabilities": {
-     "false": 0.45050927986239875,
-     "true": 0.5494907201376013
+     "false": 0.44906361859715715,
+     "true": 0.5509363814028428
     }
    },
-   "Notebook: this version": {
-    "id": "Notebook: this version",
-    "type": "boolean",
-    "value": true,
-    "p_true": 0.6862767426464568,
-    "probabilities": {
-     "false": 0.31372325735354323,
-     "true": 0.6862767426464568
-    }
-   },
-   "Notebook: this whole notebook": {
-    "id": "Notebook: this whole notebook",
+   "1 notebook this whole notebook": {
+    "id": "1 notebook this whole notebook",
     "type": "boolean",
     "value": false,
-    "p_true": 0.49707925072226233,
+    "p_true": 0.46210265003642487,
     "probabilities": {
-     "false": 0.5029207492777377,
-     "true": 0.49707925072226233
+     "false": 0.5378973499635751,
+     "true": 0.46210265003642487
+    }
+   },
+   "1 notebook this version": {
+    "id": "1 notebook this version",
+    "type": "boolean",
+    "value": true,
+    "p_true": 0.6460408428968408,
+    "probabilities": {
+     "false": 0.35395915710315917,
+     "true": 0.6460408428968408
     }
    }
   },

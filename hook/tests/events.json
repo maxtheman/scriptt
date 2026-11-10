@@ -6,7 +6,7 @@
    "prompt": "Take all ten of these and restate them using the computer science concepts. I want the exact same headers here in your next message. So what kind of result? Cool. Are you talking like how do you break that? How would you think about getting information about that? Using all of the different concepts in the research you've done. Same with which words say what should come back. Go look at the research. What does it have to do with what you've done? One list, one thing or one per item. Same thing. How does this have to do with any of the research that you've done?"
   },
   "gold": [
-   "Explanation"
+   "str"
   ]
  },
  {
@@ -78,7 +78,7 @@
    "prompt": "Why is result types defined the way it is here? What is this supposed to be accomplishing?"
   },
   "gold": [
-   "Explanation"
+   "str"
   ]
  },
  {
@@ -96,7 +96,7 @@
    "prompt": "Okay, so the point of what you're doing here is trying to decide the type of the result. That's it - got it.\n\nHere's what I can't quite figure out Between the first two:\n\n1. Figuring out how many things I'm looking for - It seems like that does have something to do with types.\n2. result types - Okay. It's based on the functions that we have in the com in the context, but where do those come from precisely? You just decided to get those from like the pre-existing notebooks, right? But aren't those like you said, defined over specific value transformations?\n\n\nSo it seems like in your assumed world here even there's a lot of information we're throwing away."
   },
   "gold": [
-   "Explanation"
+   "str"
   ]
  },
  {
@@ -115,8 +115,8 @@
   },
   "gold": [
    "Code",
-   "Explanation",
-   "Notebook"
+   "Notebook",
+   "str"
   ]
  },
  {
@@ -188,7 +188,7 @@
    "prompt": "And so there's nothing special about the `demand`. That could be a lambda too. Right?"
   },
   "gold": [
-   "Answer"
+   "bool"
   ]
  },
  {
@@ -206,7 +206,7 @@
    "prompt": "I see. \n\nOkay. What about uh if we build that with t-strings then though? So we could build that up dynamically."
   },
   "gold": [
-   "Explanation"
+   "str"
   ]
  },
  {
@@ -253,7 +253,7 @@
    "prompt": "\"One choice in there is mine: \u201cthe usual folders\u201d is a hole of type Paths, because the message does not supply a value for it.\" I think that's fine though. Because at some point we need to make a decision about what Classes we are using for the types. If not paths, it would be something else, but we have to at some point pull from the world, right? And that's the place to do it is is what the types are, isn't it?"
   },
   "gold": [
-   "Answer"
+   "bool"
   ]
  },
  {
@@ -273,7 +273,7 @@
   "gold": [
    "Code",
    "Model",
-   "World"
+   "NoneType"
   ]
  },
  {
@@ -291,8 +291,8 @@
    "prompt": "Do we have functions still? Can we just build up functions between those classes? If not, that's a big miss."
   },
   "gold": [
-   "Answer",
-   "Code"
+   "Code",
+   "bool"
   ]
  },
  {
@@ -311,9 +311,9 @@
   },
   "gold": [
    "Code",
-   "Explanation",
-   "File",
-   "Notebook"
+   "Notebook",
+   "Path",
+   "str"
   ]
  },
  {
