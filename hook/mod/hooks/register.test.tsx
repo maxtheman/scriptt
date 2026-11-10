@@ -181,3 +181,20 @@ test('with no .scriptt/ in the folder or above it the status line says so first'
   expect(await send($)).toMatchObject({ text: TEXT })
   expect(status).toEqual(['no .scriptt/ in this folder or above it: this message was not read'])
 })
+
+test('a row in full view is drawn with the reading on the desktop, and left to the engine on the terminal', async ($, on) => {
+  machine(on)
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+
+    return <Text>engine</Text>
+  })
+  await send($)
+  const full = { ...ROW, props: { ...ROW.props, isExpanded: true } }
+  const desktop = await $.ui.mount({ ...full, surface: 'desktop' })
+  expect((await desktop.find({ key: 'fn-0-delete' }))?.type).toBe('Button')
+  await desktop.unmount()
+  const terminal = await $.ui.mount({ ...full, surface: 'terminal' })
+  expect((await terminal.find({ type: 'Text' }))?.text).toBe('engine')
+  await terminal.unmount()
+})

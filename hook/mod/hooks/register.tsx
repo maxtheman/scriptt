@@ -143,7 +143,8 @@ export const register: Register = on => {
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
     const reading = (await read($, readings))[e.props.text]
 
-    if (!reading || e.props.isExpanded) {
+    // The terminal has a full view of a row (ctrl+o): there the engine draws it. The other surfaces have this 1 view only.
+    if (!reading || (e.props.isExpanded && e.surface === 'terminal')) {
       return next(e)
     }
 
