@@ -1,0 +1,5 @@
+{
+  "name": "scriptt",
+  "owner": { "name": "maxtheman" },
+  "plugins": [{ "name": "scriptt", "source": "./hook/mod", "description": "Shows on each of your messages what d1 read it as, and lets you correct it with a press." }]
+}

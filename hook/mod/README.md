@@ -11,6 +11,16 @@ scriptt draws, on each message that you type in the Claude desktop app, what the
 
 The words of the message cannot be pressed. Each reading goes to `.scriptt/events.jsonl` through `harness.py reading`, and Claude receives it with your next message. If the harness or d1 does not run, the message row stays as the app draws it and the status line under the prompt says why.
 
+## Install
+
+In a terminal session of Claude Code:
+
+```
+/plugin install scriptt --marketplace maxtheman/scriptt
+```
+
+In the desktop app: click + next to the prompt box, then Plugins, Add marketplace with `maxtheman/scriptt`, then Add plugin.
+
 ## Setup
 
 The folder of the session needs `.scriptt/harness.py` and `.scriptt/world.py`, and Python 3.14. The mod tries `python3.14`, then `/opt/homebrew/bin/python3.14`, then `/usr/local/bin/python3.14`.
