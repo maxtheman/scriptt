@@ -1,0 +1,1 @@
+{ "name": "scriptt", "version": "0.1.5", "description": "Shows on each of your messages what d1 read it as, and lets you correct it with a press.", "types": "./types/index.d.ts" }

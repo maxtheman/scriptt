@@ -10,22 +10,29 @@ decision model, d1, which functions of `.scriptt/world.py` each part asks for. Y
 
 ```
 scriptt: d1 read this message against .scriptt/world.py. Parts: 5. Parts that ask for something: 3.
-1. delete(notebook="the old cells") 0.98   "Oh, can you please get rid of the old cells?"
-3. implement(questions=Questions ?) 0.71   "Then wire up all ten."
-4. ?  no function of the world fits (d1 abstains)   "Also, send the summary to my accountant by Friday."
-d1 says your last reply did not do: implement.
+1. delete(notebook=Notebook('the old cells')) 0.98   "Oh, can you please get rid of the old cells?"
+3. implement(questions=..., cells=3) 0.71   "Then wire up 3 of them."
+4. ?  d1 abstains: no function of the world fits. The closest is write 0.21.   "Also, send the summary to my accountant by Friday."
+d1 says your last reply did not do: implement ("Then wire up 3 of them."). Check that against your reply.
 The user says that "I never liked them." asks for nothing. d1 said otherwise.
 ```
+
+The number of a line is the number of the part in the message. A part that asks for nothing has no line.
 
 ## What to do with the block
 
 - **Each numbered line is 1 ask.** Do each one, or say in 1 line why you do not. Use the list to check your reply before you end
   the turn: no ask may be left without a word.
-- **The number after a call** is how sure d1 is. Under 0.7 it is often wrong: read the quoted words yourself.
-- **`name=Type ?` is an open hole.** The message does not say which thing. Take it from the conversation, or ask for that 1 thing.
-- **`?` alone is an abstention.** The part asks for something, and the world has no function for it. Say in 1 line what the part
-  asks, do it, and propose the line to add to `.scriptt/world.py`. Add it when the user says yes.
-- **"d1 says your last reply did not do: ..."** Check that claim against your last reply. If it is true, do the work now.
+- **Each call is a Python expression.** `Notebook('the old cells')` is a named thing of the world that the words contain.
+  A call inside a call is the result of another ask of the same message.
+- **The number after a call** is the share that d1 gave this function, among all functions of the world and "none", for
+  that part alone. It is no proof. d1 reads 1 sentence at a time: read the quoted words yourself before you act.
+- **`...` is an open hole.** The message does not say which thing. Take it from the conversation, or ask for that 1 thing.
+- **`?` is an abstention.** The part asks for something, and the world has no function for it. If the part is a real ask,
+  do it, and propose the line to add to `.scriptt/world.py`. If it is a rule or a remark, follow it and add nothing.
+  "The closest is" names the function that came nearest: if it is the right one, its docstring needs the user's words.
+- **"= value" after a call:** the world gives that function a body, and the harness ran it. The value is observed.
+- **"d1 says your last reply did not do: ..."** d1 is sure of it. Check it against your last reply. If it is true, do the work now.
 - **"The user says that ..."** is the user's own reading of a part. It replaces d1's.
 - If the block is wrong, say so in 1 line and go on with what the message says.
 
@@ -38,6 +45,7 @@ The user says that "I never liked them." asks for nothing. d1 said otherwise.
 - A parameter is a hole. Its type says how it is filled: an `Enum` lists the named things (its values are the words the user
   says), `int` and `pathlib.Path` are read from the words, `str` and `bool` are asked of d1, a dataclass has 1 hole for each
   field, and `X | None` may stay open.
+- A change of `world.py` is used from the next message on. A block that came before the change was read with the old world.
 - Keep it small: the 5 to 10 things the user really asks for in this folder. `python3.14 .scriptt/harness.py find "?"` lists
   the parts that d1 abstained on. Each one is a candidate for a new function.
 
