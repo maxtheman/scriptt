@@ -144,7 +144,7 @@ def say(value) -> str:
 yes = lambda question: {"type": "boolean", "instructions": "".join(piece if isinstance(piece, str) else say(piece.value) for piece in question)}
 words = lambda question: yes(question) | {"type": "text"}
 
-# The wordings, in 1 place. Each was compared with others on recorded messages and on 2 trial folders, with the real d1-2b (README.md).
+# The wordings, in 1 place. Each was compared with others on recorded messages and on 2 trial folders, with the real d1-2b (tests/README.md of the repository).
 WHAT = "What does this text ask the reader to do?"
 ELSE = {"none": "something else that it asks the reader to do or to answer", "nothing": "nothing: it is a remark, a reason, a rule or a greeting"}  # the 2 options that are no function
 NAMES = lambda name, f: t"The text asks the reader to {f}. Which {name} does the text name for that?"
@@ -246,7 +246,7 @@ def read(text: Asked, ask, before: list = ()) -> tuple[Template, list, list, lis
     5. Words that stand for a thing named before ("it", "them"): the nearest piece before them, in the message, then in the earlier
        messages of the session (before), of the type of an open hole of the part, or of any type. d1 checks it. A yes is a piece with "of",
        and it fills the hole, in place of a member that d1 chose from the part alone.
-    Two trial agents and the recorded messages decided these rules: see README.md, "What was tried".
+    Two trial agents and the recorded messages decided these rules: see tests/README.md of the repository.
     The template that read returns is the whole message, 1 slot for each part: "".join of its pieces is the text."""
     spans = parts_of(text)
     quoted = [text[a:b] for a, b in spans]  # each part is a part of the message: brand Asked
@@ -314,7 +314,7 @@ def read(text: Asked, ask, before: list = ()) -> tuple[Template, list, list, lis
             state = (where + "\n") * (where != quoted[n]) + text[a:word.start()] + f"[{word[0]}]" + text[word.end():b]
             asks += [(word, key, one, of, state, yes(REFERS(word[0], one["value"])))]
     for (word, key, one, of, *_), a in zip(asks, together(lambda asked: put(ask, asked[-2], {0: asked[-1]})[0], asks)):
-        if a["p_true"] >= 0.8:  # d1 says yes: the words are a piece that stands for the other one, and it fills the open hole. 0.8: see README.md
+        if a["p_true"] >= 0.8:  # d1 says yes: the words are a piece that stands for the other one, and it fills the open hole. 0.8: see tests/README.md of the repository
             pieces.append(piece(*word.span(), one["type"], one["value"], By.PIECE, d1=round(a["p_true"], 3), to=key and {"demand": key[0], "path": key[1]}, of=of))
             if key:
                 demands[key[0]]["parameters"][key[1]] = {k: v for k, v in demands[key[0]]["parameters"][key[1]].items() if k != "names_none"} | {"value": one["value"], "by": By.PIECE, "d1": round(a["p_true"], 3)}

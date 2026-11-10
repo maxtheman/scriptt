@@ -4,5 +4,5 @@
 set -eu
 mkdir -p web/public
 rsync -a --delete web/site/ web/public/
-cp hook/harness.py hook/world.py hook/SKILL.md web/public/
+cp scriptt/harness.py scriptt/world.py scriptt/SKILL.md web/public/
 echo "built web/public"

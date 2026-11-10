@@ -3,7 +3,7 @@
     python3.14 tests/test_harness.py                        compare with tests/recorded.json
     python3.14 tests/test_harness.py --record config.json   ask the real d1 again, and write tests/recorded.json and web/site/data.js
 
-tests/events.json: the events of 1 hour of a real conversation. "gold" is what a person wrote that the message wants (classes).
+tests/events.json: the events of 1 hour of a real conversation. "gold" is what a Claude session wrote by hand that the message wants (types). No person checked it.
 tests/recorded.json: each answer of d1, each record that the harness wrote, and the comparison of d1 with "gold".
 """
 
@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 HERE = pathlib.Path(__file__).parent
-sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE.parent / "scriptt"))
 import harness
 
 EVENTS = json.loads((HERE / "events.json").read_text())
@@ -37,11 +37,11 @@ def run(ask) -> list:
 
 
 def measure(records: list) -> dict:
-    """d1 against the person: for each message, the classes that the demanded functions return, beside "gold"."""
+    """d1 against "gold": for each message, the classes that the demanded functions return, beside "gold"."""
     rows = [{"wants": sorted({d["returns"] for d in record["demands"]}), "gold": event["gold"]} for event, record in zip(EVENTS, records) if "gold" in event]
     count = lambda f: sum(len(f(set(row["wants"]), set(row["gold"]))) for row in rows)
     return {"messages": len(rows), "same set": sum(row["wants"] == row["gold"] for row in rows),
-            "classes in both": count(set.__and__), "only the person": count(lambda d, g: g - d), "only d1": count(set.__sub__)}
+            "classes in both": count(set.__and__), "only gold": count(lambda d, g: g - d), "only d1": count(set.__sub__)}
 
 
 def mapped(record: dict) -> None:
@@ -121,7 +121,7 @@ if __name__ == "__main__":
         answers, where = {}, json.loads(pathlib.Path(sys.argv[2]).read_text())
         records = run(lambda state, questions: answers.setdefault(key(state, questions), harness.d1(state, questions, lambda: where)))
         RECORDED.write_text(json.dumps({"measure": measure(records), "records": records, "answers": answers}, indent=1) + "\n")
-        site = HERE.parent.parent / "web" / "site" / "data.js"
+        site = HERE.parent / "web" / "site" / "data.js"
         site.write_text("const DATA = " + json.dumps({"world": harness.describe(), "events": records, "measure": measure(records)}) + ";\n")
         answers = dict(answers)
         print("recorded", len(records), "events and", len(answers), "requests to d1")
