@@ -4,7 +4,8 @@
 Claude Code runs it as a hook, with 1 event as JSON on stdin:
   UserPromptSubmit   d1 decides which computations of the world each part of the message demands, and code maps the typed
                      pieces of the message into their holes. Claude receives the reading, and the holes that stay open.
-  Stop               d1 checks the reply against each demand. With "block": true in config.json, a reply that does none of them is sent back.
+  Stop               d1 checks the reply against each demand. With "block": true in config.json, a reply that misses any of them
+                     is sent back, at most BLOCKS (2) times for 1 message.
 You run it for the rest:
   python harness.py install        add the 2 hooks and the skill to .claude/ of the folder above this one
   python harness.py serve [port]   show the events on a page where you drag to disagree
@@ -36,6 +37,7 @@ VERSION = "0.1.6"  # of the harness
 FORM = 3  # of a line of events.jsonl. Change it when a key changes its meaning, and add the step to migrate().
 HOME = pathlib.Path(__file__).resolve().parent
 LOG = HOME / "events.jsonl"
+BLOCKS = 2  # the most times that the Stop hook sends a reply back for 1 message, so that the agent cannot loop
 sys.path.insert(0, str(HOME))
 import world
 
@@ -432,9 +434,11 @@ def handle(event: dict, ask=d1) -> dict | None:
             questions |= {f"part {n + 1}": yes(ANSWERED(last["text"][part["start"]:part["end"]][:300])) for n, part in enumerate(last["parts"]) if part["hole"]}
             done = put(ask, state, questions)
             record["checks"] = {id: round(a["p_true"], 3) for id, a in done.items()}
-            demanded = [q for id, q in record["checks"].items() if id in FUNCTIONS]  # a reply goes back only when it does none of the demanded functions
-            if max(demanded, default=1) < 0.5 and config().get("block") and not event.get("stop_hook_active"):
-                answer = {"decision": "block", "reason": "scriptt: d1 says the reply does none of what the message asked: " + ", ".join(questions)}
+            missing = [id for id, q in record["checks"].items() if id in FUNCTIONS and q < 0.5]  # a reply goes back when it misses any demanded function
+            record["blocks"] = sum(r["event"] == "Stop" and bool(r.get("answer")) for r in mine[asked[-1]:])  # the blocks already sent for this message
+            if missing and config().get("block") and record["blocks"] < BLOCKS:
+                record["blocks"] += 1
+                answer = {"decision": "block", "reason": f"scriptt: d1 says the reply does not do: {', '.join(missing)} (block {record['blocks']} of at most {BLOCKS} for this message)"}
     with LOG.open("a") as file:
         file.write(json.dumps(record | {"answer": answer}) + "\n")
     return answer
@@ -476,15 +480,99 @@ def install():
     print(f"hooks are in {settings}\nd1 is set in {HOME / 'config.json'}")
 
 
+def preview(asked: dict, earlier: dict) -> dict:
+    """Reads 1 message again with the next engine (next/scriptt16.py beside this folder) and the real d1 of config.json, once with
+    the default wordings and once with the wordings that the page changed. Returns both readings, each with every request to d1.
+    asked = {"text": the message, "session": its session, "prompts": {name: wording} for each wording that the page changed}.
+    earlier keeps the reading with the default wordings of each message, so that only the changed wordings cost d1 requests.
+    Raises LookupError when the next engine is not there, ValueError for a wording or a world that the engine refuses."""
+    folder = HOME.parent / "next"
+    if not (folder / "scriptt16.py").is_file() or not (folder / "world.py").is_file():
+        raise LookupError(f"the next engine is not beside this harness: {folder / 'scriptt16.py'} and {folder / 'world.py'} are needed")
+    if str(folder) not in sys.path:
+        sys.path.insert(1, str(folder))  # after this folder, so that the engine imports this harness as its shipped one
+    import agree
+    import scriptt16
+
+    source = (folder / "world.py").read_text()
+    module = types.ModuleType("next_world")  # not "world": that name is the world.py of this folder
+    module.__file__ = str(folder / "world.py")
+    exec(compile(source, str(folder / "world.py"), "exec"), vars(module))
+    world = agree.load(module, HOME.parent)
+    base = scriptt16.Prompts()
+    names = [field.name for field in dataclasses.fields(base)]
+    changed = {name: wording for name, wording in (asked.get("prompts") or {}).items() if getattr(base, name, None) != wording}
+    if unknown := [name for name in changed if name not in names]:
+        raise ValueError(f"no wording is named {', '.join(unknown)}; the wordings are {', '.join(names)}")
+    edited = dataclasses.replace(base, **changed)  # Prompts checks the slots of each wording
+    text = asked["text"]
+    mine = [record for record in history() if record["session"] == asked.get("session")]
+    at = max((n for n, record in enumerate(mine) if record["event"] == "UserPromptSubmit" and record["text"] == text), default=len(mine))
+    replies = [record["text"] for record in mine[:at] if record.get("brand") == "Written"]
+    model = lambda state, questions: put(d1, state, questions)
+    key = (text, asked.get("session"), hashlib.sha1(source.encode()).hexdigest(), json.dumps(dataclasses.asdict(base), sort_keys=True))
+    started = datetime.datetime.now()
+    if key not in earlier:
+        earlier[key] = scriptt16.read(text, world, replies, model, prompts=base)
+    before = earlier[key]
+    after = before if not changed else scriptt16.read(text, world, replies, model, prompts=edited, message=before.message if edited.join == base.join else None)
+
+    def matches(prompts, name: str, instructions: str, asks: str, role: str) -> bool:
+        """Whether d1 received this wording of this hole: the wording with every slot other than asks and role left as a gap."""
+        slots = type(prompts).SLOTS[name]
+        cut = prompts.render(name, **{slot: {"asks": asks, "role": role}.get(slot, "\0") for slot in slots}).split("\0")
+        return instructions.startswith(cut[0]) and instructions.endswith(cut[-1]) and all(piece in instructions for piece in cut)
+
+    def roles(parameters, path: str = "") -> list:
+        """Each hole of a function as (path, role in words), with the fields of a product type inside it."""
+        out = []
+        for name, tp in parameters:
+            out += [(path + name, name.replace("_", " "))]
+            if isinstance(tp, agree.Product):
+                out += roles(tp.fields, f"{path}{name}.")
+        return out
+
+    def summary(reading) -> dict:
+        phrases = scriptt16.innermost(reading.message)
+        listed = [{"start": phrase.start, "end": phrase.end, "words": " ".join(text[phrase.start:phrase.end].split()), "brand": phrase.brand.name if phrase.brand else None,
+                   "choice": phrase.choice.best if phrase.choice else None, "shares": {name: round(share, 4) for name, share in phrase.choice.shares.items()} if phrase.choice else {},
+                   "term": scriptt16.say(phrase.term, text) if phrase.term else None, "type": agree.show(scriptt16.type_of(phrase.term)) if phrase.term else None,
+                   "holes": [{"path": path, "type": agree.show(hole.type), "reason": getattr(hole, "reason", None)} for path, hole in scriptt16.holes_of(phrase.term)]} for phrase in phrases]
+        requests = []
+        for request in reading.requests:
+            n = next((k for k, phrase in enumerate(phrases) if text[phrase.start:phrase.end].strip() == request["state"]), None)
+            function = getattr(phrases[n].term, "function", None) if n is not None else None
+            for question_key, question in request["asked"].items():
+                hole, wording = None, "what" if question_key == "what" else "join" if question_key == "join" else None
+                for path, role in roles(function.parameters) if function else []:
+                    for name in ("which", "many_is"):
+                        if wording is None and matches(reading.prompts, name, question.get("instructions", ""), function.asks, role):
+                            hole, wording = path, name
+                requests.append({"state": request["state"], "key": question_key, "type": question["type"], "instructions": question.get("instructions", ""),
+                                 "options": question.get("options", []), "answer": request["answers"].get(question_key, {}), "phrase": n, "hole": hole, "wording": wording})
+        return {"phrases": listed, "requests": requests}
+
+    shown = lambda phrase: phrase["term"] or phrase["choice"] or "-"
+    first, second = summary(before), summary(after)
+    changes = [{"words": b["words"], "before": shown(a), "after": shown(b), "share_before": a["shares"].get(a["choice"]), "share_after": b["shares"].get(b["choice"])}
+               for b in second["phrases"] for a in [next((a for a in first["phrases"] if (a["start"], a["end"]) == (b["start"], b["end"])), {"term": None, "choice": "(no such phrase before)", "shares": {}})]
+               if shown(a) != shown(b)]
+    return {"engine": str(folder / "scriptt16.py"), "world": str(folder / "world.py"), "d1": config()["url"], "changed": sorted(changed),
+            "prompts": {"before": dataclasses.asdict(base), "after": dataclasses.asdict(edited)}, "before": first, "after": second, "changes": changes,
+            "seconds": round((datetime.datetime.now() - started).total_seconds(), 1)}
+
+
 def serve(port: int):
-    """The page, on this computer only. GET /data is the world and the log. POST /disagree adds 1 line to the log."""
-    from http.server import BaseHTTPRequestHandler, HTTPServer
+    """The page, on this computer only. GET /data is the world and the log. POST /disagree adds 1 line to the log.
+    POST /preview-prompts reads 1 message again with the next engine and the wordings of the page (see preview)."""
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
     site = next((folder for folder in (HOME / "site", HOME.parent / "web" / "site") if folder.exists()), None)
+    earlier = {}  # the reading with the default wordings, by message
 
     class Page(BaseHTTPRequestHandler):
-        def reply(self, body: bytes, kind: str):
-            self.send_response(200)
+        def reply(self, body: bytes, kind: str, status: int = 200):
+            self.send_response(status)
             self.send_header("Content-Type", kind)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
@@ -504,16 +592,27 @@ def serve(port: int):
             self.reply(body, {"html": "text/html; charset=utf-8", "js": "text/javascript"}.get(name.rsplit(".", 1)[-1], "text/plain"))
 
         def do_POST(self):
-            if self.path != "/disagree" or self.headers.get("Origin", f"http://127.0.0.1:{port}") not in (f"http://127.0.0.1:{port}", f"http://localhost:{port}"):
+            if self.path not in ("/disagree", "/preview-prompts") or self.headers.get("Origin", f"http://127.0.0.1:{port}") not in (f"http://127.0.0.1:{port}", f"http://localhost:{port}"):
                 return self.send_error(403)
-            reading(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
-            self.reply(b"{}", "application/json")
+            body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            if self.path == "/disagree":
+                reading(body)
+                return self.reply(b"{}", "application/json")
+            try:
+                answer, status = preview(body, earlier), 200
+            except LookupError as error:  # no next engine: the page says so
+                answer, status = {"error": str(error)}, 501
+            except (ValueError, TypeError, KeyError) as error:  # a wording or a world that the engine refuses
+                answer, status = {"error": f"{type(error).__name__}: {error}"}, 400
+            except OSError as error:  # d1 is not reachable
+                answer, status = {"error": f"d1 did not answer at {config().get('url')}: {error}"}, 502
+            self.reply(json.dumps(answer).encode(), "application/json", status)
 
         def log_message(self, *args):
             pass
 
     print(f"http://127.0.0.1:{port}")
-    HTTPServer(("127.0.0.1", port), Page).serve_forever()
+    ThreadingHTTPServer(("127.0.0.1", port), Page).serve_forever()
 
 
 def reading(mine: dict) -> None:

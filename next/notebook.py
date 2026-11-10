@@ -14,8 +14,9 @@ One message goes through four parts, from top to bottom:
 3. Type-directed synthesis: the terms that fill each hole, and the choice of d1.
 4. Interpretation: the phrases fold into the drawing, the lines for Claude, the log and the reply check.
 
-Each cell that shows a function has the function as it is in next/agree.py or
-next/scriptt16.py, copied word for word.
+Each cell that shows a function calls it from next/agree.py, next/scriptt16.py or next/turns.py,
+and shows its source as the module has it, read with inspect.getsource. The
+notebook holds no copy of the engine, so it always runs the real one.
 
     python -m marimo edit next/notebook.py        (from the repository)
 """
@@ -31,12 +32,11 @@ def _():
     import dataclasses
     import difflib
     import html
+    import inspect
     import json
     import pathlib
     import sys
     import types
-    import typing
-    import unicodedata
 
     import marimo as mo
 
@@ -45,11 +45,27 @@ def _():
     import agree
     import harness
     import scriptt16
-    from agree import CONSTRUCTORS, LATER, MANY, MAYBE, Applied, Arrow, Base, Brand, Constructor, Function, Kind, Member, Product, Star, Sum, Type, World, mentions, show
+    import turns
+    from agree import CONSTRUCTORS, LATER, MANY, MAYBE, Applied, Arrow, Base, Brand, Constructor, Function, Kind, Member, Product, Star, Sum, Type, World, duplicates, is_subtype, kind_of, show, single_use
     from scriptt16 import (
         Application, Checked, Constant, Empty, Environment, Gate, Hole, Limits, Phrase, Reading, Record, Search, Several, Term,
-        chunks, fills, innermost, say, type_of,
+        derivations, fills, fold, grounded, innermost, places, proposed, say, solve, type_of, written,
     )
+    return
+
+
+@app.cell
+def _():
+    def source_view(*functions: object) -> mo.Html:
+        """Shows the source of engine functions, read-only and folded, as the modules have it.
+
+        Args:
+            functions: The functions or methods to show.
+
+        Returns:
+            One closed accordion with a read-only code view of each function.
+        """
+        return mo.accordion({f"source: {function.__module__}.{function.__qualname__}": mo.ui.code_editor(inspect.getsource(function), language="python", disabled=True) for function in functions})
     return
 
 
@@ -68,7 +84,7 @@ def _():
     _module.__file__ = str(here / "world.py")
     exec(compile(world_source.value, "world.py", "exec"), vars(_module))
     world: World = agree.load(_module)
-    {"faults": world.faults + scriptt16.ungrounded(world)} | {name: type(one).__name__ for name, one in world.types.items()}
+    mo.vstack([source_view(agree.load, scriptt16.ungrounded), {"faults": world.faults + scriptt16.ungrounded(world)} | {name: type(one).__name__ for name, one in world.types.items()}])
     return
 
 
@@ -81,68 +97,8 @@ def _():
 
 @app.cell
 def _():
-    """RULES OF A WORLD. agree.load lists a fault for two functions with the same parameter types and result type, for two types with the same structure, and for an Enum or a product type that fewer than two functions use."""
-
-
-    def duplicates(types: dict[str, Type], functions: dict[str, Function], file_name: str) -> list[str]:
-        """Lists each function and each type that has the same structure as an earlier one.
-
-        Two functions with the same parameter types and the same result type fit the
-        same holes, so the types cannot separate them. Two product types with the
-        same fields, or two sum types with the same alternatives, are one type
-        under two names.
-
-        Args:
-            types: The types of the world, by name.
-            functions: The functions of the world, by name.
-            file_name: The name of the world file, for the faults.
-
-        Returns:
-            One fault for each duplicate. A brand is excluded: two brands over the
-            same type are different types by definition.
-        """
-        faults: list[str] = []
-        seen_signatures: dict[tuple, str] = {}
-        for function in functions.values():
-            signature = (tuple(parameter for _, parameter in function.parameters), function.result)
-            if signature in seen_signatures:
-                faults.append(f"{file_name}:{function.line} {function.name}: the same parameter types and result type as {seen_signatures[signature]}")
-            seen_signatures.setdefault(signature, function.name)
-        seen_structures: dict[tuple, str] = {}
-        for name, expression in types.items():
-            if not isinstance(expression, Sum | Product) or expression.name != name:
-                continue
-            structure = expression.fields if isinstance(expression, Product) else tuple(alternative.words if isinstance(alternative, Member) else alternative for alternative in expression.alternatives)
-            if structure in seen_structures:
-                faults.append(f"{file_name} {name}: the same structure as {seen_structures[structure]}")
-            seen_structures.setdefault(structure, name)
-        return faults
-
-
-    def single_use(types: dict[str, Type], functions: dict[str, Function], file_name: str) -> list[str]:
-        """Lists each Enum and each product type that fewer than two functions use.
-
-        Args:
-            types: The types of the world, by name.
-            functions: The functions of the world, by name.
-            file_name: The name of the world file, for the faults.
-
-        Returns:
-            One fault for each such type. A function uses a type if a parameter or
-            the result has the type, or has it inside.
-        """
-        faults: list[str] = []
-        for name, expression in types.items():
-            is_enum = isinstance(expression, Sum) and any(isinstance(alternative, Member) for alternative in expression.alternatives)
-            if not (is_enum or isinstance(expression, Product)):
-                continue
-            users = [function.name for function in functions.values() if any(mentions(used, expression) for used in (*(parameter for _, parameter in function.parameters), function.result))]
-            if len(users) < 2:
-                faults.append(f"{file_name} {name}: {len(users)} function uses this type ({', '.join(users) or 'none'}), and a custom type needs 2. Use Words, Path or int.")
-        return faults
-
-
-    duplicates(world.types, world.functions, "world.py"), single_use(world.types, world.functions, "world.py")
+    """RULES OF A WORLD. Two functions may share parameter types and a result type (increase and decrease), and a type may protect one boundary (Proposal on propose). So duplicates and single_use only ask a question of the person who reviews world.py: agree.load lists their findings in world.warnings, and the search runs all the same."""
+    mo.vstack([source_view(duplicates, single_use), {"warnings": world.warnings, "faults": world.faults}])
     return
 
 
@@ -150,30 +106,6 @@ def _():
 def _():
     """KIND. The type of a type. A type has kind *. A type constructor has kind * -> *. kind_of refuses a constructor applied to the wrong kind."""
     surface: Sum = world.types["Surface"]
-
-
-    def kind_of(expression: Type | Constructor) -> Kind:
-        """Returns the kind of a type or of a type constructor.
-
-        Args:
-            expression: A type or a type constructor.
-
-        Returns:
-            ``Star`` for a type. The arrow kind of a constructor. For an applied
-            constructor, the kind that the constructor gives.
-
-        Raises:
-            TypeError: If a constructor is applied to something whose kind differs
-                from the kind that the constructor takes.
-        """
-        match expression:
-            case Constructor(kind=kind):
-                return kind
-            case Applied(constructor, argument):
-                if kind_of(argument) != constructor.kind.argument:
-                    raise TypeError(f"{constructor.name} takes a type of kind {show(constructor.kind.argument)}, and {show(argument)} has kind {show(kind_of(argument))}")
-                return constructor.kind.result
-        return Star()
 
 
     def kind_or_refusal(expression: Type | Constructor) -> str:
@@ -184,12 +116,12 @@ def _():
             return str(refusal)
 
 
-    {
+    mo.vstack([source_view(kind_of), {
         "Surface": kind_or_refusal(surface),
         "Many": kind_or_refusal(MANY),
         "Many[Surface]": kind_or_refusal(Applied(MANY, surface)),
         "Many[Maybe]": kind_or_refusal(Applied(MANY, MAYBE)),
-    }
+    }])
     return
 
 
@@ -198,36 +130,11 @@ def _():
     """BRAND. A typing.NewType in world.py: a new nominal type over an existing type. is_subtype makes a brand a subtype of the type it wraps, and keeps two brands apart."""
     brands: dict[str, Brand] = {name: one for name, one in world.types.items() if isinstance(one, Brand)}
 
-
-    def is_subtype(given: Type, wanted: Type) -> bool:
-        """Decides whether a value of one type can stand where another type is wanted.
-
-        Args:
-            given: The type of the value.
-            wanted: The type of the place.
-
-        Returns:
-            True if the types are equal, if ``given`` is a brand over a subtype of
-            ``wanted``, if ``wanted`` is a sum with an alternative that ``given`` is
-            a subtype of, or if both apply the same constructor to types that are
-            in this relation.
-        """
-        if given == wanted:
-            return True
-        if isinstance(wanted, Sum) and any(not isinstance(alternative, Member) and is_subtype(given, alternative) for alternative in wanted.alternatives):
-            return True
-        if isinstance(given, Brand):
-            return is_subtype(given.of, wanted)
-        if isinstance(given, Applied) and isinstance(wanted, Applied) and given.constructor == wanted.constructor:
-            return is_subtype(given.argument, wanted.argument)
-        return False
-
-
-    {name: show(brand.of) for name, brand in brands.items()}, {
+    mo.vstack([source_view(is_subtype), {name: show(brand.of) for name, brand in brands.items()}, {
         "Asked is a subtype of Words": is_subtype(brands["Asked"], brands["Words"]),
         "Written is a subtype of Words": is_subtype(brands["Written"], brands["Words"]),
         "Written is a subtype of Asked": is_subtype(brands["Written"], brands["Asked"]),
-    }
+    }])
     return
 
 
@@ -268,31 +175,7 @@ def _():
     replies: list[str] = [earlier_reply.value]
     limits: Limits = Limits()
 
-
-    def places(text: str) -> list[tuple[int, int]]:
-        """Returns the place of each word and each sign of a text.
-
-        A sign between two letters or digits belongs to the word, as in "t-strings",
-        "d1's" and "world.py".
-        """
-        found: list[tuple[int, int]] = []
-        word_start: int | None = None
-        for index, character in enumerate(text):
-            joins_word = word_start is not None and character in "-'’._" and text[index + 1:index + 2].isalnum()
-            if character.isalnum() or joins_word:
-                word_start = index if word_start is None else word_start
-                continue
-            if word_start is not None:
-                found.append((word_start, index))
-                word_start = None
-            if not character.isspace():
-                found.append((index, index + 1))
-        if word_start is not None:
-            found.append((word_start, len(text)))
-        return found
-
-
-    [text[start:end] for start, end in places(text)]
+    mo.vstack([source_view(places), [text[start:end] for start, end in places(text)]])
     return
 
 
@@ -300,56 +183,8 @@ def _():
 def _():
     """Which words did an earlier reply already have? Those words get the brand Written."""
 
-
-    def written(text: str, replies: list[str], least: int) -> list[tuple[int, int]]:
-        """Finds the parts of a message that quote an earlier reply.
-
-        Compares the message with the replies in the log. Asks no model.
-
-        Args:
-            text: The message.
-            replies: The earlier replies.
-            least: The number of consecutive words that the message must share with
-                a reply for the run to count as a quote.
-
-        Returns:
-            The start and the end of each quote, in order. A quote includes the
-            opening sign and the closing signs that touch it.
-        """
-        word_places = places(text)
-        word_indexes = [index for index, (start, _) in enumerate(word_places) if text[start].isalnum()]
-        normal = lambda word: word.lower().replace("’", "'")
-        message_words = [normal(text[slice(*word_places[index])]) for index in word_indexes]
-        category = lambda index: unicodedata.category(text[word_places[index][0]])
-        touches = lambda before, after: word_places[before][1] == word_places[after][0]
-        opens = lambda index: category(index) in ("Ps", "Pi") or text[word_places[index][0]] in "\"'`*"
-
-        runs: list[tuple[int, int]] = []
-        for reply in replies:
-            reply_words = [normal(reply[start:end]) for start, end in places(reply) if reply[start].isalnum()]
-            matcher = difflib.SequenceMatcher(None, message_words, reply_words, autojunk=False)
-            for block in matcher.get_matching_blocks():
-                if block.size < least:
-                    continue
-                first = word_indexes[block.a]
-                last = word_indexes[block.a + block.size - 1]
-                while first > 0 and opens(first - 1) and touches(first - 1, first):
-                    first -= 1
-                while last + 1 < len(word_places) and category(last + 1).startswith("P") and touches(last, last + 1):
-                    last += 1
-                runs.append((word_places[first][0], word_places[last][1]))
-
-        merged: list[tuple[int, int]] = []
-        for start, end in sorted(runs):
-            if merged and start <= merged[-1][1] + 1:
-                merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
-            else:
-                merged.append((start, end))
-        return merged
-
-
     quotes: list[tuple[int, int]] = written(text, replies, limits.run)
-    [text[start:end] for start, end in quotes]
+    mo.vstack([source_view(written), [text[start:end] for start, end in quotes]])
     return
 
 
@@ -357,75 +192,14 @@ def _():
 def _():
     """Where can a phrase start?"""
 
-
-    def proposed(text: str) -> dict[int, str]:
-        """Proposes each place where a phrase can start.
-
-        Three rules propose a start, in this order: a blank line, a list item, and
-        the end of a sentence. A rule proposes only a place that no earlier rule took.
-
-        Args:
-            text: The message.
-
-        Returns:
-            The rule that proposes each place, by the place of the first character of the phrase.
-        """
-        starts: dict[int, str] = {}
-        line_start = 0
-        after_blank_line = False
-        for line in text.splitlines(keepends=True):
-            words = line.split(maxsplit=1)
-            first_character = line_start + len(line) - len(line.lstrip())
-            if words and after_blank_line and first_character:
-                starts.setdefault(first_character, "a blank line")
-            is_bullet = bool(words) and words[0] in ("-", "*")
-            is_number = bool(words) and words[0][:-1].isdigit() and words[0][-1] in ".)"
-            if len(words) == 2 and (is_bullet or is_number):
-                starts.setdefault(first_character, "a list item")
-            after_blank_line = not words
-            line_start += len(line)
-
-        word_places = places(text)
-        for index, (start, end) in enumerate(word_places[:-1]):
-            if text[start:end] not in (".", "?", "!", "…"):
-                continue
-            for following in range(index + 1, len(word_places)):
-                follows_space = word_places[following][0] > word_places[following - 1][1]
-                if follows_space or text[word_places[following][0]].isalnum():
-                    starts.setdefault(word_places[following][0], "after " + text[start:end])
-                    break
-        return starts
-
-
     starts: dict[int, str] = proposed(text)
-    [(rule, text[start:start + 30]) for start, rule in sorted(starts.items())]
+    mo.vstack([source_view(proposed), [(rule, text[start:start + 30]) for start, rule in sorted(starts.items())]])
     return
 
 
 @app.cell
 def _():
-    """UNFOLD and FUNCTOR. unfold grows the phrases with one function. It uses Phrase.map, which applies a function inside a phrase and keeps the phrase."""
-
-
-    def unfold(cut: typing.Callable[[Phrase], Phrase], phrase: Phrase) -> Phrase:
-        """Grows the phrases of a message from one phrase.
-
-        Args:
-            cut: A function that gives one phrase its inner phrases.
-            phrase: The phrase to start from.
-
-        Returns:
-            The phrase with ``cut`` applied to it and to every phrase inside it.
-
-        Raises:
-            ValueError: If ``cut`` returns an inner phrase that is as long as the
-                phrase that holds it. Every inner phrase must be shorter, which
-                guarantees that the unfold ends.
-        """
-        grown = cut(phrase)
-        if any(inner.end - inner.start >= phrase.end - phrase.start for inner in grown.inside):
-            raise ValueError(f"a cut returned an inner phrase as long as its phrase: {phrase}")
-        return grown.map(lambda inner: unfold(cut, inner))
+    """UNFOLD and FUNCTOR. unfold grows the phrases with one function. It uses Phrase.map, which applies a function inside a phrase and keeps the phrase. As in read, d1 decides with the join wording whether a sentence only adds detail to the one before it; then the two are one phrase."""
 
 
     def model(state: str, questions: dict[str, dict]) -> dict[str, dict]:
@@ -433,9 +207,9 @@ def _():
         return harness.put(harness.d1, state, questions)
 
 
-    unfolded: Phrase = scriptt16.phrases(text, replies, world, None, limits)
+    unfolded: Phrase = scriptt16.phrases(text, replies[-limits.replies:], world, scriptt16.same_request_of(model, scriptt16.Prompts()), limits)
     phrases: list[Phrase] = innermost(unfolded)
-    [(phrase.brand.name, phrase.starts_by, text[phrase.start:phrase.end].strip()) for phrase in phrases]
+    mo.vstack([source_view(scriptt16.unfold, Phrase.map, scriptt16.phrases, scriptt16.same_request_of), [(phrase.brand.name, phrase.starts_by, text[phrase.start:phrase.end].strip()) for phrase in phrases]])
     return
 
 
@@ -443,48 +217,8 @@ def _():
 def _():
     """GROUNDING. stands turns a span of text into a constant term with a type of the world."""
 
-
-    def stands(expression: Type, text: str, folder: pathlib.Path) -> list[Constant]:
-        """Finds each span of a text that names a value of a type.
-
-        The search uses these constants as the atomic terms of a message.
-
-        Args:
-            expression: A sum type with members, ``int`` or ``pathlib.Path``.
-            text: The text.
-            folder: The folder that holds the paths that the text names.
-
-        Returns:
-            One constant for each span. A member of a sum type stands where its
-            words stand, word for word. A number stands where the characters are
-            decimal digits. A path stands where the characters name a file or a
-            folder that exists under ``folder``. Every other type has no rule and
-            gives no constant.
-        """
-        found: list[Constant] = []
-        match expression:
-            case Sum(alternatives=alternatives):
-                word_places = places(text)
-                text_words = [text[start:end].lower() for start, end in word_places]
-                for member in alternatives:
-                    if not isinstance(member, Member):
-                        continue
-                    member_words = [member.words[start:end].lower() for start, end in places(member.words)]
-                    for index in range(len(text_words) - len(member_words) + 1):
-                        if text_words[index:index + len(member_words)] == member_words:
-                            found.append(Constant(expression, member, word_places[index][0], word_places[index + len(member_words) - 1][1]))
-            case Base(python=python) if python is int:
-                found = [Constant(expression, int(text[start:end]), start, end) for start, end in chunks(text) if text[start:end].isdecimal()]
-            case Base(python=python) if python is pathlib.Path:
-                for start, end in chunks(text):
-                    characters = text[start:end]
-                    if ("/" in characters or "." in characters) and (folder / characters).exists():
-                        found.append(Constant(expression, pathlib.Path(characters), start, end))
-        return found
-
-
-    constants: list[Constant] = sorted((constant for expression in world.types.values() for constant in stands(expression, text, world.folder)), key=lambda constant: constant.start)
-    [(text[constant.start:constant.end], show(constant.type)) for constant in constants]
+    constants: list[Constant] = grounded(text, world)
+    mo.vstack([source_view(scriptt16.stands, grounded), [(text[constant.start:constant.end], show(constant.type)) for constant in constants]])
     return
 
 
@@ -492,41 +226,32 @@ def _():
 def _():
     """PART 3: TYPE-DIRECTED SYNTHESIS. Take one phrase of the user."""
     _asked = {f"{index}: {text[phrase.start:phrase.end].strip()[:90]}": index for index, phrase in enumerate(phrases) if phrase.brand == world.types["Asked"]}
-    chosen = mo.ui.dropdown(_asked, value=list(_asked)[1] if len(_asked) > 1 else next(iter(_asked)), full_width=True, label="A phrase of the user.")
+    chosen = mo.ui.dropdown(_asked, value=list(_asked)[min(2, len(_asked) - 1)], full_width=True, label="A phrase of the user.")
     chosen
     return
 
 
 @app.cell
 def _():
-    """The environment of the phrase: the terms that can fill its holes. Local terms come from the phrase. Context terms come from before it."""
-    reading: Reading = scriptt16.read(text, world, replies, model, False, limits)
+    """The environment of the phrase: the terms that can fill its holes. Local terms come from the phrase. Context terms come from before it.
+
+    This is the environment that read itself builds and hands to choose. The cell starts the turn with turns.start_turn, which calls scriptt16.read; it records the argument of each call of scriptt16.choose while read runs, and builds no environment of its own. It reads as the hook reads: join on, so d1 decides whether neighbouring sentences are one phrase, with the same join decision as part 2."""
+    _environments: dict[int, Environment] = {}
+    _choose = scriptt16.choose
+
+    def _recording(phrase: Phrase, environment: Environment, search: Search) -> Phrase:
+        _environments[phrase.start] = environment
+        return _choose(phrase, environment, search)
+
+    scriptt16.choose = _recording
+    try:
+        read_trace: turns.Trace = turns.start_turn(text, world, replies, model, limits=limits)
+    finally:
+        scriptt16.choose = _choose
+    reading: Reading = read_trace.reading
     chosen_phrase: Phrase = innermost(reading.message)[chosen.value]
-    earlier_phrases: list[Phrase] = innermost(reading.message)[:chosen.value]
-
-
-    def environment_of(phrase: Phrase, earlier: list[Phrase]) -> Environment:
-        """Builds the environment of a phrase.
-
-        Args:
-            phrase: The phrase.
-            earlier: The phrases before it, with their terms.
-
-        Returns:
-            The constants and the words of the phrase as local terms. The terms,
-            the constants and the words of the earlier phrases as context, the
-            nearest first.
-        """
-        words_of = lambda one: Constant(one.brand, text[one.start:one.end].strip(), one.start, one.end)
-        constants_of = lambda one: [constant for constant in reading.constants if one.start <= constant.start < one.end]
-        context: list[Term] = []
-        for one in earlier:
-            context = [*([one.term] if one.term else []), *reversed(constants_of(one)), words_of(one), *context]
-        return Environment((*constants_of(phrase), words_of(phrase)), tuple(context))
-
-
-    environment: Environment = environment_of(chosen_phrase, earlier_phrases)
-    {"local": [f"{say(term, text)} : {show(type_of(term))}" for term in environment.local], "context": [f"{say(term, text)} : {show(type_of(term))}" for term in environment.context]}
+    environment: Environment = _environments[chosen_phrase.start]
+    mo.vstack([source_view(turns.start_turn, scriptt16.read), {"local": [f"{say(term, text)} : {show(type_of(term))}" for term in environment.local], "context": [f"{say(term, text)} : {show(type_of(term))}" for term in environment.context]}])
     return
 
 
@@ -535,71 +260,24 @@ def _():
     """d1 chooses the function that the phrase asks for. Each parameter of that function is now a hole with a type."""
     largest_shares: list[tuple[str, float]] = sorted(chosen_phrase.choice.shares.items(), key=lambda option: -option[1])[:4]
     asked_function: Function | None = world.functions.get(chosen_phrase.choice.best)
-    largest_shares, {name: show(parameter) for name, parameter in asked_function.parameters} if asked_function else "no function"
+    mo.vstack([source_view(scriptt16.choose), (largest_shares, {name: show(parameter) for name, parameter in asked_function.parameters} if asked_function else "no function")])
     return
 
 
 @app.cell
 def _():
-    """HOLE. derivations lists every well-typed term for a hole. An earlier term that changed a value stands for that value from then on."""
+    """HOLE. derivations lists every well-typed term for a hole. The original value and a version of it that an earlier phrase made are both in the list: d1 chooses by the words of the phrase.
 
-
-    def derivations(goal: Type, environment: Environment, world: World, depth: int, applying: Function | None = None) -> list[Term]:
-        """Enumerates the terms that can fill a hole, by two of the five rules.
-
-        * Constant: every term of the environment whose type fits the goal. If an
-          earlier application took a value as an argument and gives a value that
-          fits the goal, that application is the current version of the value: it
-          is listed, and the constant with the same value is left out. "Redesign
-          the mod. Then show the mod." shows the redesigned mod.
-        * Application: every function of the world whose result fits the goal and
-          whose required parameters each have a constant in the environment. The
-          parameters of the application are holes. The function that has the hole
-          is excluded, and so is a function that the list already has a term of.
-
-        The other three rules (product, sum and type constructor) decompose the
-        goal, and ``solve`` applies them.
-
-        Args:
-            goal: The type of the hole.
-            environment: The terms that are available.
-            world: The world.
-            depth: The number of nested applications that are still allowed.
-            applying: The function that has the hole, if any.
-
-        Returns:
-            The terms, the nearest first, then the applications. Two terms that read
-            the same are one term.
-        """
-        found: list[Term] = [term for term in (*environment.local, *environment.context) if fills(term, goal)]
-        versions = [term for term in found if isinstance(term, Application)]
-        taken_by = lambda constant: any(argument == constant or (isinstance(argument, Constant) and (argument.type, argument.value) == (constant.type, constant.value))
-                                        for version in versions for argument in version.arguments.values())
-        found = [term for term in found if not (isinstance(term, Constant) and taken_by(term))]
-        if depth > 0:
-            for function in world.functions.values():
-                if function == applying or any(isinstance(term, Application) and term.function == function for term in found):
-                    continue
-                application = Application(function, {name: Hole(parameter) for name, parameter in function.parameters})
-                required = [parameter for _, parameter in function.parameters if not (isinstance(parameter, Applied) and parameter.constructor == MAYBE)]
-                supported = bool(required) and all(derivations(parameter, environment, world, 0) for parameter in required)
-                if supported and fills(application, goal):
-                    found.append(application)
-        distinct: dict[str, Term] = {}
-        for term in found:
-            distinct.setdefault(say(term, ""), term)
-        return list(distinct.values())
-
-
-    {name: [f"{say(term, text)} : {show(type_of(term))}" for term in derivations(parameter.alternatives[0] if isinstance(parameter, Sum) and not parameter.name == "" and not isinstance(parameter.alternatives[0], Member) else parameter, environment, world, limits.depth, asked_function)]
-     for name, parameter in (asked_function.parameters if asked_function else ())}
+    This calls derivations on the type of each parameter, as it is. For a sum of types, such as Subject, the list has the terms of every alternative: solve decomposes the sum into one alternative, which d1 chooses, only when no term fits the whole sum. For Maybe[T], Many[T] and a product type, solve applies its own rule first and calls derivations on the inner types, so the list for the parameter type itself can be empty while solve still finds a term (explain(subject: Maybe[Words]) is one)."""
+    mo.vstack([source_view(derivations), {name: [f"{say(term, text)} : {show(type_of(term))}" for term in derivations(parameter, environment, world, limits.depth, asked_function)]
+     for name, parameter in (asked_function.parameters if asked_function else ())}])
     return
 
 
 @app.cell
 def _():
     """solve applies the rule for the type of the hole and asks d1 when several terms fit. This is the term of the phrase, and its type."""
-    (say(chosen_phrase.term, text), show(type_of(chosen_phrase.term))) if chosen_phrase.term else chosen_phrase.choice.best
+    mo.vstack([source_view(solve, scriptt16.applied), (say(chosen_phrase.term, text), show(type_of(chosen_phrase.term))) if chosen_phrase.term else chosen_phrase.choice.best])
     return
 
 
@@ -616,22 +294,23 @@ def _():
 def _():
     """PART 4: INTERPRETATION. FOLD collapses the phrases with one function. Each output below is one fold of the same reading."""
 
-
-    def fold(combine: typing.Callable[[Phrase], object], phrase: Phrase) -> object:
-        """Collapses the phrases of a message to one result.
-
-        Args:
-            combine: A function that turns one phrase into a result. The phrase that
-                it receives has a result at each inner place.
-            phrase: The phrase to collapse.
-
-        Returns:
-            The result of ``combine`` for the phrase.
-        """
-        return combine(phrase.map(lambda inner: fold(combine, inner)))
+    mo.vstack([source_view(fold),     fold(lambda phrase: "".join(phrase.inside) or text[phrase.start:phrase.end], reading.message) == text])
+    return
 
 
-    fold(lambda phrase: "".join(phrase.inside) or text[phrase.start:phrase.end], reading.message) == text
+@app.cell
+def _():
+    """THE TRACE OF THE TURN. turns.start_turn gave one Trace: context[n], the wordings, the hash of the world, the reading, the corrections, the executions and context[n+1]. The notebook holds it in a state, so that a correction below, an Undo or an edited wording replaces it, and every view of it runs again."""
+    get_trace, set_trace = mo.state(read_trace)
+    get_binding_note, set_binding_note = mo.state("")
+    return
+
+
+@app.cell
+def _():
+    trace: turns.Trace = get_trace()
+    current: Reading = trace.reading
+    mo.md(f"Turn {trace.turn} · world `{trace.world_hash}` · wordings `{scriptt16.prompts_hash(trace.prompts)}` · {len(trace.corrections)} correction(s) · {len(current.requests)} request(s) to d1")
     return
 
 
@@ -640,28 +319,40 @@ def _():
     COLOURS: list[str] = ["#5b9cf5", "#e5a33a", "#b07fe0", "#4fb8b0", "#e77fb3", "#8bc34a", "#ff8a65", "#9fa8da"]
 
 
-    def drawn(reading: Reading) -> mo.Html:
+    def drawn(reading: Reading, context: tuple[turns.Entity, ...] = ()) -> mo.Html:
         """Folds a reading into one paragraph: the message as it was written, with its terms marked in place.
 
         Args:
             reading: The reading.
+            context: The entities of earlier turns that the reading could name.
 
         Returns:
             The message as running text. A phrase that asks starts with its number,
             the same number as in the lines for Claude, and its function. A constant
             that fills a hole is marked once, where it stands, with the hole and the
             type. A constant that fills no hole is underlined, with its type on
-            hover. After the phrase come only the holes
-            that the phrase itself does not fill: one that a term from before the
-            phrase fills, with the number of that phrase, and one that is open. A
-            quote of an earlier reply is grey.
+            hover. A quote of an earlier reply is grey and has its number too.
+            After the phrase come only the holes that the phrase itself does not
+            fill: one that a term from before the phrase fills, with the number of
+            that phrase (or of the quote, or the identifier of the entity of an
+            earlier turn), and one that is open, with the reason that it is open.
+            A type has the colour of the type of the world inside it: Later[Surface]
+            and Observed[Surface] have the colour of Surface.
         """
         text = reading.text
         names = list(world.types)
         phrases_in_order = innermost(reading.message)
         number = lambda term: next((chr(0x278A + index) for index, phrase in enumerate(phrases_in_order) if phrase.term is term and isinstance(term, Application)), "")
+        quotes = [(phrase.start, phrase.end, chr(0x278A + index)) for index, phrase in enumerate(phrases_in_order) if phrase.brand and phrase.brand.name == "Written"]
+        quoted = lambda term: next((mark for start, end, mark in quotes if isinstance(term, Constant) and term.origin == "Written" and start <= term.start < end), "")
+        from_before = lambda term: next((entity for entity in context if entity.term == term), None)
 
         def colour(expression: Type) -> str:
+            match expression:
+                case Applied(argument=inner):
+                    return colour(inner)
+                case Brand(of=inner) if world.types.get(expression.name) != expression:
+                    return colour(inner)
             return COLOURS[names.index(expression.name) % len(COLOURS)] if getattr(expression, "name", "") in names else "#999"
 
         def filled(words: str, hole: str, expression: Type) -> str:
@@ -671,9 +362,9 @@ def _():
         def unfilled(words: str, expression: Type) -> str:
             return f'<span title="{html.escape(show(expression))}" style="border-bottom:1.5px dotted {colour(expression)}">{html.escape(words)}</span>'
 
-        def socket(content: str, expression: Type, is_open: bool) -> str:
+        def socket(content: str, expression: Type, is_open: bool, title: str = "") -> str:
             border = "dashed" if is_open else "solid"
-            return f' <span style="border:1.5px {border} {colour(expression)};border-radius:4px;padding:1px 5px"><small>{content}</small></span>'
+            return f' <span title="{html.escape(title)}" style="border:1.5px {border} {colour(expression)};border-radius:4px;padding:1px 5px"><small>{content}</small></span>'
 
         def leaves(term: Term, path: str) -> list[tuple[str, Term]]:
             """Returns each part of a term with the path of its hole. An earlier term and a new application are parts of their own."""
@@ -682,7 +373,7 @@ def _():
                     return [found for name, field in fields.items() for found in leaves(field, f"{path}.{name}")]
                 case Several(terms=terms):
                     return [found for one in terms for found in leaves(one, path)]
-                case Application(arguments=arguments) if not number(term):
+                case Application(arguments=arguments) if not number(term) and not from_before(term):
                     return [(path, term)] + [found for name, argument in arguments.items() for found in leaves(argument, f"{path}.{name}")]
             return [(path, term)]
 
@@ -691,12 +382,14 @@ def _():
             if phrase.inside:
                 return "".join(phrase.inside)
             if phrase.brand and phrase.brand.name == "Written":
-                return f'<span style="background:rgba(128,128,128,.18);font-style:italic">{html.escape(words)}</span>'
+                mark = next(mark for start, _, mark in quotes if start == phrase.start)
+                lead = words[:len(words) - len(words.lstrip())]
+                return f'{html.escape(lead)}<span style="background:rgba(128,128,128,.18);font-style:italic"><b style="font-style:normal">{mark}</b> {html.escape(words.lstrip())}</span>'
             if not isinstance(phrase.term, Application):
                 return f'<span style="opacity:.55">{html.escape(words)}</span>'
             parts = [found for name, argument in phrase.term.arguments.items() for found in leaves(argument, name)]
             whole = (phrase.start, phrase.end)
-            here = {(part.start, part.end): path for path, part in parts if isinstance(part, Constant) and phrase.start <= part.start and (part.start, part.end) != whole}
+            here = {(part.start, part.end): path for path, part in parts if isinstance(part, Constant) and not from_before(part) and phrase.start <= part.start and (part.start, part.end) != whole}
             share = phrase.choice.shares[phrase.choice.best]
             title = html.escape(f"{share:.2f} ➔ {show(type_of(phrase.term))}")
             lead = words[:len(words) - len(words.lstrip())]
@@ -710,13 +403,18 @@ def _():
                     position = constant.end
             drawn_words += html.escape(text[position:phrase.end].rstrip())
             for path, part in parts:
+                entity = from_before(part)
                 match part:
-                    case Hole(type=expression):
-                        drawn_words += socket(f"◻ {path}: {html.escape(show(expression))}", expression, True)
+                    case _ if entity:
+                        drawn_words += socket(f"{path} ↩ {entity.id} {html.escape(say(part, entity.text))}", type_of(part), False, "from an earlier turn")
+                    case Hole(type=expression, reason=reason):
+                        drawn_words += socket(f"◻ {path}: {html.escape(show(expression))} · {reason}", expression, True, "open hole: " + reason)
                     case Application() if number(part):
                         drawn_words += socket(f"{path} ↩ {number(part)} {html.escape(say(part, text))}", type_of(part), False)
                     case Application(function=function):
                         drawn_words += socket(f"{path} = {function.name}(…)", type_of(part), False)
+                    case Constant() if quoted(part):
+                        drawn_words += socket(f"{path} ↩ {quoted(part)}", part.type, False, "the quote of an earlier reply")
                     case Constant(start=start) if start < phrase.start:
                         drawn_words += socket(f"{path} ↩ {html.escape(say(part, text))}", part.type, False)
                     case Constant(start=start, end=end) if (start, end) == whole:
@@ -724,46 +422,290 @@ def _():
             return drawn_words + html.escape(text[phrase.start + len(words.rstrip()):phrase.end])
 
         return mo.Html(f'<div style="line-height:2.3;white-space:pre-wrap">{scriptt16.fold(phrase_drawn, reading.message)}</div>')
-
-
-    drawn(reading)
     return
 
 
 @app.cell
 def _():
-    """The lines that Claude receives."""
-    mo.plain_text(scriptt16.block(reading))
+    """THE READING, DRAWN. The message in reading order, with the corrected reading of the trace: each phrase that asks, its function and the type it returns, the holes that the phrase fills in place, the holes that a term from before fills, and each open hole with its reason."""
+    drawn(current, trace.context_in)
+    return
+
+
+@app.cell
+def _():
+    """BINDING. Choose a place, the function of a phrase or one of its holes, and what stands there: a candidate that turns.candidates offers, or a value you type (a candidate the search did not offer). Apply calls turns.correct, with d1 to fill the holes of a new function; Undo calls turns.undo. The drawing above, the lines for Claude and the corrections below follow at once."""
+
+    def places_in(term: Term, path: str) -> list[tuple[str, Term]]:
+        """Returns each named place inside a term, with what stands there. A Many place is one place."""
+        match term:
+            case Application(arguments=inner) | Record(fields=inner):
+                return [found for name, part in inner.items() for found in [(f"{path}.{name}" if path else name, part), *places_in(part, f"{path}.{name}" if path else name)]]
+        return []
+
+    def place_label(number: int, path: str | None, part: Term | None, phrase: Phrase) -> str:
+        if path is None:
+            return f"{number}. function: {phrase.choice.best if phrase.choice else 'none'}"
+        state = f"◻ open ({part.reason})" if isinstance(part, Hole) else say(part, current.text)[:60]
+        return f"{number}. {phrase.term.function.name} · {path} = {state}"
+
+    _places: dict[str, tuple[int, str | None]] = {}
+    for _number, _phrase in enumerate(innermost(current.message), 1):
+        if _phrase.brand != world.types["Asked"] or not _phrase.choice:
+            continue
+        _places[place_label(_number, None, None, _phrase)] = (_number, None)
+        for _path, _part in (places_in(_phrase.term, "") if _phrase.term else []):
+            _places[place_label(_number, _path, _part, _phrase)] = (_number, _path)
+    _first_open = next((label for label in _places if "◻ open" in label), next(iter(_places)))
+    place_choice = mo.ui.dropdown(_places, value=_first_open, full_width=True, label="A place: the function of a phrase, or a hole.")
+    place_choice
+    return
+
+
+@app.cell
+def _():
+    _number, _path = place_choice.value
+    _offered: list[str] = turns.candidates(trace, _number, _path)
+    _goal = turns.place(trace, _number, _path)[1] if _path else None
+    _many = isinstance(_goal, Applied) and _goal.constructor == MANY
+    _standing = say(turns.place(trace, _number, _path)[0], current.text) if _path else (turns.phrase_of(trace, _number).choice.best if turns.phrase_of(trace, _number).choice else None)
+    if _many:
+        candidate_choice = mo.ui.multiselect(_offered, label=f"Candidates for {show(_goal)} (choose any)", full_width=True)
+    else:
+        candidate_choice = mo.ui.dropdown(_offered, value=_standing if _standing in _offered else (_offered[0] if _offered else None), label="A candidate" + (f" for {show(_goal)}" if _goal else ": a function of the world"), full_width=True)
+    typed_value = mo.ui.text(label="or type a value that the search did not offer", full_width=True)
+
+    def _apply(_: object) -> None:
+        typed = typed_value.value.strip()
+        choice = typed if typed else (list(candidate_choice.value) if _many else candidate_choice.value)
+        if not _many and choice == _standing:
+            set_binding_note(f"{choice} already stands there: choose another candidate, or type a value.")
+            return
+        try:
+            set_trace(turns.correct(get_trace(), _number, _path, choice, model))
+            set_binding_note("")
+        except (ValueError, TypeError) as refusal:
+            set_binding_note(str(refusal))
+
+    def _undo(_: object) -> None:
+        try:
+            set_trace(turns.undo(get_trace()))
+            set_binding_note("")
+        except ValueError as refusal:
+            set_binding_note(str(refusal))
+
+    apply_button = mo.ui.button(label="Apply", kind="success", on_click=_apply)
+    undo_button = mo.ui.button(label="Undo", on_click=_undo)
+    mo.vstack([source_view(turns.candidates, turns.correct, turns.undo), candidate_choice, typed_value, mo.hstack([apply_button, undo_button], justify="start")])
+    return
+
+
+@app.cell
+def _():
+    """The lines that Claude receives: turns.block_of the trace, which is scriptt16.block of the corrected reading. Below them, each correction of the trace."""
+    _note = get_binding_note()
+    _rows = [{"kind": correction.kind, "phrase": correction.phrase, "path": correction.path,
+              "before": (correction.before or {}).get("reads") or (correction.before or {}).get("choice") or ("wordings" if correction.kind == "prompt_edited" else ""),
+              "after": (correction.after or {}).get("reads") or (correction.after or {}).get("choice") or ("wordings" if correction.kind == "prompt_edited" else ""),
+              "at": correction.at} for correction in trace.corrections]
+    mo.vstack([
+        *([mo.callout(mo.plain_text(_note), kind="danger")] if _note else []),
+        mo.plain_text(turns.block_of(trace)),
+        mo.md("**Corrections**") if _rows else mo.md("_No correction yet._"),
+        *([mo.ui.table(_rows, selection=None)] if _rows else []),
+    ])
+    return
+
+
+@app.cell
+def _():
+    """d1 PROMPT BUILDER. The six wordings that d1 receives, with the slots that each may name. Edit any of them and press the button: turns.with_prompts reads the message again with them and logs a prompt_edited correction (Undo above brings the old reading back). A wording that names a slot it does not have is refused with the reason."""
+    _names: list[str] = [field.name for field in dataclasses.fields(scriptt16.Prompts)]
+    wordings = mo.md("\n\n".join("{" + name + "}" for name in _names)).batch(**{
+        name: mo.ui.text_area(value=getattr(read_trace.prompts, name), rows=2, full_width=True,
+                              label=f"{name} · slots: {', '.join('{' + slot + '}' for slot in scriptt16.Prompts.SLOTS[name]) or 'none'}")
+        for name in _names})
+    reread_button = mo.ui.run_button(label="Read again with these wordings", kind="success")
+    mo.vstack([source_view(scriptt16.Prompts.render, turns.with_prompts), wordings, reread_button])
+    return
+
+
+@app.cell
+def _():
+    mo.stop(not reread_button.value)
+    try:
+        _edited = scriptt16.Prompts(**wordings.value)
+        if _edited == get_trace().prompts:
+            _said = mo.callout(mo.md("No wording differs from the wordings of the current reading."), kind="info")
+        else:
+            set_trace(turns.with_prompts(get_trace(), _edited, model))
+            _said = mo.callout(mo.md("d1 read the message again with the edited wordings."), kind="success")
+    except ValueError as refusal:
+        _said = mo.callout(mo.plain_text(str(refusal)), kind="danger")
+    _said
+    return
+
+
+@app.cell
+def _():
+    """DECISION INSPECTOR. Every decision of d1 for the current reading: what d1 read (state), the wording it came from (template), the rendered instructions, and each option with its share and its bits, -log2 p. A share of yes is one option, "yes"."""
+
+    def phrase_number(state: str) -> int | None:
+        """Returns the number of the phrase that a request read: the last line of its state."""
+        last = state.split("\n")[-1]
+        return next((number for number, phrase in enumerate(innermost(current.message), 1) if current.text[phrase.start:phrase.end].strip() == last), None)
+
+    def option_rows(decision: dict) -> list[tuple[str, str, float]]:
+        """Returns (id, description, share) for each option of a decision, the largest share first."""
+        if decision["probabilities"] is not None:
+            described = {option["id"]: option["description"] for option in decision["options"]}
+            return sorted(((key, described.get(key, ""), share) for key, share in decision["probabilities"].items()), key=lambda row: -row[2])
+        return [("yes", "", decision["p_true"]), ("no", "", 1 - decision["p_true"])]
+
+    decisions: list[dict] = [decision | {"state": request["state"], "phrase": phrase_number(request["state"])} for request in current.requests for decision in request["decisions"]]
+    mo.ui.table([{"phrase": decision["phrase"], "state": decision["state"], "template": decision["template"], "instructions": decision["instructions"],
+                  "options": "; ".join(f"{key} {share:.2f} ({scriptt16.bits(share):.2f} bits)" + (f" = {description[:40]}" if description and key != description else "") for key, description, share in option_rows(decision)[:6])}
+                 for decision in decisions], selection=None, page_size=8)
+    return
+
+
+@app.cell
+def _():
+    """The request of the place chosen in BINDING above: the decisions of d1 for that phrase, for its function (what) or for that hole (which, many_is)."""
+    _number, _path = place_choice.value
+    _role = _path.split(".")[-1].replace("_", " ") if _path else None
+    _mine = [decision for decision in decisions if decision["phrase"] == _number]
+    if _path is None:
+        _shown = [decision for decision in _mine if decision["template"] == "what"]
+    else:
+        _holes = [decision for decision in _mine if decision["template"] != "what"]
+        _shown = [decision for decision in _holes if _role in decision["instructions"]] or _holes
+
+    def _bar(key: str, description: str, share: float) -> str:
+        return (f'<div style="display:flex;gap:8px;align-items:center;font-size:13px"><code style="min-width:150px">{html.escape(key[:24])}</code>'
+                f'<div style="width:180px;background:rgba(128,128,128,.15)"><div style="width:{share * 100:.0f}%;background:#5b9cf5;height:10px"></div></div>'
+                f'<span style="min-width:110px">{share:.3f} · {scriptt16.bits(share):.2f} bits</span><span style="opacity:.7">{html.escape(description[:80]) if description != key else ""}</span></div>')
+
+    mo.Html("".join(f'<div style="margin:6px 0 12px"><div><b>{html.escape(decision["template"])}</b> · state: <code>{html.escape(decision["state"])}</code></div>'
+                    f'<div style="margin:4px 0"><i>{html.escape(decision["instructions"])}</i></div>{"".join(_bar(*row) for row in option_rows(decision))}</div>'
+                    for decision in _shown) or "<i>d1 was not asked about this place: one candidate, or none, so the search took it without a question.</i>")
+    return
+
+
+@app.cell
+def _():
+    """BEFORE AND AFTER AN EDITED WORDING. For the latest prompt_edited correction: the share of each decision of d1 before and after (decisions match by what d1 read, their wording and their order), and the lines for Claude before and after."""
+    _edits = [index for index, correction in enumerate(trace.corrections) if correction.kind == "prompt_edited"]
+    if not _edits:
+        _shown = mo.md("_No wording edited yet. Edit a wording above and press the button._")
+    else:
+        _before = trace.history[_edits[-1]]
+        _after = trace.history[_edits[-1] + 1] if _edits[-1] + 1 < len(trace.history) else trace.reading
+
+        def _keyed(reading: Reading) -> dict[tuple, dict]:
+            counted: dict[tuple, int] = {}
+            found: dict[tuple, dict] = {}
+            for request in reading.requests:
+                for decision in request["decisions"]:
+                    base = (request["state"], decision["template"])
+                    counted[base] = counted.get(base, 0) + 1
+                    found[(*base, counted[base])] = decision
+
+            return found
+
+        def _best(decision: dict | None) -> tuple[str, float] | None:
+            if decision is None:
+                return None
+            if decision["probabilities"] is not None:
+                key = max(decision["probabilities"], key=decision["probabilities"].get)
+                return key, decision["probabilities"][key]
+            return "yes", decision["p_true"]
+
+        def _share_of(decision: dict | None, key: str) -> float | None:
+            if decision is None:
+                return None
+            if decision["probabilities"] is not None:
+                return decision["probabilities"].get(key)
+            return decision["p_true"] if key == "yes" else None
+
+        _old, _new = _keyed(_before), _keyed(_after)
+        _rows = []
+        for _key in dict.fromkeys([*_old, *_new]):
+            _was, _now = _best(_old.get(_key)), _best(_new.get(_key))
+            _now_of_was = _share_of(_new.get(_key), _was[0]) if _was else None
+            _rows.append({"phrase": _key[0].split("\n")[-1][:50], "template": _key[1], "before": f"{_was[0]} {_was[1]:.3f}" if _was else "not asked",
+                          "after": f"{_now[0]} {_now[1]:.3f}" if _now else "not asked",
+                          "share of the former answer": f"{_was[1]:.3f} → {_now_of_was:.3f} ({_now_of_was - _was[1]:+.3f})" if _now_of_was is not None else ""})
+        _diff = "\n".join(difflib.unified_diff(scriptt16.block(_before).splitlines(), scriptt16.block(_after).splitlines(), "before", "after", lineterm="")) or "The lines for Claude did not change."
+        _changed = [name for name in _before.prompts.as_dict() if getattr(_before.prompts, name) != getattr(_after.prompts, name)]
+        _shown = mo.vstack([mo.md(f"Edited wording(s): **{', '.join(_changed) or 'none'}**"), mo.ui.table(_rows, selection=None, page_size=10), mo.plain_text(_diff)])
+    _shown
+    return
+
+
+@app.cell
+def _():
+    """CONTEXT[n+1]. The entities that this turn leaves in scope for the next one (turns.next_context): each with its identifier, its term, its origin and the entity it is a version of. The last column names each open hole of this reading that the entity could fill."""
+    _open = [(number, path, hole) for number, phrase in enumerate(innermost(current.message), 1) for path, hole in scriptt16.holes_of(phrase.term)]
+    mo.vstack([source_view(turns.next_context), mo.ui.table([{
+        "id": entity.id, "term": say(entity.term, entity.text), "type": show(type_of(entity.term)), "turn": entity.turn, "origin": entity.origin, "version_of": entity.version_of or "",
+        "can fill": ", ".join(f"{number}. {path}" for number, path, hole in _open if fills(entity.term, turns.element_of(hole.type))),
+    } for entity in trace.context_out], selection=None)])
+    return
+
+
+@app.cell
+def _():
+    """THE NEXT TURN. A second message, read with prior_context = the context[n+1] above, so that "it" can name a result of this turn."""
+    next_message = mo.ui.text(value="Show it.", full_width=True, label="The next message.")
+    next_message
+    return
+
+
+@app.cell
+def _():
+    next_trace: turns.Trace = turns.start_turn(next_message.value, world, replies, model, context_in=trace.context_out, limits=limits)
+    mo.vstack([drawn(next_trace.reading, next_trace.context_in), mo.plain_text(turns.block_of(next_trace))])
     return
 
 
 @app.cell
 def _():
     """The line of the log. Each type keeps its structure, and `decisions` has every answer of d1."""
-    log_line: dict = scriptt16.record(reading)
+    log_line: dict = scriptt16.record(current)
     log_line
     return
 
 
 @app.cell
 def _():
-    """The reply comes. check gives each term a named state. A term of type Later[...] that is not done yet is promised."""
+    """The reply comes, and the executions of the turn: one JSON record a line, such as {"kind": "file_diff", "path": "next/world.py"} or {"kind": "command", "cmd": "pytest", "exit_code": 0}. check gives each item one state: DONE (the reply says it is done and, for a Later or Observed result, an execution shows it), UNVERIFIED (the reply says so, and no execution shows it), OPEN (the reply does not say so) or BLOCKED (an execution for it failed). Empty the executions to see UNVERIFIED."""
     reply = mo.ui.text_area(value="I redesigned the mod and showed it to you.", rows=2, full_width=True, label="The reply.")
-    reply
+    executions_text = mo.ui.text_area(value='{"kind": "file_modified", "path": "mod/hooks/row.tsx", "detail": "redesigned the mod: new layout and colours"}', rows=3, full_width=True, label="The executions of the turn.")
+    mo.vstack([reply, executions_text])
     return
 
 
 @app.cell
 def _():
-    checked: list[Checked] = scriptt16.check(reading, reply.value, model, limits)
-    [(one.function, one.item, one.state.value, one.share) for one in checked]
+    _executions: list[dict] = []
+    _refusals: list[str] = []
+    for _line in executions_text.value.splitlines():
+        if _line.strip():
+            try:
+                _executions.append(json.loads(_line))
+            except json.JSONDecodeError as refusal:
+                _refusals.append(f"{_line!r}: {refusal}")
+    checked: list[Checked] = scriptt16.check(current, reply.value, model, _executions, limits=limits)
+    mo.vstack([*([mo.callout(mo.plain_text("\n".join(_refusals)), kind="danger")] if _refusals else []),
+               mo.ui.table([{"call": one.call, "item": one.item or "", "state": one.state.name, "share": round(one.share, 3), "evidence": "; ".join(one.evidence)} for one in checked], selection=None)])
     return
 
 
 @app.cell
 def _():
-    """THE GATE FOR A CHANGE OF THE WORLD. Edit the world at the top, then press the button. The current bits come from the line of the log above, so the world as it was is not run again. The edited world is run on the phrases that the log has."""
-    replay = mo.ui.run_button(label="Replay the message with the edited world")
+    """THE GATE FOR A CHANGE OF THE WORLD. Edit the world at the top, then press the button. The edited world reads each approved case of golden.json, and the gate fails if any phrase reads otherwise than approved, if more holes stay open, or if the world has a fault. The line of the log above is replayed on its own phrases for the diagnostic bits only: d1 can be sure of a wrong reading."""
+    replay = mo.ui.run_button(label="Check the edited world against the approved cases")
     replay
     return
 
@@ -771,12 +713,29 @@ def _():
 @app.cell
 def _():
     mo.stop(not replay.value)
-    _on_disk = types.ModuleType("world_on_disk")
-    _on_disk.__file__ = str(here / "world.py")
-    exec(compile((here / "world.py").read_text(), "world.py", "exec"), vars(_on_disk))
-    recorded_line: dict = scriptt16.record(scriptt16.read(text, agree.load(_on_disk), replies, model, False, limits))
-    decision: Gate = scriptt16.gate(world, [recorded_line], model, limits)
+    decision: Gate = scriptt16.gate(world, scriptt16.golden(here / "golden.json"), [log_line], model, current.prompts, limits)
     decision
+    return
+
+
+@app.cell
+def _():
+    """THE ACCEPTANCE REPORT. Seven criteria; each check must pass its positive case and reject a deliberate failure. The report runs the real d1 several dozen times, so it waits for the button."""
+    acceptance_run = mo.ui.run_button(label="Run the acceptance report")
+    acceptance_run
+    return
+
+
+@app.cell
+def _():
+    mo.stop(not acceptance_run.value, mo.md("_Press the button to run the seven criteria._"))
+    import acceptance
+    criteria: list = acceptance.run_acceptance(model=model, limits=limits)
+    mo.vstack([
+        mo.ui.table([{"id": one.id, "requirement": one.requirement, "result": one.result, "caught_deliberate_failure": one.caught_deliberate_failure,
+                      "passing_outcome": one.passing_outcome, "check": one.check, "evidence": one.evidence} for one in criteria], selection=None),
+        mo.plain_text(acceptance.table(criteria)),
+    ])
     return
 
 

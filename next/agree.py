@@ -6,6 +6,11 @@ A world.py file defines every type that the search can use:
 * A brand is a ``typing.NewType``. It gives an existing type a new nominal
   identity, so ``Asked`` and ``Written`` are different types although both wrap
   ``Words``.
+* A provenance is one of the brands ``Asked``, ``Written`` and ``Observed``: who
+  gave a value. world.py declares each one as a ``typing.NewType`` over
+  ``Words``, and the bare name means that brand over ``Words``. The name also
+  takes any type of kind ``*``, as in ``Observed[Surface]``: the same
+  provenance over that type.
 * A sum type is one of several alternatives: an ``Enum`` (each member is an
   alternative with no fields) or a union ``A | B``.
 * A product type is several values at once: a dataclass, a ``NamedTuple`` or a
@@ -75,10 +80,15 @@ class Brand:
     Attributes:
         name: The name of the brand.
         of: The type that the brand wraps. A brand is a subtype of it.
+        bare: For a provenance (``Asked``, ``Written`` or ``Observed``), the type
+            that the bare name wraps, as world.py declares it: ``Asked`` alone
+            is ``Asked[Words]``. None for every other brand. A provenance over
+            another type, such as ``Asked[Surface]``, keeps the same ``bare``.
     """
 
     name: str
     of: "Type"
+    bare: "Type | None" = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -163,6 +173,10 @@ MAYBE = Constructor("Maybe", Arrow(Star(), Star()), "one value of the type, or n
 LATER = Constructor("Later", Arrow(Star(), Star()), "one value of the type, after more work")
 CONSTRUCTORS: dict[str, Constructor] = {constructor.name: constructor for constructor in (MANY, MAYBE, LATER)}
 
+PROVENANCES = ("Asked", "Written", "Observed")
+"""The brands that say who gave a value: the user asked it, a reply wrote it, or
+a process observed it. Each one is also a covariant constructor over any type."""
+
 MAXIMUM_OPTIONS = 32
 """The largest number of options that d1 accepts in one choice."""
 
@@ -196,12 +210,20 @@ class World:
         faults: Each fault of world.py, with its place. A world with a fault is
             rejected: the search runs only on a world with no fault.
         folder: The folder that holds the paths that a message names.
+        warnings: Each question for the person who reviews world.py, with its
+            place: two functions or two types with the same structure, and a
+            custom type that fewer than two functions use. A warning does not
+            stop the search. Two functions
+            can share their types and still do different things, such as
+            increase and decrease, and a type that guards one boundary is valid
+            with one user.
     """
 
     types: dict[str, Type]
     functions: dict[str, Function]
     faults: list[str]
     folder: pathlib.Path
+    warnings: list[str] = dataclasses.field(default_factory=list)
 
 
 def show(expression: Type | Constructor | Member | Kind) -> str:
@@ -215,6 +237,8 @@ def show(expression: Type | Constructor | Member | Kind) -> str:
             return f"{constructor.name}[{show(argument)}]"
         case Sum(name="", alternatives=alternatives):
             return " | ".join(show(alternative) for alternative in alternatives)
+        case Brand(name, wrapped, bare) if bare is not None and wrapped != bare:
+            return f"{name}[{show(wrapped)}]"
     return expression.name
 
 
@@ -253,11 +277,17 @@ def is_subtype(given: Type, wanted: Type) -> bool:
         True if the types are equal, if ``given`` is a brand over a subtype of
         ``wanted``, if ``wanted`` is a sum with an alternative that ``given`` is
         a subtype of, or if both apply the same constructor to types that are
-        in this relation.
+        in this relation. A provenance is covariant: ``Asked[Surface]`` is a
+        subtype of ``Asked[Subject]`` because ``Surface`` is a subtype of
+        ``Subject``. Two different provenances are disjoint: ``Asked[T]`` is
+        never a ``Written[T]``.
     """
     if given == wanted:
         return True
     if isinstance(wanted, Sum) and any(not isinstance(alternative, Member) and is_subtype(given, alternative) for alternative in wanted.alternatives):
+        return True
+    same_provenance = isinstance(given, Brand) and isinstance(wanted, Brand) and given.bare is not None and (given.name, given.bare) == (wanted.name, wanted.bare)
+    if same_provenance and is_subtype(given.of, wanted.of):
         return True
     if isinstance(given, Brand):
         return is_subtype(given.of, wanted)
@@ -284,8 +314,8 @@ def tree(expression: Type | Member) -> dict:
             return {"sum": name, "alternatives": [tree(alternative) for alternative in alternatives]}
         case Product(name, fields):
             return {"product": name, "fields": {field: tree(field_type) for field, field_type in fields}}
-        case Brand(name, wrapped):
-            return {"brand": name, "of": tree(wrapped)}
+        case Brand(name, wrapped, bare):
+            return {"brand": name, "of": tree(wrapped)} | ({"provenance": True} if bare is not None else {})
         case Member(name, words):
             return {"member": name, "words": words}
     return {"base": expression.name}
@@ -304,7 +334,9 @@ def load(module: object, folder: pathlib.Path | None = None) -> World:
 
     Returns:
         The world. Each fault of world.py is listed in ``World.faults`` with its
-        place, and the definition that has the fault is left out.
+        place, and the definition that has the fault is left out. Each advice
+        from ``duplicates`` and ``single_use`` is listed in ``World.warnings``:
+        it does not make the world wrong, so the definitions stay in.
     """
     file_name = pathlib.Path(module.__file__).name
     types: dict[str, Type] = {}
@@ -328,13 +360,15 @@ def load(module: object, folder: pathlib.Path | None = None) -> World:
             case ast.Constant(value=None):
                 return named(type(None))
             case ast.BinOp(op=ast.BitOr(), left=left, right=ast.Constant(value=None)):
-                return applied(MAYBE, built(left))
+                return applied(MAYBE, star_side(built(left)))
             case ast.BinOp(op=ast.BitOr()):
                 alternatives: list[Type] = []
                 for side in (node.left, node.right):
-                    part = built(side)
+                    part = star_side(built(side))
                     alternatives += part.alternatives if isinstance(part, Sum) and not part.name else [part]
                 return Sum("", tuple(alternatives))
+            case ast.Subscript(value=ast.Name(id=name), slice=argument) if isinstance(types.get(name), Brand) and types[name].bare is not None:
+                return provenance(types[name], built(argument))
             case ast.Subscript(value=head, slice=argument):
                 constructor = built(head)
                 if not isinstance(constructor, Constructor):
@@ -347,6 +381,21 @@ def load(module: object, folder: pathlib.Path | None = None) -> World:
             case ast.Name() | ast.Attribute():
                 return named(eval(compile(ast.Expression(node), file_name, "eval"), vars(module)))
         raise SyntaxError(f"no type expression: {ast.unparse(node)}")
+
+    def star_side(part: Type | Constructor) -> Type:
+        """Returns one side of a union ``A | B`` or ``A | None``, checked to have kind ``*``."""
+        if kind_of(part) != Star():
+            raise TypeError(f"{show(part)} has kind {show(kind_of(part))}, and each side of | needs kind *")
+        return part
+
+    def provenance(bare: Brand, argument: Type | Constructor) -> Brand:
+        """Applies a provenance such as ``Observed`` to a type of kind ``*``.
+
+        ``Asked[Words]`` is the bare ``Asked``, so the two are one type.
+        """
+        if kind_of(argument) != Star():
+            raise TypeError(f"{bare.name} takes a type of kind *, and {show(argument)} has kind {show(kind_of(argument))}")
+        return bare if argument == bare.bare else Brand(bare.name, argument, bare.bare)
 
     def applied(constructor: Constructor, argument: Type | Constructor) -> Applied:
         made = Applied(constructor, argument)
@@ -374,7 +423,8 @@ def load(module: object, folder: pathlib.Path | None = None) -> World:
         try:
             if is_brand:
                 wrapped = value.__supertype__
-                types[name] = Brand(name, types[wrapped.__name__] if hasattr(wrapped, "__supertype__") else named(wrapped))
+                wraps = types[wrapped.__name__] if hasattr(wrapped, "__supertype__") else named(wrapped)
+                types[name] = Brand(name, wraps, wraps if name in PROVENANCES else None)
             elif is_alias:
                 made = type_of(annotationlib.call_evaluate_function(value.evaluate_value, text_format))
                 types[name] = dataclasses.replace(made, name=name) if isinstance(made, Sum) else made
@@ -408,8 +458,8 @@ def load(module: object, folder: pathlib.Path | None = None) -> World:
                 functions[name] = Function(name, value.__doc__, typed, type_of(annotations["return"]), value.__code__.co_firstlineno)
         except build_errors as fault:
             faults.append(f"{place}: {fault}")
-    faults += duplicates(types, functions, file_name) + single_use(types, functions, file_name)
-    return World(types, functions, faults, folder or pathlib.Path(module.__file__).resolve().parent.parent)
+    warnings = duplicates(types, functions, file_name) + single_use(types, functions, file_name)
+    return World(types, functions, faults, folder or pathlib.Path(module.__file__).resolve().parent.parent, warnings)
 
 
 def mentions(expression: Type, target: Type) -> bool:
@@ -432,25 +482,30 @@ def duplicates(types: dict[str, Type], functions: dict[str, Function], file_name
     """Lists each function and each type that has the same structure as an earlier one.
 
     Two functions with the same parameter types and the same result type fit the
-    same holes, so the types cannot separate them. Two product types with the
-    same fields, or two sum types with the same alternatives, are one type
-    under two names.
+    same holes, so the types cannot separate them: d1 separates them by their
+    docstrings. Two product types with the same fields, or two sum types with
+    the same alternatives, may be one type under two names. Each finding is a
+    warning and not a fault, because two functions can share their types and
+    still do different things, such as increase and decrease, or encrypt and
+    decrypt.
 
     Args:
         types: The types of the world, by name.
         functions: The functions of the world, by name.
-        file_name: The name of the world file, for the faults.
+        file_name: The name of the world file, for the warnings.
 
     Returns:
-        One fault for each duplicate. A brand is excluded: two brands over the
+        One warning for each duplicate, phrased as a question that does not
+        block the search. A brand is excluded: two brands over the
         same type are different types by definition.
     """
-    faults: list[str] = []
+    warnings: list[str] = []
     seen_signatures: dict[tuple, str] = {}
     for function in functions.values():
         signature = (tuple(parameter for _, parameter in function.parameters), function.result)
         if signature in seen_signatures:
-            faults.append(f"{file_name}:{function.line} {function.name}: the same parameter types and result type as {seen_signatures[signature]}")
+            warnings.append(f"{file_name}:{function.line} {function.name}: the same parameter types and result type as {seen_signatures[signature]}. "
+                            f"Are these aliases, accidental duplication, or meaningfully different operations?")
         seen_signatures.setdefault(signature, function.name)
     seen_structures: dict[tuple, str] = {}
     for name, expression in types.items():
@@ -458,29 +513,36 @@ def duplicates(types: dict[str, Type], functions: dict[str, Function], file_name
             continue
         structure = expression.fields if isinstance(expression, Product) else tuple(alternative.words if isinstance(alternative, Member) else alternative for alternative in expression.alternatives)
         if structure in seen_structures:
-            faults.append(f"{file_name} {name}: the same structure as {seen_structures[structure]}")
+            warnings.append(f"{file_name} {name}: the same structure as {seen_structures[structure]}. "
+                            f"Are these aliases, accidental duplication, or meaningfully different types?")
         seen_structures.setdefault(structure, name)
-    return faults
+    return warnings
 
 
 def single_use(types: dict[str, Type], functions: dict[str, Function], file_name: str) -> list[str]:
     """Lists each Enum and each product type that fewer than two functions use.
 
+    Each finding is a warning and not a fault: a custom type with one user may
+    be worth less than Words, Path or int, but a type that guards one boundary
+    is valid with one user.
+
     Args:
         types: The types of the world, by name.
         functions: The functions of the world, by name.
-        file_name: The name of the world file, for the faults.
+        file_name: The name of the world file, for the warnings.
 
     Returns:
-        One fault for each such type. A function uses a type if a parameter or
+        One warning for each such type, phrased as a question that does not
+        block the search. A function uses a type if a parameter or
         the result has the type, or has it inside.
     """
-    faults: list[str] = []
+    warnings: list[str] = []
     for name, expression in types.items():
         is_enum = isinstance(expression, Sum) and any(isinstance(alternative, Member) for alternative in expression.alternatives)
         if not (is_enum or isinstance(expression, Product)):
             continue
         users = [function.name for function in functions.values() if any(mentions(used, expression) for used in (*(parameter for _, parameter in function.parameters), function.result))]
         if len(users) < 2:
-            faults.append(f"{file_name} {name}: {len(users)} function uses this type ({', '.join(users) or 'none'}), and a custom type needs 2. Use Words, Path or int.")
-    return faults
+            warnings.append(f"{file_name} {name}: {len(users)} function uses this type ({', '.join(users) or 'none'}). "
+                            f"Does this type guard a boundary that matters, or would Words, Path or int do?")
+    return warnings

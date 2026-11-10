@@ -3,8 +3,16 @@
 Every type that the search uses is defined here. ``Many``, ``Maybe`` and
 ``Later`` are the type constructors of the type system. Python does not evaluate
 annotations, so this file names them with no import.
+
+``Asked``, ``Written`` and ``Observed`` say who gave a value: the user, a reply,
+or a process that ran. Each is declared as a brand over ``Words``, and the bare
+name means that: ``Asked`` is ``Asked[Words]``. The same name also takes any
+type, as in ``Observed[Surface]`` or ``Later[Observed[Surface]]``: a value of
+that type with that provenance. ``Observed[Surface]`` fills a ``Surface`` hole,
+and ``Asked[Surface]`` is never a ``Written[Surface]``.
 """
 
+import dataclasses
 import enum
 import pathlib
 import typing
@@ -39,6 +47,27 @@ class Code(enum.Enum):
     NOTEBOOK: Asked = "the notebook"
 
 
+class Problem(enum.Enum):
+    """a problem that a change can solve"""
+
+    BUG: Asked = "the bug"
+    ERROR: Asked = "the error"
+    CRASH: Asked = "the crash"
+    FAILURE: Asked = "the failure"
+    REGRESSION: Asked = "the regression"
+    LEAK: Asked = "the leak"
+    SLOWDOWN: Asked = "the slowdown"
+
+
+@dataclasses.dataclass
+class Proposal:
+    """an idea that a reply wrote, the problems that it solves, and the evidence for it"""
+
+    idea: Written
+    solves: Many[Problem]
+    evidence: Many[Observed]
+
+
 type Subject = Surface | Code | pathlib.Path
 
 
@@ -55,7 +84,7 @@ def redesign(surface: Surface) -> Later[Surface]:
 
 
 def build(code: Code) -> Later[Code]:
-    """write or change code"""
+    """build, write or change code"""
 
 
 def release(version: Maybe[Words]) -> Later[Words]:
@@ -64,6 +93,10 @@ def release(version: Maybe[Words]) -> Later[Words]:
 
 def delegate(helper: Words) -> Later[Written]:
     """have another agent, a sub agent or a new session do part of the work"""
+
+
+def compare(surfaces: Many[Surface]) -> Written:
+    """compare two or more things and say how they differ"""
 
 
 def show(subject: Subject) -> Subject:
@@ -82,5 +115,5 @@ def save(path: Maybe[pathlib.Path]) -> pathlib.Path:
     """save or store data so that it can be found later"""
 
 
-def propose(idea: Words) -> Later[Asked]:
+def propose(proposal: Proposal) -> Later[Asked]:
     """propose an idea and wait for the user's yes or no"""

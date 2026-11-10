@@ -1,0 +1,20 @@
+{
+  "about": "Approved regression cases for gate() on next/world.py. Each case is read as the product path reads it (turns.start_turn and the hook: join on, so d1 decides whether neighbouring sentences are one phrase); \"join\": true records that it was approved that way. The expected values were first read by the real d1-2b with join off on 2026-11-10 and checked by hand; on 2026-11-10 they were read again with join on and the join wording of scriptt16.JOIN, and each reads the same. Values: the say() text of the term of each phrase, \"nothing\" or \"none\" for a phrase that must read as no function, \"quote\" for a quote of an earlier reply. holes: the open holes of the approved reading.",
+  "cases": [
+    {"message": "Redesign the mod.", "expected": ["redesign(surface='the mod')"], "holes": 0, "join": true, "note": "the obligation that a world without redesign loses"},
+    {"message": "Redesign the mod. Then show me the mod, redesigned. Test the search too.", "expected": ["redesign(surface='the mod')", "show(subject=redesign(surface='the mod'))", "test(subject='the search')"], "holes": 0, "join": true, "note": "three obligations; show takes the redesigned version"},
+    {"message": "Redesign the mod. Then show the original mod.", "expected": ["redesign(surface='the mod')", "show(subject='the mod')"], "holes": 0, "join": true, "note": "show takes the original value, not the redesigned one"},
+    {"message": "Thanks, that looks good.", "expected": ["nothing"], "holes": 0, "join": true, "note": "a remark that asks for nothing"},
+    {"message": "Nice work today.", "expected": ["nothing"], "holes": 0, "join": true, "note": "a remark that asks for nothing"},
+    {"message": "\"I use only these ten words, each in its own exact sense.\" What did you mean by that?", "replies": ["I use only these ten words, each in its own exact sense, until you say otherwise."], "expected": ["quote", "explain(subject='\"I use only these ten words, each in its own exact sense.\"')"], "holes": 0, "join": true, "note": "a quote of an earlier reply, then a question about it"},
+    {"message": "Show the notebook.", "expected": ["show(subject='the notebook')"], "holes": 0, "join": true, "note": "a Code value in a Subject hole"},
+    {"message": "Test the harness.", "expected": ["test(subject='the harness')"], "holes": 0, "join": true, "note": "a Code value in a Subject hole"},
+    {"message": "Follow this rule from now on: no regex.", "expected": ["follow(rule='Follow this rule from now on: no regex.')"], "holes": 0, "join": true, "note": "an Asked hole takes the words of the user"},
+    {"message": "Show the mod. The one in the pane.", "expected": ["show(subject='the mod')"], "holes": 0, "join": true, "note": "a continuation: the second sentence only says which mod, so the two sentences are one phrase and one obligation (join 0.62 with the real d1)"}
+  ],
+  "left_out": [
+    {"message": "Compare the mod, not the page.", "correct": ["compare(surfaces=['the mod'])"], "real_d1_today": ["compare(surfaces=['the mod'])"], "note": "Read correctly on 2026-11-10 once world.py has compare and many_is asks whether the message leaves the value out (compare 0.66; yes 0.866 for the mod, 0.228 for the page). Not approved yet: a candidate for the cases."},
+    {"message": "Build the world. Build the tests.", "correct": ["build(code='the world')", "build(code='the tests')"], "real_d1_today": ["build(code='the world')", "build(code='the tests')"], "note": "With the build docstring \"write or change code\", d1 abstained on \"Build the world.\" (none 0.22, build 0.07). With \"build, write or change code\" (2026-11-10) it reads both phrases as build, thinly: build 0.34 and 0.80, 'the tests' 0.53 for the second hole. Not approved yet: a candidate for the cases."},
+    {"message": "Save it.", "correct": null, "real_d1_today": ["save()"], "note": "\"it\" names nothing in a message alone; whether save() with no path is right depends on the earlier turns, so it is not an approved case."}
+  ]
+}
