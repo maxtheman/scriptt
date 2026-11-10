@@ -7,7 +7,8 @@ import type { Register } from 'claude-code'
 //   SCRIPTT_PYTHON  a Python 3.14 or later (default python3.14)
 export const register: Register = on => {
   on('prompt.submit', async ($, e, next) => {
-    if (e.command) {
+    if (e.command || e.isMeta) {
+      // a slash command, or a prompt that the person did not type: the hook reads only what the person wrote
       return next(e)
     }
 
