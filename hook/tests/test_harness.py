@@ -7,6 +7,7 @@ tests/events.json: the events of 1 hour of a real conversation. "gold" is what a
 tests/recorded.json: each answer of d1, each record that the harness wrote, and the comparison of d1 with "gold".
 """
 
+import ast
 import hashlib
 import json
 import pathlib
@@ -59,8 +60,13 @@ def test_recorded():
             assert demand["function"] in harness.FUNCTIONS and (demand["words"] or "") in record["text"]
             assert demand["part"] is None or demand["function"] in record["parts"][demand["part"]]["demands"]
             for hole in demand["parameters"].values():
-                assert hole["value"] is None or hole["by"] != "the words" or hole["value"].lower() in record["text"].lower()
+                assert hole["by"] in (None, *harness.By) and (hole["by"] != harness.By.WORDS or hole["value"].lower() in record["text"].lower())
+            ast.parse(demand["python"], mode="eval")  # each demand is a Python expression
     assert records[-1]["answer"]["decision"] == "block" and records[-2]["answer"]["hookSpecificOutput"]
+    counted = {"function": "count", "parameters": {"notebook": {"type": "Notebook", "value": "the old cells", "by": harness.By.WORDS}}}
+    assert harness.call(counted, [counted]) == "count(notebook=Notebook('the old cells'))" and harness.run(counted, [counted]) == "5"  # a body runs
+    assert harness.run(counted | {"parameters": {"notebook": {"type": "Notebook", "value": None, "by": None}}}, []) is None  # an open hole: no run
+    assert isinstance(harness.run(counted, [counted]), harness.Observed) and harness.run({"function": "explain", "parameters": {}}, []) is None  # no body: no run
     old = {"event": "UserPromptSubmit", "session": "s", "text": "x", "demands": [{"function": "delete", "p": 0.9}]}  # a line of 0.1.1
     assert harness.migrate(old)["demands"][0]["part"] is None and harness.migrate(old)["form"] == harness.FORM
 

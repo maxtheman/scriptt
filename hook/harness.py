@@ -13,6 +13,7 @@ You run it for the rest:
 Everything is beside this file: world.py (the whitelist), config.json (where d1 is), events.jsonl (the log).
 """
 
+import ast
 import dataclasses
 import datetime
 import enum
@@ -23,6 +24,7 @@ import math
 import pathlib
 import re
 import sys
+import textwrap
 import types
 import typing
 import urllib.request
@@ -35,8 +37,18 @@ LOG = HOME / "events.jsonl"
 sys.path.insert(0, str(HOME))
 import world
 
-TYPES = {name: tp for name, tp in vars(world).items() if isinstance(tp, type) and tp.__module__ == "world"}  # the sum types and the product types
-FUNCTIONS = {name: f for name, f in vars(world).items() if inspect.isfunction(f)}
+FUNCTIONS = dict(inspect.getmembers(world, inspect.isfunction))  # world.py is the whitelist: each function in it, by name
+FUNCTIONS = {name: FUNCTIONS[name] for name in vars(world) if name in FUNCTIONS}  # in the order of the file
+
+
+class By(enum.StrEnum):
+    """How a thing was found. A sum type: each value in a record is 1 of these."""
+
+    MESSAGE = "the message"  # d1 said yes with the message as the state, and yes with the part alone
+    PART = "the part"  # d1 said yes with the part alone, after the message gave too little for this function
+    WORDS = "the words"  # code found the value in the words
+    RESULT = "the result of"  # another demanded function returns this type
+    D1 = "d1"  # d1 chose the value
 
 
 class Brand(str):
@@ -54,7 +66,18 @@ class Written(Brand):
     """text that the assistant composed"""
 
 
-RECEIVED = {"UserPromptSubmit": lambda event: Asked(event["prompt"]), "Stop": lambda event: Written(event["last_assistant_message"])}
+class Observed(Brand):
+    """text that a run of code produced"""
+
+
+def received(event: dict) -> Brand:
+    """The text of an event, with its brand. The key that holds the text says who produced it."""
+    match event:
+        case {"prompt": str(text)}:
+            return Asked(text)
+        case {"last_assistant_message": str(text)}:
+            return Written(text)
+    raise ValueError("an event with no text")
 
 
 def config() -> dict:
@@ -81,7 +104,7 @@ def stamp() -> dict:
 def migrate(record: dict) -> dict:
     """A line of the log in the current form. Form 1 (0.1.1) had no parts: its demands were found for the whole message."""
     if record.get("form", 1) < 2 and record["event"] == "UserPromptSubmit":
-        record = record | {"form": 2, "parts": [], "demands": [d | {"part": None, "by": "the message"} for d in record.get("demands", [])]}
+        record = record | {"form": 2, "parts": [], "demands": [d | {"part": None, "by": By.MESSAGE} for d in record.get("demands", [])]}
     return record | {"form": FORM}
 
 
@@ -214,14 +237,14 @@ def read(text: Asked, ask) -> tuple[Template, list, list, dict]:
                 answers = [alone[name]["p_true"]] + ([near[n, name]["p_true"]] if (n, name) in near else [])
                 odds = math.prod(q / (1 - q) for q in answers)
                 if odds >= 1:
-                    found.append({"function": name, "p": round(odds / (1 + odds), 3), "by": "the message" if len(answers) == 2 else "the part", "part": n})
+                    found.append({"function": name, "p": round(odds / (1 + odds), 3), "by": By.MESSAGE if len(answers) == 2 else By.PART, "part": n})
             if near[n, None]["p_true"] >= 0.5 and not any(d["part"] == n for d in found):
                 abstained[n] = round(near[n, None]["p_true"], 3)
-    found += [{"function": name, "p": p[name], "by": "the message", "part": None} for name in FUNCTIONS if p[name] >= 0.5 and not any(d["function"] == name for d in found)]
+    found += [{"function": name, "p": p[name], "by": By.MESSAGE, "part": None} for name in FUNCTIONS if p[name] >= 0.5 and not any(d["function"] == name for d in found)]
 
     def result_of(n: int, tp) -> str | None:
         """Another demanded function that returns this type: its result fills the hole. One in the same part first."""
-        others = [d for m, d in enumerate(found) if m != n and tp in TYPES.values() and signature(FUNCTIONS[d["function"]])[1] is tp]  # a type of the world only: a str fits any str
+        others = [d for m, d in enumerate(found) if m != n and getattr(tp, "__module__", "") == "world" and signature(FUNCTIONS[d["function"]])[1] is tp]  # a type of the world only: a str fits any str
         return next((d["function"] for d in sorted(others, key=lambda d: d["part"] != found[n]["part"])), None)
 
     wanted = {(n, path): tp for n, d in enumerate(found) for path, tp in signature(FUNCTIONS[d["function"]])[0].items()}
@@ -233,15 +256,15 @@ def read(text: Asked, ask) -> tuple[Template, list, list, dict]:
     def fill(key, tp) -> dict:
         hole = {"type": kind(tp), "value": None, "by": None}
         if said[key]:
-            return hole | {"value": said[key], "by": "the words"} | ({"d1": round(told[key, None]["p_true"], 3)} if (key, None) in told else {})
+            return hole | {"value": said[key], "by": By.WORDS} | ({"d1": round(told[key, None]["p_true"], 3)} if (key, None) in told else {})
         if made[key]:
-            return hole | {"value": f"{made[key]}()", "by": "the result of " + made[key]}
+            return hole | {"value": made[key], "by": By.RESULT}
         answers = {value: a for (other, value), a in told.items() if other == key and value is not None}
         if "" in answers:  # a text read: the words that d1 points at, if the message has them
             a = answers[""]
-            return hole | {"value": a["text"], "by": f"d1 {a['found']:.2f}"} if a["found"] >= 0.5 and a["text"] and a["text"] in text and len(a["text"]) <= 60 else hole  # a whole sentence is no value
+            return hole | {"value": a["text"], "by": By.D1, "d1": round(a["found"], 3)} if a["found"] >= 0.5 and a["text"] and a["text"] in text and len(a["text"]) <= 60 else hole  # a whole sentence is no value
         best = max(answers, key=lambda value: answers[value]["p_true"], default=None)
-        return hole | {"value": best, "by": f"d1 {answers[best]['p_true']:.2f}"} if best is not None and answers[best]["p_true"] >= 0.5 else hole
+        return hole | {"value": best, "by": By.D1, "d1": round(answers[best]["p_true"], 3)} if best is not None and answers[best]["p_true"] >= 0.5 else hole
 
     demands = [d | {"returns": kind(signature(FUNCTIONS[d["function"]])[1]), "words": quoted[d["part"]] if d["part"] is not None else None,
                     "parameters": {path: fill((n, path), tp) for path, tp in signature(FUNCTIONS[d["function"]])[0].items()}} for n, d in enumerate(found)]
@@ -255,31 +278,76 @@ def read(text: Asked, ask) -> tuple[Template, list, list, dict]:
     return Template(*pieces, str(text[at:])), demands, parts, p
 
 
-def call(demand: dict) -> str:
-    arguments = (f'{path}="{hole["value"]}"' if hole["value"] else f'{path}={hole["type"]} ?' for path, hole in demand["parameters"].items() if hole["value"] or "None" not in hole["type"])
-    return f'{demand["function"]}({", ".join(arguments)})'
+def expression(demand: dict, demands: list, seen: tuple = ()) -> ast.Call:
+    """A demand as a Python call. A value from the words is a constant or a member of its sum type. The result of another
+    demand is that demand's call, inside this one. A type where a value belongs is a hole that is still open."""
+    f = FUNCTIONS[demand["function"]]
+
+    def value(tp, path: str) -> ast.expr | None:
+        hole = demand["parameters"].get(path, {})
+        match tp:
+            case type() if dataclasses.is_dataclass(tp):  # a product type: 1 argument for each field
+                return ast.Call(ast.Name(tp.__name__), [], [ast.keyword(field, v) for field, inner in typing.get_type_hints(tp).items() if (v := value(inner, f"{path}.{field}"))])
+            case types.UnionType() if not hole.get("value"):  # T | None with nothing found: the argument is left out
+                return None if type(None) in typing.get_args(tp) else ast.Name(kind(tp))
+            case types.GenericAlias() if hole.get("value") and hole.get("by") != By.RESULT:  # several of 1 type: a list of them
+                inner, = typing.get_args(tp)
+                return ast.List([ast.Call(ast.Name(kind(inner)), [ast.Constant(one)], []) for one in hole["value"].split(", ")])
+            case types.UnionType() | types.GenericAlias():
+                tp = next(inner for inner in typing.get_args(tp) if inner is not type(None))
+        if hole.get("by") == By.RESULT:  # another demand of the message makes this value
+            other = next(d for d in demands if d["function"] == hole["value"])
+            return expression(other, demands, (*seen, demand["function"])) if other["function"] not in seen else ast.Name(kind(tp))
+        if not hole.get("value"):
+            return ast.Name(kind(tp))
+        constant = ast.Constant(int(hole["value"]) if tp is int else hole["value"] == "yes" if tp is bool else hole["value"])
+        return constant if tp in (int, str, bool) else ast.Call(ast.Name(kind(tp)), [constant], [])
+
+    return ast.Call(ast.Name(f.__name__), [], [ast.keyword(name, v) for name, tp in typing.get_type_hints(f).items() if name != "return" and (v := value(tp, name))])
+
+
+def call(demand: dict, demands: list) -> str:
+    return ast.unparse(expression(demand, demands))
+
+
+def run(demand: dict, demands: list) -> str | None:
+    """The result of a demand, if the world gives its function a body and the message fills every hole. The text has the brand
+    Observed: code produced it. A function with no body is work for the reader, and run() leaves it."""
+    tree = expression(demand, demands)
+    body = ast.parse(textwrap.dedent(inspect.getsource(FUNCTIONS[demand["function"]]))).body[0].body
+    written = [node for node in body if not (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant))]  # a docstring or ... is no body
+    still_open = [k for node in ast.walk(tree) if isinstance(node, ast.Call) for k in node.keywords if isinstance(k.value, ast.Name)]  # a type where a value belongs
+    if not written or still_open:
+        return None
+    try:
+        return Observed(repr(eval(compile(ast.fix_missing_locations(ast.Expression(tree)), "<demand>", "eval"), vars(world) | {"Path": pathlib.Path}))[:300])
+    except Exception as error:  # the world's own code failed: say so, and let the reader do the work
+        return Observed(f"{type(error).__name__}: {error}"[:300])
 
 
 def handle(event: dict, ask=d1) -> dict | None:
     """1 event in, the answer for Claude Code out. The log is the only state: each event is 1 line of events.jsonl."""
-    text = RECEIVED[event["hook_event_name"]](event)
+    text = received(event)
     mine = [record for record in history() if record["session"] == event.get("session_id")]
     asked = [n for n, record in enumerate(mine) if record["event"] == "UserPromptSubmit"]
     record, answer = stamp() | {"event": event["hook_event_name"], "session": event.get("session_id"), "brand": type(text).__name__, "text": text}, None
     match text:
         case Asked():
             template, demands, parts, p = read(text, ask)
+            demands = [d | {"python": call(d, demands)} | ({"result": result} if (result := run(d, demands)) else {}) for d in demands]
             record |= {"demands": demands, "parts": parts, "p": p, "template": [piece if isinstance(piece, str) else {"words": piece.format_spec, "is": piece.expression} for piece in template]}
             asking = [(n, part, [d for d in demands if d["part"] == n]) for n, part in enumerate(parts) if part["demands"] or part["hole"]]
             lines = [f"scriptt: d1 read this message against .scriptt/world.py. Parts: {len(parts)}. Parts that ask for something: {len(asking)}."]
             for n, part, found in asking:  # 1 line for each part that asks for something: what it demands, how sure d1 is, and its first words
-                what = " + ".join(call(d) + f" {d['p']:.2f}" for d in found) or "?  no function of the world fits (d1 abstains)"
+                what = " + ".join(d["python"] + f" {d['p']:.2f}" + (f" = {d['result']}" if d.get("result") else "") for d in found) or "?  no function of the world fits (d1 abstains)"
                 lines += [f'{n + 1}. {what}   "{text[part["start"]:part["end"]][:90]}"']
-            lines += [f"-. {call(d)} {d['p']:.2f}   (the message as a whole)" for d in demands if d["part"] is None]
+            lines += [f"-. {d['python']} {d['p']:.2f}   (the message as a whole)" for d in demands if d["part"] is None]
             if any(part["hole"] for part in parts):
                 lines += ['For each "?": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.']
             if any(not hole["value"] and "None" not in hole["type"] for d in demands for hole in d["parameters"].values()):
-                lines += ['A "name=Type ?" is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing.']
+                lines += ["An argument that is a type, as in name=Type, is a hole that the message does not fill. Fill it from the conversation, or ask for that 1 thing."]
+            if any(d.get("result") for d in demands):
+                lines += ['"= value" after a call: the world gives that function a body, and the harness ran it. The value is observed.']
             if asked:  # what came after the last message: the reply check, and the corrections of the user (the last one for each message)
                 after = mine[asked[-1]:]
                 lines += [f"d1 says your last reply did not do: {', '.join(name for name, q in r['checks'].items() if q < 0.5)}." for r in after if r["event"] == "Stop" and any(q < 0.5 for q in r.get("checks", {}).values())][-1:]
@@ -302,15 +370,20 @@ def handle(event: dict, ask=d1) -> dict | None:
 
 
 def describe() -> dict:
-    """The world as data, for the page."""
-    def shape(tp) -> dict:
+    """The world as data, for the page and the mod: each function, and each type of the world that a signature reaches."""
+    def reach(tp) -> dict:
         match tp:
             case enum.EnumType():
-                return {"sum": [m.value for m in tp], "doc": tp.__doc__}
-            case _:
-                return {"product": {field: kind(inner) for field, inner in typing.get_type_hints(tp).items()}, "doc": tp.__doc__}
+                return {tp.__name__: {"sum": [m.value for m in tp], "doc": tp.__doc__}}
+            case type() if dataclasses.is_dataclass(tp):
+                inner = typing.get_type_hints(tp)
+                return {tp.__name__: {"product": {field: kind(t) for field, t in inner.items()}, "doc": tp.__doc__}} | {k: v for t in inner.values() for k, v in reach(t).items()}
+            case types.UnionType() | types.GenericAlias():
+                return {k: v for t in typing.get_args(tp) for k, v in reach(t).items()}
+        return {}
 
-    return {"types": {name: shape(tp) for name, tp in TYPES.items()},
+    hints = {name: typing.get_type_hints(f) for name, f in FUNCTIONS.items()}
+    return {"types": {k: v for h in hints.values() for tp in h.values() for k, v in reach(tp).items()},
             "functions": {name: {"asks": f.__doc__, "returns": kind(signature(f)[1]), "holes": {path: kind(tp) for path, tp in signature(f)[0].items()}} for name, f in FUNCTIONS.items()}}
 
 
@@ -320,7 +393,7 @@ def install():
     settings.parent.mkdir(exist_ok=True)
     data = json.loads(settings.read_text()) if settings.exists() else {}
     hook = {"hooks": [{"type": "command", "command": f'"{sys.executable}" "{HOME / "harness.py"}"', "timeout": 60}]}
-    for name in RECEIVED:
+    for name in ("UserPromptSubmit", "Stop"):  # the 2 events of Claude Code that carry a text
         entries = data.setdefault("hooks", {}).setdefault(name, [])
         entries[:] = [entry for entry in entries if "harness.py" not in json.dumps(entry)] + [hook]
     settings.write_text(json.dumps(data, indent=2) + "\n")

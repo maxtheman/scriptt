@@ -5,7 +5,8 @@
 - A function is a computation that a message can demand. Its docstring is the question that d1 answers:
   "Does the message ask the reader to <docstring>?" Each parameter is a hole that the message must fill.
   A parameter can be a sum type, a product type, a built-in (str, int, bool, pathlib.Path), or a union of these.
-  The bodies are not written: the reader of the message does the work.
+  A function with no body is work for the reader of the message. A function with a body is run by the harness when the
+  message fills all its holes, and its result goes to the reader as observed. Give a body only to a function that reads.
 
 How a hole is filled, by its type:
   a sum type   the member whose name the words contain (code). If none: d1 answers yes or no for each member.
@@ -116,3 +117,8 @@ def write(path: pathlib.Path) -> pathlib.Path:
 
 def extend(what: str) -> None:
     """add classes or functions to the world"""
+
+
+def count(notebook: Notebook) -> int:
+    """count the cells of the notebook"""
+    return {Notebook.OLD_CELLS: 5, Notebook.THESE_CELLS: 2}.get(notebook, 18)  # a function with a body: the harness runs it. This one is a stand-in.
