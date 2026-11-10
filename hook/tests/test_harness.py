@@ -26,7 +26,11 @@ def run(ask) -> list:
         harness.LOG, harness.config = pathlib.Path(folder) / "events.jsonl", lambda: {"block": True}
         for event in EVENTS:
             harness.handle(event["input"], ask)
-        return [json.loads(line) for line in harness.LOG.read_text().splitlines()]
+        mine = {"session": EVENTS[0]["input"]["session_id"], "text": EVENTS[0]["input"]["prompt"], "part": 0, "demands": [], "things": {}}
+        harness.reading(mine)  # the user says: part 1 of message 1 asks for nothing. The next message of the session must carry it.
+        said = harness.handle(EVENTS[0]["input"], ask)["hookSpecificOutput"]["additionalContext"]
+        assert "The user says that" in said and "asks for nothing" in said, said
+        return [{k: v for k, v in harness.migrate(json.loads(line)).items() if k != "at"} for line in harness.LOG.read_text().splitlines()][:len(EVENTS)]
 
 
 def measure(records: list) -> dict:
@@ -47,11 +51,18 @@ def test_recorded():
     assert records == recorded["records"], "the records differ from tests/recorded.json"
     assert measure(records) == recorded["measure"]
     for record in records:
+        assert record["form"] == harness.FORM and record["harness"] == harness.VERSION and len(record["world"]) == 12
+        if record["event"] == "UserPromptSubmit":  # the template is the whole message, and each part keeps its place in the text
+            assert "".join(piece if isinstance(piece, str) else piece["words"] for piece in record["template"]) == record["text"]
+            assert all(record["text"][part["start"]:part["end"]].strip() for part in record["parts"])
         for demand in record.get("demands", []):
             assert demand["function"] in harness.FUNCTIONS and (demand["words"] or "") in record["text"]
+            assert demand["part"] is None or demand["function"] in record["parts"][demand["part"]]["demands"]
             for hole in demand["parameters"].values():
                 assert hole["thing"] is None or hole["thing"] in harness.world.NAMED[harness.CLASSES[hole["class"]]]
     assert records[-1]["answer"]["decision"] == "block" and records[-2]["answer"]["hookSpecificOutput"]
+    old = {"event": "UserPromptSubmit", "session": "s", "text": "x", "demands": [{"function": "delete", "p": 0.9}]}  # a line of 0.1.1
+    assert harness.migrate(old)["demands"][0]["part"] is None and harness.migrate(old)["form"] == harness.FORM
 
 
 if __name__ == "__main__":
@@ -61,6 +72,7 @@ if __name__ == "__main__":
         RECORDED.write_text(json.dumps({"measure": measure(records), "records": records, "answers": answers}, indent=1) + "\n")
         site = HERE.parent.parent / "web" / "site" / "data.js"
         site.write_text("const DATA = " + json.dumps({"world": harness.describe(), "events": records, "measure": measure(records)}) + ";\n")
+        answers = dict(answers)
         print("recorded", len(records), "events and", len(answers), "requests to d1")
     test_recorded()
     print(len(EVENTS), "events, the same as recorded.", json.loads(RECORDED.read_text())["measure"])
