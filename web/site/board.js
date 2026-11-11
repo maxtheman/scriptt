@@ -89,7 +89,7 @@ function render() {
   for (const op of terms(r)) for (const p of places(op)) for (const c of constantsIn(p.value)) if (c.at && c.at[0] >= 0) spansBound.push({ a: c.at[0], b: c.at[1], op, path: p.path });
   S.bound = spansBound;
   const marks = [];
-  for (const m of r.text.matchAll(/```[\s\S]*?```|`[^`\n]+`|^>.*$/gm)) marks.push([m.index, m.index + m[0].length, m[0][0] === ">" ? "pasted" : "code"]);
+  for (const m of r.text.matchAll(/<pasted_content[\s\S]*?(<\/pasted_content>|$)|```[\s\S]*?```|`[^`\n]+`|^>.*$/gm)) marks.push([m.index, m.index + m[0].length, m[0][0] === ">" || m[0][0] === "<" ? "pasted" : "code"]);
   const putWords = (parent, from, to) => {
     let pos = from;
     for (const piece of tokens(r.text.slice(from, to))) {
@@ -561,7 +561,7 @@ function wordPanel(c) {
   const r = S.base;
   if (!S.span) { c.append(el("h2", {}, "Nothing selected")); return; }
   const [a, b] = spanChars(), p = r.phrases.find(p => p.start <= a && a < p.end);
-  c.append(el("h2", {}, `“${trim(spanText(), 70)}”`), el("p", { class: "sub" }, `${S.span.b - S.span.a + 1} word${S.span.b > S.span.a ? "s" : ""} · characters ${a}–${b} · ${p && p.quotes ? "quoted: the engine matched it to an earlier reply in the log" : "counted as your words (the engine marks quoted text only when the log holds that reply)"}`));
+  c.append(el("h2", {}, `“${trim(spanText(), 70)}”`), el("p", { class: "sub" }, `${S.span.b - S.span.a + 1} word${S.span.b > S.span.a ? "s" : ""} · characters ${a}–${b} · ${p && p.quotes ? "quoted: the engine matched it to an earlier reply in the log" : "counted as your words (the engine marks quoted text only when the log holds that reply)"}${W[S.span.a].el.classList.contains("pasted") ? " · looks pasted: the page's visual guess from > or <pasted_content>, not the engine's" : ""}`));
   if (p) {
     const reads = p.terms.length ? `read as ${p.terms.map(t => t.function + "#" + t.id).join(" + ")}` : p.unresolved.length ? "a request d1 could not name" : "no request: d1 found nothing to do here";
     c.append(el("p", {}, `Its phrase (characters ${p.start}–${p.end}) is ${reads}. The engine reads whole phrases, not single words.`));

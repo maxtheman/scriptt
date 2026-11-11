@@ -3,6 +3,7 @@
 // network log. It never calls /accept; every drop is a /edit preview and is cancelled. Returns a report object.
 window.audit4 = async function (prefixes, opts = {}) {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const answered = async () => { for (let i = 0; i < 60 && !(S.pending || S.refused); i++) await sleep(50); };
   const settle = async () => { for (let i = 0; i < 40; i++) { await sleep(60); if (!S.held && !(S.hover && !S.hover.res)) break; } await sleep(120); };
   const center = e => { const q = e.getBoundingClientRect(); return [q.left + q.width / 2, q.top + q.height / 2]; };
   const ev = (type, x, y, target, extra = {}) => (target || document).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1, pointerId: 1, isPrimary: true, ...extra }));
@@ -23,7 +24,7 @@ window.audit4 = async function (prefixes, opts = {}) {
   const net0 = window.__net.length;
   for (const pre of prefixes) {
     const id = [...new Set(S.lines.map(l => l.id))].find(i => i.startsWith(pre));
-    S.id = id; S.sel = S.pending = S.held = null; S.span = null; S.cursor = 0; await load(); render(); await sleep(50);
+    cache.clear(); S.id = id; S.sel = S.pending = S.held = null; S.span = null; S.cursor = 0; await load(); render(); await sleep(50);
     const r = S.base, row = { id: pre, chars: r.text.length, phrases: r.phrases.length, ops: terms(r).length, bad: [], did: [] };
     const fail = m => { row.bad.push(m); };
     const ok = (c, m) => { if (!c) fail(m); };
@@ -35,6 +36,11 @@ window.audit4 = async function (prefixes, opts = {}) {
     const copy = document.querySelector("#text").cloneNode(true); copy.querySelectorAll(".brick,.unres-chip,.hdl").forEach(e => e.remove());
     ok(copy.textContent === r.text, "R1 text equals the source (one representation)");
     const before = textNow();
+    await sleep(80);
+    ok(document.querySelectorAll("#gutter button").length === document.querySelectorAll(".brick").length + document.querySelectorAll(".pl.hole").length + document.querySelectorAll(".unres-chip").length, "S1 gutter has one tick per operation, open place and unresolved request");
+    { const nh = document.querySelectorAll(".pl.hole").length; if (nh) { key(document.body, "]"); await sleep(40); ok(document.activeElement.classList.contains("hole"), "S2 ] jumps to an open place"); if (nh > 1) { const a = document.activeElement; key(document.body, "]"); await sleep(40); ok(document.activeElement !== a && document.activeElement.classList.contains("hole"), "S3 ] again moves on"); } } const nu = document.querySelectorAll(".unres-chip").length; if (nu) { key(document.body, "u"); await sleep(40); ok(document.activeElement.classList.contains("unres-chip"), "S4 u jumps to an unresolved request"); } }
+    { const ws = [...document.querySelectorAll("#text .w")]; const w = ws[Math.min(10, ws.length - 5)]; w.scrollIntoView({ block: "center" }); const [x, y] = center(w); ev("pointerdown", x, y, w); ev("pointerup", x, y, w); await sleep(60); ok(S.span && S.span.a === S.span.b, "T1 click selects one word"); const hd = document.querySelector('.hdl[data-hdl="end"]'); ok(hd, "T2 selection has end handles"); if (hd && S.span) { const target = W[S.span.b + 3].el; const [hx, hy] = center(hd), [tx, ty] = center(target); ev("pointerdown", hx, hy, hd); ev("pointermove", hx + 6, hy, hd); ev("pointermove", tx, ty, target); ev("pointerup", tx, ty, target); await sleep(60); ok(S.span.b - S.span.a === 3, "T3 dragging the end handle widens the span by three words (got " + (S.span.b - S.span.a) + ")"); } setSpan(null); }
+    { const f = document.querySelector(".pl.filled"); if (f) { f.scrollIntoView({ block: "center" }); f.click(); await sleep(80); const b = [...document.querySelectorAll("#insp button[data-adj]")].find(x => !x.disabled); ok(b, "U1 a filled place offers word-by-word adjustment"); if (b) { const n = window.__net.length; b.click(); await answered(); ok(window.__net.slice(n).some(x => x.path === "/edit" && x.body.value.constant !== undefined), "U2 adjusting asks the engine"); ok(S.pending || S.refused, "U3 adjusting is staged or refused"); if (S.pending) cancel(); S.refused = null; S.sel = null; render(); } } }
     // A: click a rejected/open hole: the inspector says what d1 was offered
     const hole = document.querySelector(".pl.hole");
     if (hole) {
@@ -45,7 +51,7 @@ window.audit4 = async function (prefixes, opts = {}) {
       ok(/put something here/i.test(insp.innerText) && insp.querySelectorAll("button.chip").length > 0, "A3 offers values to put there");
       row.did.push("clicked open place " + hole.dataset.place);
       // A4: choose a candidate in the inspector: engine preview, staged or refused, never silent
-      const n0 = window.__net.length; const c = insp.querySelector("button.chip"); if (c) { c.click(); await settle(); ok(S.pending || S.refused, "A4 candidate click answers (staged or refused)"); key(document.body, "Escape"); key(document.body, "Escape"); S.refused = null; if (S.pending) cancel(); S.sel = null; render(); }
+      const n0 = window.__net.length; const c = insp.querySelector("button.chip"); if (c) { c.click(); await answered(); ok(S.pending || S.refused, "A4 candidate click answers (staged or refused)"); key(document.body, "Escape"); key(document.body, "Escape"); S.refused = null; if (S.pending) cancel(); S.sel = null; render(); }
     }
     // B: words into an open hole by pointer: select span near the hole's phrase, drag it onto the hole
     const holeKeys = [...document.querySelectorAll(".pl.hole")].map(e => e.dataset.place);
