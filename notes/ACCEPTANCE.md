@@ -36,10 +36,13 @@ on-screen coordinates of the element, `elementsFromPoint` deciding the target), 
   - C2 a world member (`at: [-1,-1]`),
   - C3 a result (`{ref}`),
   each previewed by `/edit` and answered (staged or refused with the engine's diagnostic code shown).
+  Tightened after the independent review (10 Nov): on each reading, each of C1–C3 must STAGE a drop on a place the engine
+  accepts; a reading where the engine accepts none is a failure of that check, not a pass by refusal.
 - **D. Linking while dragging.** While a thing is held, the places the engine accepts it in are marked and brought
   near (a rail in view); places the engine refuses are marked refused and are not drop targets.
   - D1 the marks come from `/edit` verdicts, not from page logic.
-  - D2 the accepting places are reachable without scrolling.
+  - D2 the accepting places are reachable without scrolling: the rail offers every place the engine accepts (shown, or
+    counted `+n`) and counts the refused (`✕ n`); both counts equal the engine's own answer, asked again by the audit.
 - **E. Undo after accept:** `/restore` of the snapshot before the accept; the reading is back, and it is in the store.
 - **F. No agent prose.** The page has headers, glyphs, chrome and data (words of the message, names and docstrings of
   `world.py`, d1's records, the engine's diagnostic codes). No sentence written by the page.

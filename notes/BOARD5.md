@@ -51,4 +51,10 @@ node web/audit-run.mjs --accept --shots web/site/audits/board5/shots 8c7eae08 ff
 - Nesting of two function spans inside one phrase and world editing: not in the engine; not drawn, not faked.
 - A press during a page change (~300 ms spring) can land on the fading previous drawing. The renderer is not remounted to hide
   this (NEVER-AGAIN A6); the audit waits 450 ms after a page change, a person's pace.
-- Not tested: the reading picker (the audit picks the reading through the page API), dark mode, narrow widths, rerun.
+- Not tested by the audit: the reading picker (the audit picks the reading through the page API), dark mode, narrow widths,
+  `/rerun`, the scroll bar (`d.vary`), pulling a filled place's value away (cleared), a value moved from one place to
+  another, the pointer drag of a d1 option, double Accept, a stale snapshot (`⟳`), wheel scrolling of the page column.
+- While a thing is held the view cannot scroll (a Dragology drag holds one state); the rail is the way to reach places
+  out of view, two rows and `+n`.
+- Operation chips sit inline after their phrase. Max said "It's not plugs and sockets embedded in text"; NEVER-AGAIN C24
+  makes this an open decision for Max.
