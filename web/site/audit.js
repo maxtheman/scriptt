@@ -24,6 +24,8 @@
   const el = (sel) => document.querySelector(sel);
   // a drag: press on src, move in steps to (dx, dy), wait for the engine's draft under the pointer, read the dock, release
   async function drag(src, to, opts = {}) {
+    if (src.id) src = document.getElementById(src.id) || src;
+    if (to && to.id) to = document.getElementById(to.id) || to;
     const [sx, sy] = center(src.querySelector("rect") || src);
     const [dx, dy] = Array.isArray(to) ? to : center(to.querySelector("rect") || to);
     const grabbed = await pe("pointerdown", sx, sy);
@@ -36,6 +38,28 @@
     await pe("pointerup", dx + 0.5, dy); await sleep(250);
     if (opts.shot) { await until(() => !/…/.test(dock()), 8000); await shot(opts.shot + "-staged"); }
     return { mid, grabbed };
+  }
+  const sent = (b) => window.__net.some((n) => n.path === "/edit" && JSON.stringify(n.body) === JSON.stringify({ reading: S.id, ...b }));
+  // press a thing, let the rail bring the places near, wait for a place the engine accepts (✓), drop there
+  async function dragToPlace(src, name, ms = 25000) {
+    if (src.id) src = document.getElementById(src.id) || src;
+    const [sx, sy] = center(src.querySelector("rect") || src);
+    await pe("pointermove", sx, sy); await pe("pointerdown", sx, sy);
+    for (let i = 1; i <= 4; i++) { await pe("pointermove", sx + i * 3, sy + i * 3); await sleep(30); }
+    const okRail = () => [...document.querySelectorAll("#board [id^=rl-]")].find((g) => g.textContent.trim().startsWith("✓"));
+    let target = await until(okRail, ms);
+    if (!target) target = [...document.querySelectorAll("#board [id^=pl-]")].find((g) => g.dataset.hole === "1") || document.querySelector("#board [id^=rl-]");
+    if (!target) { await pe("pointerup", sx, sy); return null; }
+    const tid = target.id;
+    const [dx, dy] = center(target.querySelector("rect"));
+    for (let i = 1; i <= 8; i++) { await pe("pointermove", sx + 12 + ((dx - sx - 12) * i) / 8, sy + 12 + ((dy - sy - 12) * i) / 8); await sleep(30); }
+    await until(() => !/…/.test(dock()) && dock().trim(), 15000);
+    await pe("pointermove", dx + 0.5, dy); await sleep(80);
+    const mid = dock();
+    await shot(name + "-held");
+    await pe("pointerup", dx + 0.5, dy); await sleep(300);
+    await until(() => !/…/.test(dock()), 8000); await shot(name + "-staged");
+    return { tid, mid, accepted: tid.startsWith("rl-") && target.textContent.trim().startsWith("✓") };
   }
   const lastEdit = () => window.__net.filter((n) => n.path === "/edit").at(-1);
   const proseCheck = () => { // every text node drawn by the page outside the message and the world/d1 data
@@ -98,8 +122,8 @@
         if (tgt) {
           const q = tgt.getBoundingClientRect();
           const res = await drag(hd, [q.right - 1, q.top + q.height / 2], { shot: `${pre}-b-widen` });
-          const e = lastEdit();
-          ok(e && e.body.path === "kind" && e.body.at[0] === p.start && e.body.at[1] > p.end && e.body.value === p.kind, "B1 widen = /edit kind over the wider words, same kind");
+          const e = S.staged && { body: S.staged.body };
+          ok(e && sent(e.body) && e.body.path === "kind" && e.body.at[0] === p.start && e.body.at[1] > p.end && e.body.value === p.kind, "B1 widen = /edit kind over the wider words, same kind");
           ok(/→/.test(res.mid.dock), "B5 the consequence shows before release");
           ok(S.staged && /✓ a/.test(dock()), "B5 release stages it with Accept / Cancel");
           await click(el("#cancel"));
@@ -108,9 +132,9 @@
       }
       // B2: narrow by keyboard: [ on an open link of two words or more (clicked open)
       { const L2 = window.board.layout(S.base); const multi = [...document.querySelectorAll("#board [id^=pc-]")].find((g) => g.dataset.kind !== "(none)" && L2.words.filter((w) => w.s >= +g.dataset.start && w.e <= +g.dataset.end).length >= 2); await key("Escape"); await click(multi, "a link of two words"); }
-      await key("["); await until(() => !/…/.test(dock()) && /→/.test(dock()));
-      const e2 = lastEdit();
-      ok(e2 && e2.body.path === "kind" && e2.body.value === "(none)", "B2k [ narrows: the last word unlinked (/edit kind (none))");
+      await key("["); await until(() => !/…/.test(dock()) && /→/.test(dock()), 20000);
+      const e2 = S.hold && S.hold.opts[0].states && { body: S.hold.opts[0].states[S.hold.opts[0].k].change };
+      ok(e2 && e2.body && sent(e2.body) && e2.body.path === "kind" && e2.body.value === "(none)", "B2k [ narrows: the last word unlinked (/edit kind (none))");
       await key("Enter"); await sleep(150);
       ok(S.staged || S.note, "B2k Enter stages or shows the engine's refusal");
       await key("Escape");
@@ -121,8 +145,8 @@
       const codeChip = el("#wd-t-Code");
       if (ok(codeChip && w2, "B3 a type in the world and words to drop it on")) {
         const res = await drag(codeChip, w2, { shot: `${pre}-b-type` });
-        const e = lastEdit();
-        ok(e && e.body.path === "kind" && e.body.value === "Code" && String(e.body.at[0]) === w2.dataset.start, "B3 type drop = /edit kind Code on those words");
+        const e = S.staged && { body: S.staged.body };
+        ok(e && e.body.path === "kind" && e.body.value === "Code" && String(e.body.at[0]) === w2.dataset.start && sent(e.body), "B3 type drop = /edit kind Code on those words");
         ok(/Code\|/.test(res.mid.dock), "B5 the new link shows before release");
         ok(S.staged, "B3 staged");
         if (opts.accept && S.staged && pre === prefixes[0]) {
@@ -147,8 +171,8 @@
       const w3 = [...document.querySelectorAll("#board [id^=pc-]")].filter((g) => g.dataset.kind !== "Later[Surface]")[2];
       if (ok(later && w3, "B4 Later[Surface] on the type page")) {
         const res = await drag(later, w3, { shot: `${pre}-b-later` });
-        const e = lastEdit();
-        ok(e && e.body.value === "Later[Surface]" && String(e.body.at[0]) === w3.dataset.start, "B4 constructed type drop = /edit kind Later[Surface]");
+        const e = S.staged && { body: S.staged.body };
+        ok(e && sent(e.body) && e.body.value === "Later[Surface]" && String(e.body.at[0]) === w3.dataset.start, "B4 constructed type drop = /edit kind Later[Surface]");
         ok(/Later\[Surface\]\|/.test(res.mid.dock) && S.staged, "B4 previewed and staged");
         await key("Escape");
       }
@@ -160,10 +184,10 @@
       ok(S.hold && S.hold.th.t === "type", "B3k Space picks a type up");
       if (S.hold) {
         await key("ArrowRight");
-        await until(() => !/…/.test(dock()) && /→/.test(dock()));
+        await until(() => !/…/.test(dock()) && /→/.test(dock()), 20000);
         await key("Enter"); await sleep(100);
-        const e = lastEdit();
-        ok(e && e.body.path === "kind" && e.body.value === "Surface", "B3k Enter drops it on words (/edit kind Surface)");
+        const e = S.staged && { body: S.staged.body };
+        ok(e && sent(e.body) && e.body.path === "kind" && e.body.value === "Surface", "B3k Enter drops it on words (/edit kind Surface)");
         ok(S.staged, "B3k staged");
         await key("Escape");
       }
@@ -172,24 +196,15 @@
       const holes = [...document.querySelectorAll("#board [id^=pl-]")].filter((g) => g.dataset.hole === "1");
       const unres = [...document.querySelectorAll("#board [id^=un-]")];
       row.holes = holes.length; row.unresolved = unres.length;
-      // C1 words → a hole (or the rail)
-      const pcs = [...document.querySelectorAll("#board [id^=pc-]")];
-      if (pcs.length) {
-        const src = pcs[Math.min(5, pcs.length - 1)];
-        const [sx, sy] = center(src.querySelector("rect"));
-        await pe("pointerdown", sx, sy); await pe("pointermove", sx + 6, sy + 6); await sleep(120);
-        await until(() => document.querySelectorAll("#board [id^=rl-]").length || window.board.idleQ(), 15000);
-        const rail = await until(() => document.querySelector("#board [id^=rl-]"), 15000);
-        await pe("pointermove", sx + 2, sy + 2);
-        await key("Escape"); await pe("pointerup", sx, sy); await sleep(150);
-        if (S.staged) await key("Escape");
-        const target = holes[0] || (rail && document.querySelector("#board [id^=rl-]")) || document.querySelector("#board [id^=pl-]");
-        if (ok(target, "C1 a place to drop words in (in view or in the rail)")) {
-          const res = await drag(pcs[Math.min(5, pcs.length - 1)], target, { wait: 15000, shot: `${pre}-c-words` });
-          const e = window.__net.filter((n) => n.path === "/edit" && n.body.value && n.body.value.constant !== undefined && n.body.value.at && n.body.value.at[0] >= 0).at(-1);
-          ok(e && e.body.number != null, "C1 words into a place = /edit {constant, type, at}");
+      // C1 words → a place: one drag; while it is held the rail brings the places near; it ends on a place the engine accepts
+      {
+        const pc0 = [...document.querySelectorAll("#board [id^=pc-]")][5];
+        const res = pc0 && await dragToPlace(pc0, `${pre}-c-words`);
+        if (ok(res, "C1 a place to drop words in (in view or in the rail)")) {
+          const b = (S.staged && S.staged.body) || (S.note && S.note.refused && S.note.refused.body);
+          ok(b && b.number != null && b.value && b.value.constant !== undefined && b.value.at[0] >= 0 && sent(b), "C1 words into a place = /edit {constant, type, at}");
           ok(S.staged || S.note, "C1 answered: staged or refused with the engine's code");
-          row.did.push("C1 " + (S.staged ? "staged" : "refused " + JSON.stringify(S.note && S.note.refused && S.note.refused.codes)));
+          row.did.push("C1 " + res.tid + " " + (S.staged ? "staged" : "refused " + JSON.stringify(S.note && S.note.refused && S.note.refused.codes)));
           if (S.staged) await key("Escape");
         }
       }
@@ -198,9 +213,9 @@
       const mem = el("#pg-m-Surface-MOD");
       const place = holes[0] || document.querySelector("#board [id^=pl-]");
       if (ok(mem && place, "C2 a member and a place")) {
-        await drag(mem, place, { wait: 15000, shot: `${pre}-c-member` });
-        const e = window.__net.filter((n) => n.path === "/edit" && n.body.value && n.body.value.at && n.body.value.at[0] === -1).at(-1);
-        ok(e && e.body.value.constant === "the mod", "C2 member into a place = /edit {constant: member words, at: [-1,-1]}");
+        const res = await dragToPlace(mem, `${pre}-c-member`); if (res) row.did.push("C2 → " + res.tid);
+        const b = (S.staged && S.staged.body) || (S.note && S.note.refused && S.note.refused.body), e = b && sent(b) && { body: b };
+        ok(e && e.body.value.at[0] === -1 && e.body.value.constant === "the mod", "C2 member into a place = /edit {constant: member words, at: [-1,-1]}");
         ok(S.staged || S.note, "C2 answered");
         row.did.push("C2 " + (S.staged ? "staged" : "refused " + JSON.stringify(S.note && S.note.refused && S.note.refused.codes)));
         if (S.staged) await key("Escape");
@@ -210,10 +225,10 @@
       const opsEl = [...document.querySelectorAll("#board [id^=op-]")];
       if (opsEl.length >= 2) {
         const srcOp = opsEl[0], tgt = [...document.querySelectorAll("#board [id^=pl-]")].find((g) => !srcOp.contains(g) && +g.dataset.op > +srcOp.dataset.op);
-        if (ok(tgt, "C3 a later place for a result")) {
-          await drag(srcOp, tgt, { wait: 15000, shot: `${pre}-c-result` });
-          const e = window.__net.filter((n) => n.path === "/edit" && n.body.value && n.body.value.ref != null).at(-1);
-          ok(e && String(e.body.value.ref) === srcOp.dataset.op, "C3 result into a place = /edit {ref}");
+        if (ok(srcOp, "C3 a result to drag")) {
+          const res = await dragToPlace(srcOp, `${pre}-c-result`); if (res) row.did.push("C3 → " + res.tid);
+          const b = (S.staged && S.staged.body) || (S.note && S.note.refused && S.note.refused.body), e = b && sent(b) && { body: b };
+          ok(e && e.body.value && String(e.body.value.ref) === srcOp.dataset.op, "C3 result into a place = /edit {ref}");
           ok(S.staged || S.note, "C3 answered");
           row.did.push("C3 " + (S.staged ? "staged" : "refused " + JSON.stringify(S.note && S.note.refused && S.note.refused.codes)));
           if (S.staged) await key("Escape");

@@ -29,12 +29,18 @@ async function loadAll() {
 
 // ---------- the engine queue: one request at a time (the server is single threaded), the one under the pointer first ----------
 const DRAFTS = new Map();
-let Q = [], BUSY = false, DV = 0, DRAGGING = false, HELD = null;
+let Q = [], BUSY = false, DV = 0, DRAGGING = false, PENDING = false, HELD = null;
 const bkey = (b) => S.base.snapshot + "|" + JSON.stringify(b);
-function ask(body, front) {
+let HOLDN = 0;
+function newHold() { // verdicts still queued for an earlier hold are dropped (asked again if needed)
+  HOLDN++;
+  Q = Q.filter((e) => { if (e.bg && e.hold !== HOLDN) { DRAFTS.delete(e.k); return false; } return true; });
+}
+function ask(body, front, bg) {
   const k = bkey(body);
   let e = DRAFTS.get(k);
-  if (!e) { e = { k, body, done: false, snap: S.base.snapshot }; DRAFTS.set(k, e); Q.push(e); }
+  if (!e) { e = { k, body, done: false, snap: S.base.snapshot, bg: !!bg, hold: HOLDN }; DRAFTS.set(k, e); Q.push(e); }
+  if (!bg) e.bg = false;
   if (front && !e.done && Q[0] !== e) Q = [e, ...Q.filter((x) => x !== e)];
   pump();
   return e;
@@ -48,7 +54,7 @@ async function pump() {
     const r = await post("/edit", { reading: S.id, ...e.body });
     Object.assign(e, { draft: r.draft || null, diag: r.diagnostics || [], error: r.error || null, done: true });
     DV++;
-    if (!DRAGGING) paint();
+    if (!DRAGGING && !PENDING) paint();
   }
   BUSY = false;
 }
@@ -141,10 +147,14 @@ function layout(rec) {
   const text = rec.text, words = [], chunks = [];
   // pasted text: lines that start with ">" and lines inside ``` fences, and phrases that are not the user's own words
   const style = new Uint8Array(text.length + 1);
-  let off = 0, fence = false;
+  let off = 0, fence = false, pasted = false;
   for (const line of text.split("\n")) {
     const tl = line.trim();
+    if (/<pasted_content\b/.test(tl)) pasted = true;
+    const inPaste = pasted;
+    if (/<\/pasted_content>/.test(tl)) pasted = false;
     if (tl.startsWith("```")) { style.fill(2, off, off + line.length); fence = !fence; }
+    else if (inPaste && !fence) style.fill(1, off, off + line.length);
     else if (fence) style.fill(2, off, off + line.length);
     else if (tl.startsWith(">")) style.fill(1, off, off + line.length);
     off += line.length + 1;
@@ -259,7 +269,14 @@ class Drafted extends DG.Modifier {
   frame(frame) {
     const r = this.inner.run(frame), st = r.dropState;
     window.__frames = (window.__frames || 0) + 1;
-    if (!st || !st.change) { LIVE = st; paintDock(st); return r; }
+    if (!st || !st.change) { // no request here: redraw only when a verdict arrived (the rail and the marks)
+      LIVE = st; paintDock(st);
+      if (this.dv0 == null) this.dv0 = DV;
+      if (DV === this.dv0) return r;
+      let c = this.cache.get("·");
+      if (!c || c.dv !== DV) { c = { dv: DV, preview: DG.renderStateReadOnly(this.ctx, st) }; this.cache.set("·", c); }
+      return { ...r, preview: () => c.preview };
+    }
     const e = ask(st.change, true);
     let c = this.cache.get(e.k);
     if (!c || c.dv !== DV) { const next = withDraft(st); c = { dv: DV, next, preview: DG.renderStateReadOnly(this.ctx, next) }; this.cache.set(e.k, c); }
@@ -325,7 +342,8 @@ function options(th) {
     case "op": places = placeOptions(() => ({ ref: th.term.id }), (pl) => pl.t.id === th.term.id); break;
     case "val": places = placeOptions(() => th.pl.v, (pl) => pl.t.id === th.pl.t.id && pl.path === th.pl.path); break;
   }
-  for (const o of places) ask(o.body, false); // the engine's verdict for each place, in the background
+  newHold();
+  for (const o of places.slice().sort((a, b) => (visible(b.target) - visible(a.target)) || (b.open - a.open)).slice(0, 60)) ask(o.body, false, true); // the engine's verdict for each place
   return { out, places };
 }
 function far(th) {
@@ -351,6 +369,9 @@ function railItems() {
   return out;
 }
 function spec(th, d) {
+  try { return spec1(th, d); } catch (e) { console.error("spec", e && e.stack); return d.fixed(base()); }
+}
+function spec1(th, d) {
   const start = cur();
   HELD = th; RAIL_IDS = new Set();
   const { out, places } = options(th);
@@ -775,7 +796,9 @@ function paintDock(st) {
     btn = `<button id="accept" class="go" ${v === "ok" ? "" : "disabled"}>✓ a</button><button id="cancel">✕ esc</button>`;
   }
   const undo = S.undo.length && !S.staged && !DRAGGING ? `<button id="undo">↶ z</button>` : "";
-  dock.innerHTML = parts.join(" ") + `<span class="grow"></span>${btn}${undo}`;
+  const html = parts.join(" ") + `<span class="grow"></span>${btn}${undo}`;
+  if (dock.__html === html) return;
+  dock.__html = html; dock.innerHTML = html;
   if ($("accept")) $("accept").onclick = accept;
   if ($("cancel")) $("cancel").onclick = cancel;
   if ($("undo")) $("undo").onclick = undo1;
@@ -824,9 +847,6 @@ function openThing(th) {
   S.open = th && th.t !== "none" ? th : null; S.pscroll = 0;
   const f = th && FOC.find((x) => x.th === th);
   if (f) S.focus = f.id;
-  if (th && th.t === "piece") { // the verdicts for its words, before it is picked up
-    const { places } = options(th); void places;
-  }
   paint();
 }
 
@@ -920,25 +940,30 @@ $("board").addEventListener("wheel", (w) => { // scrolling the view, not moving 
 
 // ---------- the page ----------
 let root = null;
+let SHOWN = { k: null, st: null };
 function display() {
-  if (S.hold) return holdState();
-  return cur();
+  const st = S.hold ? holdState() : cur();
+  const k = JSON.stringify([S.base.snapshot, S.scroll, S.pscroll, st.change, st.r === S.base, !!st.wait, !!st.refused, st.handle, st.target, S.open ? pageKey() : "", S.focus, S.zone, S.more, S.hold && S.hold.i, S.hold ? DV : 0]);
+  if (SHOWN.k === k) return SHOWN.st;
+  SHOWN = { k, st };
+  return st;
 }
 function paint() {
   if (!S.base) return;
   sizes();
   const st = display();
   root ??= createRoot($("board"));
-  root.render(h(DraggableRenderer, { draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragStatus: status }));
+  root.render(h(DraggableRenderer, { key: S.id + "|" + (S.open ? pageKey() : "world"), draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragStatus: status }));
   if (S.pendingFocus) { requestAnimationFrame(() => { const zone = FOC.filter((f) => f.zone === "text"); if (zone.length && S.pendingFocus) { S.focus = (S.pendingFocus > 0 ? zone[zone.length - 1] : zone[0]).id; S.pendingFocus = 0; paint(); } }); }
   paintDock(DRAGGING ? LIVE : st);
 }
 // a press that never became a drag (a click) leaves nothing held
 function status(st) {
-  const was = DRAGGING;
-  DRAGGING = st.type === "dragging";
+  (window.__status = window.__status || []).push(st.type + (st.pendingDrag ? "+pending" : "") + (st.springOrigin ? "+spring" : ""));
+  const was = DRAGGING || PENDING;
+  DRAGGING = st.type === "dragging"; PENDING = !!st.pendingDrag;
   if (!DRAGGING && !st.pendingDrag && HELD) { HELD = null; RAIL_IDS = new Set(); LIVE = null; setTimeout(paint, 0); }
-  else if (was && !DRAGGING) setTimeout(paint, 0);
+  else if (was && !DRAGGING && !PENDING) setTimeout(paint, 0);
 }
 function pick() {
   const sel = $("pick");

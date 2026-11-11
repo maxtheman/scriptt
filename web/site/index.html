@@ -30,7 +30,7 @@
   :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   #board { position:absolute; top:44px; left:0; right:0; bottom:56px; overflow:hidden; }
   #board svg { display:block; touch-action:none; user-select:none; -webkit-user-select:none; }
-  #board svg :focus { outline:none; }
+  #board svg :focus, #board:focus, #board:focus-visible { outline:none; }
   #dock { position:absolute; left:0; right:0; bottom:0; height:56px; border-top:1px solid var(--rule); background:var(--card);
           display:flex; gap:10px; align-items:center; padding:0 16px; font:13px var(--code); overflow-x:auto; white-space:nowrap; }
   #dock .was { color:var(--mute); text-decoration:line-through; }
