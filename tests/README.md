@@ -1,8 +1,8 @@
 # tests
 
-```bash
-python3.14 tests/test_harness.py
-```
+`test_harness.py` is RETIRED (10 Nov 2026): it tested the form-3 parser of harness.py 0.1.6. The hooks are now tested by
+`python3.14 next/test_harness_hook.py` (add `--live` for 1 prompt through the real d1; kept in `tests/live/prompt.json`).
+What follows describes the retired test and the measurements of 0.1.6; `events.json` and `recorded.json` stay as data.
 
 It runs 36 events of a real conversation through the harness with the recorded answers of the real d1-2b, and
 compares each record with `tests/recorded.json`. It checks that every part has a choice, that the pieces are sorted

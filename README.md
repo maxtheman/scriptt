@@ -39,9 +39,9 @@ In the folder of your project. Python 3.14 or later, standard library only.
 curl -fsSL https://scriptt.ai/install.sh | sh
 ```
 
-It writes 3 files to `.scriptt/` (`harness.py`, `world.py`, `SKILL.md`), adds 2 hooks to
+It writes 5 files to `.scriptt/` (`harness.py`, `agree.py`, `scriptt16.py`, `world.py`, `SKILL.md`), adds 2 hooks to
 `.claude/settings.local.json`, and copies the skill to `.claude/skills/scriptt/`. An existing `.scriptt/world.py` is
-kept. From a clone: `cp -r scriptt .scriptt && python3.14 .scriptt/harness.py install`.
+kept. From a clone: `mkdir -p .scriptt && cp scriptt/harness.py scriptt/SKILL.md scriptt/world.py next/agree.py next/scriptt16.py .scriptt/ && python3.14 .scriptt/harness.py install`.
 
 [scriptt.ai](https://scriptt.ai) has a prompt that you paste into a coding agent. The agent does the setup and
 proposes a `world.py` for your project.
@@ -65,14 +65,14 @@ In the Claude desktop app, a mod draws d1's reading on each message that you typ
 
 | Folder | What it holds |
 |---|---|
-| [scriptt/](scriptt/) | The 3 files that the installer puts in `.scriptt/`, and nothing else. `harness.py` is the whole harness (1 file). `world.py` is an example world. `SKILL.md` tells Claude what to do with the block. |
+| [scriptt/](scriptt/) | 3 of the 5 files that the installer puts in `.scriptt/`: `harness.py` (the hooks), `world.py` (a starter world), `SKILL.md`. The other 2, the engine `agree.py` and `scriptt16.py`, have their 1 copy in `next/`; `web/build.sh` ships them beside the harness. |
 | [mod/](mod/README.md) | The mod for the Claude desktop app. It is installed apart, as a plugin. |
 | [tests/](tests/README.md) | The test, a recorded conversation with d1's recorded answers, 2 trials, and what was measured. |
-| [walkthrough.py](walkthrough.py) | A marimo notebook that runs 1 message through the search, step by step, and shows what each step returns. Start here to read the code. |
+| [walkthrough.py](walkthrough.py) | Retired: the notebook of the form-3 search. [next/notebook.py](next/notebook.py) runs 1 message through the reader. |
 | [web/](web/) | The page at scriptt.ai. `sh web/build.sh` builds it into `web/public/`. `(cd web && npx cf deploy)` deploys it. |
 
-To read the code: `scriptt/world.py`, then in `scriptt/harness.py` the wordings of the questions (`WHAT` to
-`ANSWERED`), `parts_of()`, `read()` (the search) and `handle()` (the log line and the block).
+To read the code: `scriptt/world.py`, the docstring of `next/scriptt16.py` (the reader's states and transitions), then
+`scriptt/harness.py`: `render()` (what Claude receives), `evidence()` and `stop()` (the check and the send-back).
 
 ## The world
 

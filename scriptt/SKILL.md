@@ -1,85 +1,91 @@
 ---
 name: scriptt
-description: Use when a prompt arrives with a block that starts "scriptt:", or when the user mentions scriptt, the harness, the world file, demands, holes, or wants to install, check, search, change or remove scriptt in a folder.
+description: Use when a prompt arrives with a block that starts "scriptt:", when a turn is sent back with a "scriptt:" reason, or when the user mentions scriptt, the harness, the world file, obligations, holes, or wants to install, check, search, change or remove scriptt in a folder.
 ---
 
 # scriptt
 
-`.scriptt/harness.py` reads each message of the user before you do. It cuts the message into parts (sentences) and asks a small
-decision model, d1, which functions of `.scriptt/world.py` each part asks for. Code finds the pieces of the message: each place
-where a typed thing of the world stands (a member of a sum type, a number, a path). It puts each piece in a hole of a function, and
-d1 checks it. You receive 1 line for each part that asks, 1 line for the parts that ask for nothing, and the holes that stay open:
+`.scriptt/harness.py` reads each message of the user before you do. `scriptt16.py` (the reader) reads it against
+`.scriptt/world.py`, the closed type system of this folder, with a small decision model, d1. d1 chooses which functions
+of the world each phrase asks for and which value fills each parameter; rules ground the values that the words name
+(members of a sum type, numbers, paths that exist here). Every reading is saved to `.scriptt/events.jsonl`. You receive:
 
 ```
-scriptt: d1 read this message against .scriptt/world.py. Parts: 5. Parts that ask for something: 3.
-1. rewrite(change=Change(notebook=Notebook('the old cells'), code=...)) 0.81   "Rewrite the old cells."
-3. delete(notebook=Notebook('the old cells')) 0.86 ["them" = Notebook('the old cells') (part 1)]   "Then delete them."
-4. ?  d1 abstains: no function of the world fits. The closest is write 0.21.   "Also, send the summary to my accountant by Friday."
-Nothing: 2, 5 [Code('t-strings')].
-For each "?": say in 1 line what the part asks, do it, and propose the line to add to .scriptt/world.py.
-d1 says your last reply did not do: delete ("Then delete them."). Check that against your reply.
-The user says that "I never liked them." asks for nothing. d1 said otherwise.
+scriptt: d1 read this message against .scriptt/world.py (reading 7198f8a8). Obligations: 4.
+#0 redesign(surface='the mod') -> Later[Surface]  (pending)   "Redesign the mod."   evidence: a file written
+#1 show(subject=#0) -> Subject  (pending)   "Then show it."   evidence: no evidence of a turn can show it
+#2 ?   "Also send the summary to my accountant."
+#3 test(subject=...) -> Observed   "And test whatever else changed."   evidence: a command that runs and exits 0
+Declared in world.py:
+  def redesign(surface: Surface) -> Later[Surface]   change how the page or the interface looks, or how its information is ordered
+  def show(subject: Subject) -> Subject   show or open something so that the user can see it
+  def test(subject: Subject) -> Observed   test or verify that something works
+  Surface = 'the page' | 'the site' | 'the mod'
 Open holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:
-1. rewrite.change.code: Code   "Rewrite the old cells."
+  #3 test.subject: Subject, d1 chose none of the candidates
+Unresolved requests, each a ? above: no function of world.py fits (#2 d1 chose none of the candidates).
+  For each: say in 1 line what it asks, do it, and propose the function to add to .scriptt/world.py.
+At the end of the turn each obligation is checked by evidence only: the commands you ran and the files you wrote. Your words are not evidence.
 ```
-
-The number of a line is the number of the part in the message. Every part is on a line: its own, or the "Nothing:" line.
 
 ## What to do with the block
 
-- **Each numbered line is 1 ask.** Do each one, or say in 1 line why you do not. Use the list to check your reply before you end
-  the turn: no ask may be left without a word.
-- **"Nothing:"** lists the parts where d1 chose "nothing": a remark, a reason, a rule or a greeting. They ask for no work. Read
-  them anyway: a rule there still holds.
-- **Each call is a Python expression.** `Notebook('the old cells')` is a named thing of the world that the words contain.
-  A call inside a call is the result of another ask of the same part.
-- **The number after a call** is the share that d1 gave this function for that part alone. d1 makes 1 choice among all
-  functions of the world, "something else" and "nothing". It is no proof. d1 reads 1 sentence at a time: read the quoted words yourself before you act.
-- **`[...]` after a call or a part number** lists the pieces of that part that no hole takes, as Python (`Code('t-strings')`, `3`,
-  `Path('notes.md')`), and each reference in the part.
-- **A reference** such as `"them" = Notebook('the old cells') (part 1)`: the words "them" stand for the piece of part 1. Code took the
-  nearest piece before the words, of the type of the open hole (or of any type when no hole is open), and d1 said yes at 0.8 or more.
-  "(an earlier message)": the piece is from an earlier message of this session. A reference can be wrong: read the words.
-- **`...` is an open hole.** The message does not say which thing. The last lines of the block list each one as
-  `part. function.hole: type` with the words of the part. Take the thing from the conversation, or ask for that 1 thing.
-  A hole of type `X | None` may stay open and is not listed.
-- **"(d1: the part names no Note)"** after a call: the function needs a thing of that type, and the part names none. Either
-  the thing is new, or the function is the wrong one for this part. Read the part before you act, above all before you delete.
-- **`?` is an abstention.** d1 chose "something else": the part asks for something, and the world has no function for it. If the part is a real ask,
-  do it, and propose the line to add to `.scriptt/world.py`. If it is a rule or a remark, follow it and add nothing.
-  "The closest is" names the function that came nearest: if it is the right one, its docstring needs the user's words.
-- **"= value" after a call:** the world gives that function a body, and the harness ran it. The value is observed.
-- **"d1 says your last reply did not do: ..."** d1 gave under 0.2 that your reply did it. That is d1's check of its own
-  reading: if the reading was wrong, the line is wrong too. Check it against your last reply. If it is true, do the work now.
-- **"The user says that ..."** is the user's own reading of a part. It replaces d1's. `delete.notebook is "these cells"` says
-  which thing fills that hole. `delete.notebook is open` says that the hole is open: ask for the thing, or take it from the conversation.
-- If the block is wrong, say so in 1 line and go on with what the message says.
+- **Each `#n` line is 1 obligation**: an operation that the quoted words ask for. Do each one, or say in 1 line why not.
+- **A call is the operation with its values.** `'the mod'` is a member of a sum type that the words name; `#0` is the
+  result of obligation 0 (here: show what the redesign made). `None` is a deliberate absence that d1 answered.
+- **`-> T` is the declared result type.** `(pending)`: its value waits on work not done yet (a `Later` result, or an
+  input that is one). Do the work it waits on first.
+- **`...` is an open hole**, listed under "Open holes" with its type and why: d1 chose none of the candidates, nothing
+  before it has that type, or a limit cut the candidates. Take the thing from the conversation, or ask for that 1 thing.
+- **`?` is an unresolved request**: the words ask for something and no function of the world fits. If it is a real ask,
+  do it and propose the function to add to `.scriptt/world.py`. If it is a rule or a remark, follow it and add nothing.
+- **"Declared in world.py"** are the signatures and the docstrings that d1 read, and the words of the sum types.
+- d1 can be wrong. Read the quoted words yourself before you act, above all before you delete. If the block is wrong,
+  say so in 1 line and go on with what the message says.
+
+## The check at the end of the turn
+
+When you stop, the harness takes the evidence of the turn from the transcript, never from your reply's words:
+each command you ran with its exit code, and each file you wrote or edited (the last run of a command and the last
+write of a file count). Each obligation's `evidence:` says what counts for it:
+
+- an obligation that binds a path: a write of that file, or a command that names it;
+- else a result that holds `Observed` (a test, research): a command that ran; it passes with exit code 0;
+- else a result that is a `Path` or `Later[...]` of no text (a change, a redesign, a save): a file written that exists.
+- Anything else (an explanation, a rule to follow) and every `?` has no evidence: it stays UNVERIFIED.
+
+Each obligation gets PASS, FAIL (an artifact about it failed) or UNVERIFIED. With `"block": true` in
+`.scriptt/config.json`, a turn with any obligation that is not PASS is sent back with a reason that starts
+"scriptt:" and lists each one with what it needs, at most 2 times for 1 message. When you get it: do the work that
+is missing, or say in 1 line why it cannot be shown (an explanation needs none). Saying it is done does not count.
+The results are saved with the reading.
 
 ## The world, 1 for each folder
 
-`.scriptt/world.py` is the whitelist of that folder. A message can ask only for a function that is in it.
+`.scriptt/world.py` is the type system of that folder. A message can ask only for a function that is in it.
 
-- A function with a 1-line docstring is something the user asks for here. d1 reads the docstring as the rest of the sentence
-  "The text asks the reader to ...". So write it that way, in the user's own words.
-- A parameter is a hole. Its type says how it is filled: an `Enum` lists the named things (its values are the words the user
-  says), `int` and `pathlib.Path` are read from the words, `str` and `bool` are asked of d1, a dataclass has 1 hole for each
-  field, and `X | None` may stay open. A hole is filled from the words of its own part, or by a reference ("it", "them") to a
-  piece that the message or the session named before.
-- A change of `world.py` is used from the next message on. A block that came before the change was read with the old world.
-- Keep it small: the 5 to 10 things the user really asks for in this folder. `python3.14 .scriptt/harness.py find "?"` lists
-  the parts that d1 abstained on. Each one is a candidate for a new function.
+- A function's 1-line docstring completes "The text asks the reader to ...": write it in the user's own words.
+- Each parameter is a hole with a type: an `Enum` lists the named things (its values are the words, annotated
+  `Asked`), `pathlib.Path` is a path that exists here, `int` is digits, a union is one of several, a dataclass has a
+  field for each, `Many[T]` is several, `Maybe[T]` may be deliberately absent, `Later[T]` waits on work.
+- `Words`, `Asked`, `Written` and `Observed` are the brands of text; `Asked` and `Written` must stay.
+- A world with a fault is not used: the block lists the faults instead. `python3.14 .scriptt/harness.py world` shows the world.
+- A change of `world.py` is used from the next message on; each reading names the world it was read against.
+- Keep it small: the 5 to 10 things the user really asks for here. `find "?"` lists the unresolved requests: each is a
+  candidate for a new function.
 
 ## Commands
 
 ```
 python3.14 .scriptt/harness.py install        2 hooks and this skill, into .claude/ of the folder
-python3.14 .scriptt/harness.py find WORDS     the logged parts that have these words, this function, or a piece of this type or value
-python3.14 .scriptt/harness.py find "?"       the parts that d1 abstained on
+python3.14 .scriptt/harness.py find WORDS     the phrases of the readings that have these words or this function
+python3.14 .scriptt/harness.py find "?"       the unresolved requests
 python3.14 .scriptt/harness.py world          the world as JSON
-python3.14 .scriptt/harness.py serve          the log as a page on http://127.0.0.1:8787, where the user drags to disagree
+python3.14 .scriptt/harness.py serve          the readings on http://127.0.0.1:8787, with the engine's edit, accept and restore
 ```
 
-- The log is `.scriptt/events.jsonl`, 1 line for each event. Each line has `form` (the form of the line), `harness` (its
-  version), `world` (a hash of world.py as it was) and `at` (the time). A recent line means the hooks run.
+- `.scriptt/events.jsonl`: every snapshot of every reading (form 5). `.scriptt/hooks.jsonl`: which session sent which
+  reading, the replies, the evidence, the outcomes and the send-backs. `.scriptt/worlds/`: each world a reading used.
+  A log of the old harness (form 3) is moved to `events-form3.jsonl`.
 - d1 is set in `.scriptt/config.json`. With no d1 the hooks print 1 line on stderr and you go on.
 - To remove scriptt: delete the 2 `harness.py` entries from `.claude/settings.local.json`, then `.claude/skills/scriptt/` and `.scriptt/`.
