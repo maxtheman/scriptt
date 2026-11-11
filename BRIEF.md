@@ -12,6 +12,8 @@ This file is the brief. `V4-BRIEF.md` and `V5-JOBS.md` were removed from this br
 - `notes/MAX-FEEDBACK.md`: every message Max typed into the four board sessions, verbatim. This is the authority over
   anything below that disagrees with it.
 - `notes/FIRST-PROTOTYPE-NOTES.md`: his notes on the first three prototypes.
+- `notes/NEVER-AGAIN.md`: every failure of boards 1–4, with evidence. Each one is a requirement. Your acceptance
+  criteria and your independent check must cover every applicable item.
 - `UI-SPEC.md`.
 - `/Users/max/Documents/scriptt-design-review-2026-11-10/interaction-contract.md`.
 
@@ -60,6 +62,9 @@ even nesting of functional spans."
   - every edit through the engine: preview, accept and cancel, with the before→after strip;
   - keyboard pick-up;
   - pasted text styled apart from Max's words.
+  - Not board 4's permanent world panel. Max rejected a permanent palette or separate data panel (`notes/NEVER-AGAIN.md`
+    C10). World members, types and functions are reached from the thing in hand, through its link page, and brought
+    near while you drag.
 - **Pieces Max approved last week, outside these boards:**
   - **The Cmd-D inspector:** "Ok, it's working!", "This is much better". Look at values in place of prose.
     `~/Documents/local-ai-workers/experiments/python-types/tools/inspector.py`.
