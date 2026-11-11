@@ -1056,7 +1056,7 @@ function pick() {
   const ids = [...LATEST.values()].sort((a, b) => !!b.pieces - !!a.pieces || b.text.length - a.text.length);
   if (sel.options.length !== ids.length) sel.innerHTML = ids.map((l) => `<option value="${l.id}">${l.id.slice(0, 8)} · ${l.text.length}${l.pieces ? "" : " · ⊘"}</option>`).join("");
   sel.value = S.id;
-  $("snap").textContent = (S.stale ? "⟳ " : "") + `snapshot ${S.base.snapshot.slice(0, 8)} #${IDX.get(S.base.snapshot)} · links ${(S.base.pieces || []).length} · ƒ ${allTerms(S.base).length} · ✎ ${S.base.corrections.length}`;
+  $("snap").textContent = (S.stale ? "⟳ " : "") + `snapshot ${S.base.snapshot.slice(0, 8)} #${IDX.get(S.base.snapshot)} · pieces ${(S.base.pieces || []).length} · ƒ ${allTerms(S.base).length} · corrections ${S.base.corrections.length}`;
 }
 async function choose(id) {
   S.id = id; S.base = LATEST.get(id); S.staged = null; S.hold = null; S.open = null; S.scroll = 0; S.focus = null; S.undo = []; S.note = null;

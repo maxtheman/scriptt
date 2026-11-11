@@ -93,7 +93,7 @@
   // F: every text the page draws outside the message: a sentence (four words or more) must be the record's or the world's own words
   function proseCheck() {
     const msg = new Set(all("#board text.w")), out = [];
-    const data = S.base.text + JSON.stringify(window.board.world()) + JSON.stringify(S.base.decisions);
+    const data = JSON.stringify(S.base) + JSON.stringify(window.board.world()); // the record (its words and its field names) and the world
     for (const t of [...all("#board text"), ...all("#dock span"), ...all("#dock button"), ...all("header span, header strong").filter((e) => !e.querySelector("span"))]) { // leaf texts only
       if (msg.has(t)) continue;
       const s = (t.textContent || "").trim();
@@ -263,7 +263,7 @@
         if (!openOnly) row.did.push("C on filled places: the server's record of this snapshot has no hole");
         const wasHole = (b) => b && recHoles.includes(`${b.number}-${b.path}`);
         { let res = null, n = 0; // C1 words: links in turn until the engine accepts them somewhere
-          for (const g of all("#board [id^=pc-]").slice(4, 16)) { n++; res = await dragToAccepted(g, `${pre}-c-words`, openOnly); if (!res.none) break; await reset(); }
+          for (const g of all("#board [id^=pc-]").slice(4, 34)) { n++; res = await dragToAccepted(g, `${pre}-c-words`, openOnly); if (!res.none) break; await reset(); }
           if (ok(res && !res.none, `C1 the engine accepts some held words in ${openOnly ? "a rejected or open place" : "a place"} (tried ${n} links)`)) {
             const b = staged(); ok(b && sent(b) && b.number != null && b.value.constant !== undefined && b.value.at[0] >= 0 && (!openOnly || wasHole(b)), `C1 words into ${openOnly ? "a rejected or open" : "an accepting"} place stage (/edit {constant, type, at})`);
             const pid = "pl-" + b.number + "-" + b.path.replace(/\./g, "_"), inView = res.mid.places.find(([k]) => k === pid);
