@@ -131,14 +131,14 @@ function sizes() {
   C = { ink: v("--ink"), mute: v("--mute"), faint: v("--faint"), rule: v("--rule"), bg: v("--bg"), card: v("--card"), tint: v("--tint"), type: v("--type"), typeBg: v("--type-bg"), fn: v("--fn"), fnBg: v("--fn-bg"), con: v("--con"), conBg: v("--con-bg"), acc: v("--accent"), accBg: v("--accent-bg"), no: v("--no"), noBg: v("--no-bg"), paste: v("--paste") };
 }
 const colorOf = (k) => ({ type: C.type, con: C.con, fn: C.fn, none: C.faint, null: C.no })[cat(k)];
-const visLines = () => Math.floor((BH - TOP - (HELD || S.hold ? 52 : 8)) / LH);
+const visLines = () => Math.floor((BH - TOP - 52) / LH);
 
 // ---------- layout: words, then the function spans after their phrase, wrapped ----------
 const LAY = new WeakMap();
 function layout(rec) {
   let L = LAY.get(rec);
   if (L && L.tw === TW) return L;
-  const text = rec.text, words = [];
+  const text = rec.text, words = [], chunks = [];
   // pasted text: lines that start with ">" and lines inside ``` fences, and phrases that are not the user's own words
   const style = new Uint8Array(text.length + 1);
   let off = 0, fence = false;
@@ -152,19 +152,26 @@ function layout(rec) {
   for (const p of rec.phrases) if (p.brand && p.brand !== "Asked") for (let i = p.start; i < p.end; i++) style[i] = style[i] || 1;
   const pieces = (rec.pieces || []).slice().sort((a, b) => a.start - b.start);
   let pi = 0;
+  // the engine's words (scriptt16.places): runs of letters and digits, a sign between two of them joining the word, and every
+  // other sign on its own. Each is drawn as its own text, inside the run between white space that wraps as one.
   for (const m of text.matchAll(/\S+/g)) {
-    const s = m.index, e = s + m[0].length;
-    while (pi < pieces.length && pieces[pi].end <= s) pi++;
-    const p = pieces[pi] && pieces[pi].start <= s && e <= pieces[pi].end ? pieces[pi] : null;
-    const st = style[s], f = st === 2 ? F.code : st === 1 ? F.it : F.text;
-    words.push({ s, e, str: m[0], piece: p, st, f, w: tw(m[0], f) });
+    const cs = m.index, ce = cs + m[0].length, st = style[cs], f = st === 2 ? F.code : st === 1 ? F.it : F.text;
+    const chunk = [];
+    for (const [s, e] of places(text, cs, ce)) {
+      while (pi < pieces.length && pieces[pi].end <= s) pi++;
+      const p = pieces[pi] && pieces[pi].start <= s && e <= pieces[pi].end ? pieces[pi] : null;
+      chunk.push({ s, e, str: text.slice(s, e), piece: p, st, f, dx: tw(text.slice(cs, s), f), w: tw(text.slice(s, e), f) });
+    }
+    chunk.cw = tw(m[0], f); chunk.cs = cs; chunk.ce = ce;
+    for (const w of chunk) words.push(w);
+    chunks.push(chunk);
   }
   // chips: after the last word of each phrase that asks for something
   const after = new Map();
   for (const ph of rec.phrases) {
     if (!ph.terms.length && !ph.unresolved.length) continue;
     let last = -1;
-    for (let i = 0; i < words.length; i++) if (words[i].s >= ph.start && words[i].e <= ph.end) last = i;
+    for (let i = 0; i < chunks.length; i++) if (chunks[i].cs >= ph.start && chunks[i].cs < ph.end) last = i;
     if (last < 0) continue;
     const list = after.get(last) || [];
     for (const t of ph.terms) { const c = opChip(t, ph); measureOp(c, rec); list.push(c); }
@@ -178,16 +185,31 @@ function layout(rec) {
     x += gap; it.x = x; it.line = lines.length - 1; lines[lines.length - 1].items.push(it); x += it.w;
   };
   const SP = tw(" ", F.text);
-  words.forEach((w, i) => {
-    const nl = (text.slice(prevEnd, w.s).match(/\n/g) || []).length;
-    if (i > 0 && nl) { lines.push({ items: [] }); x = 0; if (nl > 1) { lines.push({ items: [] }); } }
-    w.k = "w"; put(w, x > 0 ? SP : 0);
+  chunks.forEach((ch, i) => {
+    const nl = (text.slice(prevEnd, ch.cs).match(/\n/g) || []).length;
+    if (i > 0 && nl) { lines.push({ items: [] }); x = 0; if (nl > 1) lines.push({ items: [] }); }
+    const box = { k: "chunk", w: ch.cw };
+    put(box, x > 0 ? SP : 0);
+    for (const w of ch) { w.k = "w"; w.x = box.x + w.dx; w.line = box.line; lines[box.line].items.push(w); }
     for (const c of after.get(i) || []) put(c, 10);
-    prevEnd = w.e;
+    prevEnd = ch.ce;
   });
   L = { tw: TW, words, lines, ops: [...after.values()].flat() };
   LAY.set(rec, L);
   return L;
+}
+function places(text, a = 0, b = text.length) { // scriptt16.places over text[a:b]
+  const out = [], an = (c) => /[\p{L}\p{N}]/u.test(c);
+  let ws = null;
+  for (let i = a; i < b; i++) {
+    const c = text[i];
+    const joins = ws != null && "-'’._".includes(c) && i + 1 < text.length && an(text[i + 1]);
+    if (an(c) || joins) { if (ws == null) ws = i; continue; }
+    if (ws != null) { out.push([ws, i]); ws = null; }
+    if (!/\s/.test(c)) out.push([i, i + 1]);
+  }
+  if (ws != null) out.push([ws, b]);
+  return out;
 }
 function slotOf(pl, rec) {
   const v = pl.v;
@@ -236,7 +258,8 @@ class Drafted extends DG.Modifier {
   constructor(ctx, innerSpec) { super(ctx, innerSpec); this.name = "drafted"; this.cache = new Map(); }
   frame(frame) {
     const r = this.inner.run(frame), st = r.dropState;
-    if (!st || !st.change) return r;
+    window.__frames = (window.__frames || 0) + 1;
+    if (!st || !st.change) { LIVE = st; paintDock(st); return r; }
     const e = ask(st.change, true);
     let c = this.cache.get(e.k);
     if (!c || c.dv !== DV) { const next = withDraft(st); c = { dv: DV, next, preview: DG.renderStateReadOnly(this.ctx, next) }; this.cache.set(e.k, c); }
@@ -299,7 +322,7 @@ function options(th) {
       break;
     }
     case "member": places = placeOptions(() => ({ constant: th.words, type: th.type, at: [-1, -1] })); break;
-    case "op": places = placeOptions(() => ({ ref: th.t.id }), (pl) => pl.t.id === th.t.id); break;
+    case "op": places = placeOptions(() => ({ ref: th.term.id }), (pl) => pl.t.id === th.term.id); break;
     case "val": places = placeOptions(() => th.pl.v, (pl) => pl.t.id === th.pl.t.id && pl.path === th.pl.path); break;
   }
   for (const o of places) ask(o.body, false); // the engine's verdict for each place, in the background
@@ -329,11 +352,11 @@ function railItems() {
 }
 function spec(th, d) {
   const start = cur();
-  HELD = th; DRAGGING = true; RAIL_IDS = new Set();
+  HELD = th; RAIL_IDS = new Set();
   const { out, places } = options(th);
   th.places = places;
   RAIL_IDS = new Set(railItems().map((r) => r.id));
-  const opts = [...out, ...places.filter((o) => visible(o.target)), ...railItems().map((r) => ({ ...r.o, target: r.id }))];
+  const opts = [...out.filter((o) => visible(o.target) || RAIL_IDS.has(o.target)), ...places.filter((o) => visible(o.target)), ...railItems().map((r) => ({ ...r.o, target: r.id }))];
   const fb = far(th), farState = fb ? stateFor(fb, { pull: true }) : base();
   const targets = opts.map((o) => d.dropTarget(o.target, o.body ? stateFor(o.body, { target: o.target }) : base(), { boundsState: start }));
   const sp = targets.length ? d.closest(targets).whenFar(farState) : d.fixed(farState);
@@ -353,12 +376,43 @@ function handleStates(p, side) {
   return out;
 }
 function handleSpec(p, side, d) {
-  HELD = { t: "handle", p }; DRAGGING = true;
+  HELD = { t: "handle", p };
   const st = handleStates(p, side);
   return d.closest(st).with(drafted());
 }
 
 // ---------- drawing ----------
+// Dragology blends a state into the next one (springs, d.between). Children are paired by dragologyKey, so each child gets a key
+// that changes whenever something that cannot be blended changes (its type, font, dash, text): a retagged word's label fades
+// out and the new one fades in, instead of being blended.
+const NOKEY = new Set(["transform", "fill", "stroke", "opacity", "width", "height", "rx", "r", "strokeWidth", "strokeOpacity", "fillOpacity", "d", "id", "className", "role", "tabIndex"]);
+function sig(c) {
+  let s = typeof c.type === "string" ? c.type : "c";
+  for (const k in c.props) {
+    const v = c.props[k];
+    if (k === "children") { if (typeof v === "string" || typeof v === "number") s += "|" + v; else if (Array.isArray(v) && v.every((x) => typeof x === "string")) s += "|" + v.join(""); continue; }
+    if (NOKEY.has(k) || k.startsWith("on") || k.startsWith("dragology") || k.startsWith("data-") || v == null) continue;
+    s += "|" + k + "=" + (typeof v === "object" ? JSON.stringify(v) : v);
+  }
+  return s;
+}
+function keyAll(el) {
+  if (!el || typeof el !== "object" || !el.props) return el;
+  const ch = el.props.children;
+  if (ch == null || typeof ch !== "object") return el;
+  const arr = (Array.isArray(ch) ? ch.flat(Infinity) : [ch]).filter((c) => c != null && c !== false);
+  if (arr.every((c) => typeof c !== "object")) return el;
+  const seen = new Map();
+  const out = arr.map((c) => {
+    if (!c || typeof c !== "object" || !c.props) return c;
+    c = keyAll(c);
+    if (c.props.id != null || c.props.dragologyKey != null) return c;
+    const k = sig(c), n = seen.get(k) || 0;
+    seen.set(k, n + 1);
+    return React.cloneElement(c, { dragologyKey: k + "#" + n });
+  });
+  return React.cloneElement(el, { children: out });
+}
 const txt = (x, y, s, f, fill, extra = {}) => h("text", { transform: translate(x, y), style: { font: f }, fill, ...extra }, s);
 let FOC = [];
 function draggable({ state: st, d, draggedId }) {
@@ -398,7 +452,7 @@ function draggable({ state: st, d, draggedId }) {
     else if (c !== "none") kids.push(h("circle", { transform: translate(s0.x0 + 2, s0.y + 8), r: 2, fill: col }));
     if (isOpen) for (const s of a.parts) kids.push(h("rect", { transform: translate(s.x0 - 3, s.y + 1), width: s.x1 - s.x0 + 6, height: 40, rx: 4, fill: "none", stroke: col, strokeWidth: 1.5 }));
     const th = { t: "piece", p };
-    links.push(h("g", { id, "data-kind": label, "data-start": p.start, "data-end": p.end, role: "link", "aria-label": label, className: "pc", dragologyZIndex: draggedId === id ? "/1" : false,
+    links.push(h("g", { id, "data-kind": label, "data-start": p.start, "data-end": p.end, role: "link", "data-label": label, className: "pc", dragologyZIndex: draggedId === id ? "/1" : false,
       dragologyOnDrag: () => spec(th, d), onClick: () => openThing(th) }, ...kids));
     drawn.set(id, { piece: p, x: s0.x0, y: s0.y, w: s0.x1 - s0.x0, h: 40 });
     foc.push({ id, th, zone: "text", x: s0.x0, li: s0.li });
@@ -417,7 +471,7 @@ function draggable({ state: st, d, draggedId }) {
       for (let li = first; li <= last && !it; li++) for (const x of L.lines[li].items) if (x.k === "w" && (side === "s" ? x.s === at : x.e === at)) { it = x; li0 = li; break; }
       if (!it) continue;
       const hx = X0 + it.x + (side === "e" ? it.w + 2 : -4), id = "hd-" + side;
-      over.push(h("g", { id, transform: translate(hx, Y(li0) + 6), role: "slider", "aria-label": side === "s" ? "start" : "end", dragologyOnDrag: () => handleSpec(hp, side, d) },
+      over.push(h("g", { id, transform: translate(hx, Y(li0) + 6), role: "slider", "data-label": side === "s" ? "start" : "end", dragologyOnDrag: () => handleSpec(hp, side, d) },
         h("rect", { transform: translate(-5, 0), width: 12, height: 36, fill: "transparent" }), h("rect", { width: 2.5, height: 34, rx: 1, fill: C.acc }), h("circle", { transform: translate(1.25, side === "s" ? 0 : 34), r: 3.5, fill: C.acc })));
       drawn.set(id, { x: hx, y: Y(li0), w: 4, h: 36 });
     }
@@ -432,7 +486,7 @@ function draggable({ state: st, d, draggedId }) {
       } else if (it.k === "un") {
         const id = "un-" + it.u.id, x = X0 + it.x;
         const pr = st.refused && st.refused.target === id;
-        ops.push(h("g", { id, transform: translate(x, y + 14), className: "un", role: "button", "aria-label": `ƒ ${it.u.reason}`, onClick: () => openThing({ t: "un", u: it.u, ph: it.ph }) },
+        ops.push(h("g", { id, transform: translate(x, y + 14), className: "un", role: "button", "data-label": `ƒ ${it.u.reason}`, onClick: () => openThing({ t: "un", u: it.u, ph: it.ph }) },
           h("rect", { width: it.w, height: 24, rx: 4, fill: pr ? C.noBg : C.card, stroke: pr ? C.no : C.fn, strokeDasharray: "4 3" }), txt(6, 16, it.str, F.mono, C.fn)));
         drawn.set(id, { x, y: y + 14, w: it.w, h: 24 });
         foc.push({ id, th: { t: "un", u: it.u, ph: it.ph }, zone: "text", x, li });
@@ -473,17 +527,18 @@ function draggable({ state: st, d, draggedId }) {
   const fb = S.focus && (drawn.get(S.focus) || DRAWN.get(S.focus));
   if (fb && !draggedId) over.push(h("rect", { transform: translate(fb.x - 4, fb.y - 2), width: fb.w + 8, height: fb.h + 4, rx: 5, fill: "none", stroke: C.acc, strokeWidth: 2, strokeDasharray: "2 2" }));
   // the scroll bar, dragged through the library (d.vary on the scroll position)
-  const total = Math.max(1, L.lines.length - n), trackH = BH - TOP * 2 - (ri.length ? 52 : 0);
+  const total = Math.max(1, L.lines.length - n), trackH = BH - TOP * 2 - 52;
   const thumbH = Math.max(30, trackH * Math.min(1, n / Math.max(1, L.lines.length)));
   const sb = L.lines.length > n ? h("g", { id: "sb", transform: translate(X0 + TW + 30, TOP + (trackH - thumbH) * Math.min(1, Math.max(0, scroll / total))),
     dragologyOnDrag: () => d.vary({ ...st, scroll }, DG.param("scroll"), { constraint: (s) => DG.inOrder([0, s.scroll, total]) }) },
     h("rect", { transform: translate(-5, 0), width: 14, height: thumbH, fill: "transparent" }), h("rect", { width: 4, height: thumbH, rx: 2, fill: C.rule })) : null;
   if (display) { DRAWN = drawn; FOC = foc; }
-  return h("g", { id: "root" },
+  return keyAll(h("g", { id: "root" },
     h("rect", { id: "paper", width: BW, height: BH, fill: C.bg }),
     h("g", { id: "bg" }, ...bg), h("g", { id: "words" }, ...words), h("g", { id: "ops" }, ...ops), h("g", { id: "links" }, ...links),
-    h("g", { id: "page" }, ...page), h("g", { id: "over" }, ...over), sb, rail.length ? h("g", { id: "railg" }, ...rail) : null);
+    h("g", { id: "page-" + pageKey() }, ...page), h("g", { id: "over" }, ...over), sb, rail.length ? h("g", { id: "railg" }, ...rail) : null));
 }
+function pageKey() { const o = S.open; if (!o) return "world"; return o.t + "-" + (o.p ? o.p.start + "-" + o.p.end : o.name || (o.term ? o.term.id : "") || (o.pl ? pkey(o.pl.t, o.pl.path) : "") || (o.u ? o.u.id : "")).toString().replace(/\W/g, "_"); }
 function drawOp(c, x, y, rec, d, draggedId, drawn, foc, li) {
   const t = c.t, id = "op-" + t.id, kids = [], j = t.judgments || {};
   kids.push(h("rect", { width: c.w, height: 26, rx: 4, fill: C.fnBg, opacity: 0.6 }));
@@ -491,7 +546,7 @@ function drawOp(c, x, y, rec, d, draggedId, drawn, foc, li) {
     if (p.k === "slot") {
       const pid = "pl-" + pkey(t, p.pl.path), sl = p.sl, hole = sl.tone === "hole" || sl.tone === "no";
       const th = { t: "val", pl: p.pl };
-      kids.push(h("g", { id: pid, transform: translate(p.x, 3), role: "button", "aria-label": `${t.function}.${p.pl.path}`, "data-place": `${t.id}.${p.pl.path}`,
+      kids.push(h("g", { id: pid, transform: translate(p.x, 3), role: "button", "data-label": `${t.function}.${p.pl.path}`, "data-place": `${t.id}.${p.pl.path}`, "data-op": t.id, "data-hole": hole ? "1" : "0",
         ...(sl.tone !== "hole" && sl.tone !== "no" ? { dragologyOnDrag: () => spec(th, d), dragologyZIndex: draggedId === pid ? "/1" : false } : {}),
         onClick: (ev) => { ev.stopPropagation(); openThing({ t: "place", pl: p.pl }); } },
         h("rect", { width: p.w, height: 20, rx: 3, fill: hole ? C.card : C.bg, stroke: hole ? C.no : C.type, strokeWidth: 1, strokeDasharray: hole ? "3 2" : "" }),
@@ -503,8 +558,8 @@ function drawOp(c, x, y, rec, d, draggedId, drawn, foc, li) {
   if (j.pending || j.deferred) kids.push(txt(c.w + 3, 10, j.pending ? "⧗" : "⏲", F.small, C.mute));
   if (j.complete === false) kids.push(h("circle", { transform: translate(c.w - 2, 2), r: 3, fill: C.no }));
   drawn.set(id, { x, y: y + 14, w: c.w, h: 26, t });
-  foc.push({ id, th: { t: "op", t }, zone: "text", x, li });
-  return h("g", { id, transform: translate(x, y + 14), className: "op", role: "button", "aria-label": t.function, dragologyOnDrag: () => spec({ t: "op", t }, d), dragologyZIndex: draggedId === id ? "/1" : false, onClick: () => openThing({ t: "op", t }) }, ...kids);
+  foc.push({ id, th: { t: "op", term: t }, zone: "text", x, li });
+  return h("g", { id, transform: translate(x, y + 14), className: "op", role: "button", "data-label": t.function, "data-op": t.id, dragologyOnDrag: () => spec({ t: "op", term: t }, d), dragologyZIndex: draggedId === id ? "/1" : false, onClick: () => openThing({ t: "op", term: t }) }, ...kids);
 }
 
 // ---------- the page of a thing (the right column): its world page and its d1 data ----------
@@ -514,7 +569,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
   const head = (s, col) => { els.push(txt(x0, y + 12, s, F.head, col || C.mute)); y += 22; };
   const chipEl = (id, x, label, col, bgc, th, opts = {}) => {
     const cw = tw(label, opts.f || F.mono) + 14;
-    const g = h("g", { id, transform: translate(x, y), role: "button", "aria-label": label, className: "chip", dragologyZIndex: draggedId === id ? "/1" : false,
+    const g = h("g", { id, transform: translate(x, y), role: "button", "data-label": label, className: "chip", dragologyZIndex: draggedId === id ? "/1" : false,
       ...(opts.drag !== false && th && th.t !== "none" ? { dragologyOnDrag: () => spec(th, d) } : {}), onClick: () => opts.open ? openThing(opts.open) : th && openThing(th) },
       h("rect", { width: cw, height: 22, rx: 4, fill: bgc || C.card, stroke: col, strokeWidth: 1, strokeDasharray: opts.dash ? "3 2" : "" }), txt(7, 15, label, opts.f || F.mono, col));
     drawn.set(id, { x, y, w: cw, h: 22 });
@@ -528,8 +583,8 @@ function drawPage(st, d, draggedId, drawn, foc) {
   const o = S.open;
   if (!o) { drawWorld(els, chipEl, head, () => y, (v) => (y = v), drawn, foc, d, draggedId); return els; }
   // the link target
-  const target = o.t === "piece" ? o.p.kind : o.t === "type" || o.t === "fn" ? o.name : o.t === "op" ? o.t.function : o.t === "place" ? o.pl.declared : o.t === "un" ? null : null;
-  els.push(h("g", { id: "pg-close", transform: translate(x0 + w - 18, y), role: "button", "aria-label": "close", onClick: () => openThing(null) }, h("rect", { width: 18, height: 18, fill: "transparent" }), txt(4, 13, "×", F.head, C.mute)));
+  const target = o.t === "piece" ? o.p.kind : o.t === "type" || o.t === "fn" ? o.name : o.t === "op" ? o.term.function : o.t === "place" ? o.pl.declared : o.t === "un" ? null : null;
+  els.push(h("g", { id: "pg-close", transform: translate(x0 + w - 18, y), role: "button", "data-label": "close", onClick: () => openThing(null) }, h("rect", { width: 18, height: 18, fill: "transparent" }), txt(4, 13, "×", F.head, C.mute)));
   if (o.t === "un") {
     head(`ƒ ▢ · ${o.u.reason}`, C.fn);
     const ds = S.base.decisions.filter((x) => String(x.operation) === String(o.u.id));
@@ -554,7 +609,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
         const show = S.more[k.s] ? pr : pr.slice(0, 4);
         for (const [opt, pv] of show) {
           const id = `pg-o-${k.s}-${opt.replace(/\W/g, "_")}`, col = colorOf(opt), bw = Math.max(2, (w - 150) * pv), chosen = k.a && k.a.value === opt;
-          els.push(h("g", { id, transform: translate(x0, y), role: "button", "aria-label": `${opt} ${pv.toFixed(2)}`, dragologyOnDrag: () => spec({ t: "opt", kind: opt }, d), dragologyZIndex: draggedId === id ? "/1" : false,
+          els.push(h("g", { id, transform: translate(x0, y), role: "button", "data-label": `${opt} ${pv.toFixed(2)}`, dragologyOnDrag: () => spec({ t: "opt", kind: opt }, d), dragologyZIndex: draggedId === id ? "/1" : false,
             onClick: () => stageBody(retag(o.p.start, o.p.end, opt)) },
             h("rect", { width: w, height: 18, fill: "transparent" }), txt(0, 13, (chosen ? "● " : "  ") + opt, F.mono, col), h("rect", { transform: translate(120, 5), width: bw, height: 8, rx: 2, fill: col, opacity: 0.7 }), txt(124 + bw, 13, pv.toFixed(2), F.small, C.mute)));
           drawn.set(id, { x: x0, y, w, h: 18 }); foc.push({ id, th: { t: "opt", kind: opt }, zone: "page", x: x0, li: y, act: () => stageBody(retag(o.p.start, o.p.end, opt)) });
@@ -571,7 +626,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
     }
   }
   if (o.t === "op" || o.t === "place") {
-    const t = o.t === "op" ? o.t : o.pl.t, j = t.judgments || {};
+    const t = o.t === "op" ? o.term : o.pl.t, j = t.judgments || {};
     head(`#${t.id} · ` + ["valid", "complete", "pending", "deferred", "ready"].map((k) => `${k} ${j[k] ? "✓" : "✕"}`).join("  "), C.mute);
     for (const pl of o.t === "op" ? placesOf(t) : [o.pl]) {
       const sl = slotOf(pl, S.base);
@@ -581,7 +636,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
     }
   }
   // world editing is not built in the engine: its place, marked
-  els.push(h("g", { id: "pg-edit", transform: translate(x0, y + 4), "aria-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.faint)));
+  els.push(h("g", { id: "pg-edit", transform: translate(x0, y + 4), "data-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.faint)));
   return els;
   function drawTypePage(name, head, row, para, typeChip) {
     const ty = world().types[name], pc = parseT(name);
@@ -618,7 +673,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
     para(f.asks, C.mute);
     row([...f.parameters.map(([, t]) => typeChip(tname(t), "pg-p")), typeChip(tname(f.result), "pg-r")]);
     const uses = allTerms(S.base).filter((x) => x.t.function === name);
-    if (uses.length) row(uses.map(({ t }) => [`pg-u-${t.id}`, `#${t.id}`, C.fn, C.card, { t: "op", t }, { open: { t: "op", t } }]));
+    if (uses.length) row(uses.map(({ t }) => [`pg-u-${t.id}`, `#${t.id}`, C.fn, C.card, { t: "op", term: t }, { open: { t: "op", term: t } }]));
   }
 }
 function drawDecisions(ds, els, gy, sy, para) {
@@ -669,7 +724,7 @@ function drawWorld(els, chipEl, head, gy, sy, drawn, foc, d, draggedId) {
   let cx = x0;
   for (const [c, cd] of Object.entries(wd.constructors)) { cx += chipEl("wd-c-" + c, cx, `${c} : ${cd.kind}`, C.con, C.conBg, { t: "con", con: c }, { dash: true, open: { t: "type", name: `${c}[*]` } }) + 6; }
   y += 30; sy(y);
-  els.push(h("g", { id: "wd-edit", transform: translate(x0, y), "aria-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.faint)));
+  els.push(h("g", { id: "wd-edit", transform: translate(x0, y), "data-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.faint)));
 }
 function wrap(s, f, w) {
   const out = []; let line = "";
@@ -869,9 +924,13 @@ function paint() {
   sizes();
   const st = display();
   root ??= createRoot($("board"));
-  root.render(h(DraggableRenderer, { draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragState: () => {} }));
+  root.render(h(DraggableRenderer, { draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragState: () => { DRAGGING = true; }, onDragStatus: status }));
   if (S.pendingFocus) { requestAnimationFrame(() => { const zone = FOC.filter((f) => f.zone === "text"); if (zone.length && S.pendingFocus) { S.focus = (S.pendingFocus > 0 ? zone[zone.length - 1] : zone[0]).id; S.pendingFocus = 0; paint(); } }); }
   paintDock(DRAGGING ? LIVE : st);
+}
+// a press that never became a drag (a click) leaves nothing held
+function status(st) {
+  if (st.type === "idle" && !st.pendingDrag && HELD && !DRAGGING) { HELD = null; RAIL_IDS = new Set(); LIVE = null; setTimeout(paint, 0); }
 }
 function pick() {
   const sel = $("pick");
@@ -886,7 +945,10 @@ async function choose(id) {
   const u = new URL(location); u.searchParams.set("r", id.slice(0, 8)); history.replaceState(null, "", u);
   pick(); paint();
 }
-window.board = { choose, reload, accept, cancel, undo1, paint, options, layout, DRAFTS: () => DRAFTS, peek, verdict };
+window.board = { choose, reload, accept, cancel, undo1, paint, options, layout, peek, verdict, terms: allTerms, world: () => world(),
+  ids: () => [...LATEST.keys()], idleQ: () => !BUSY && !Q.length, busy: () => BUSY || Q.length > 0, held: () => HELD || (S.hold && S.hold.th),
+  openPiece: (p) => { if (p) openThing({ t: "piece", p: (S.base.pieces || []).find((q) => q.start === p.start) || p }); },
+  openType: (name) => openThing({ t: "type", name }), dbg: () => ({ DRAGGING, LIVE, HELD, DV, Q: Q.length, BUSY }), handleStates };
 (async function main() {
   await loadAll();
   const want = new URL(location).searchParams.get("r");

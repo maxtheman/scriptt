@@ -1,152 +1,260 @@
-// Board 4 audit, run in the page: eval the text of this file, then `await audit4(["ffe36f", ...])`. It drives the page's own handlers with
-// pointer and keyboard events dispatched at real coordinates (elementsFromPoint decides the target, as for a person) and reads the page's
-// network log. It never calls /accept; every drop is a /edit preview and is cancelled. Returns a report object.
-window.audit4 = async function (prefixes, opts = {}) {
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const answered = async () => { for (let i = 0; i < 60 && !(S.pending || S.refused); i++) await sleep(50); };
-  const settle = async () => { for (let i = 0; i < 40; i++) { await sleep(60); if (!S.held && !(S.hover && !S.hover.res)) break; } await sleep(120); };
-  const center = e => { const q = e.getBoundingClientRect(); return [q.left + q.width / 2, q.top + q.height / 2]; };
-  const ev = (type, x, y, target, extra = {}) => (target || document).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1, pointerId: 1, isPrimary: true, ...extra }));
-  const key = (target, k, extra = {}) => { target.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true, ...extra })); };
-  const drag = async (src, dst, bail) => {
-    cache.clear();
-    dst.scrollIntoView({ block: "center" }); await sleep(30);
-    const [sx, sy] = center(src), [dx, dy] = center(dst);
-    ev("pointerdown", sx, sy, src); ev("pointermove", sx + 8, sy + 8, src); ev("pointermove", (sx + dx) / 2, (sy + dy) / 2, document.body); ev("pointermove", dx, dy, dst);
-    await sleep(250);
-    const mid = document.querySelector("#dock").innerText;
-    if (bail) { key(document.body, "Escape"); await settle(); return { mid, held: true }; }
-    window.__lastDrag = { dst: dst.dataset.place || dst.className, hover: S.hover && S.hover.key, d: [dx, dy], now: center(dst), conn: dst.isConnected, held: S.held && S.held.label };
-    ev("pointerup", dx, dy, dst); await settle();
-    return { mid };
+// Board 5 audit. Load in the page (`await import("/audit.js")` or eval its text), then `await audit5(["e6741406", ...], {accept: true})`.
+// Every gesture is a real PointerEvent / KeyboardEvent dispatched at the on-screen coordinates of an element, on the element that
+// elementFromPoint finds there (as for a person). Drags go through Dragology's own handlers: the audit never calls the page's
+// state functions to move things; it reads S, the network log (__net) and the DOM to check what happened.
+(function () {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const center = (e) => { const q = e.getBoundingClientRect(); return [q.left + q.width / 2, q.top + q.height / 2]; };
+  const at = (x, y) => document.elementFromPoint(x, y) || document.body;
+  // with the driver (web/audit-run.mjs) each gesture is a trusted input event made by Chrome; without it, a dispatched event
+  window.__cdpWait = window.__cdpWait || {};
+  window.__cdpDone = (id) => { const f = window.__cdpWait[id]; delete window.__cdpWait[id]; if (f) f(); };
+  const bridge = (g) => new Promise((res) => { const id = String(Math.random()); window.__cdpWait[id] = res; window.cdpInput(JSON.stringify({ id, ...g })); });
+  const trusted = () => typeof window.cdpInput === "function";
+  const pe = async (type, x, y) => {
+    if (trusted()) { await bridge({ type, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }); return at(x, y); }
+    const el = at(x, y); el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1, pointerId: 1, isPrimary: true, pointerType: "mouse" })); return el;
   };
-  const wordsOf = (a, b) => { const ws = [...document.querySelectorAll("#text .w")]; return ws.filter(w => +w.dataset.s >= a && +w.dataset.e <= b); };
-  const textNow = () => document.querySelector("#text").textContent;
-  const report = { readings: [], failures: [], posts: {} };
-  const net0 = window.__net.length;
-  for (const pre of prefixes) {
-    const id = [...new Set(S.lines.map(l => l.id))].find(i => i.startsWith(pre));
-    cache.clear(); S.id = id; S.sel = S.pending = S.held = null; S.span = null; S.cursor = 0; await load(); render(); await sleep(50);
-    const r = S.base, row = { id: pre, chars: r.text.length, phrases: r.phrases.length, ops: terms(r).length, bad: [], did: [] };
-    const fail = m => { row.bad.push(m); };
-    const ok = (c, m) => { if (!c) fail(m); };
-    ok(document.querySelectorAll("#text .w").length > r.text.split(/\s+/).length * 0.8, "W1 words rendered");
-    ok(document.querySelectorAll(".ph.req").length === r.phrases.filter(p => p.terms.length).length, "W2 request phrases marked");
-    ok(document.querySelectorAll(".ph.none").length === r.phrases.filter(p => !p.terms.length && !p.unresolved.length).length, "W3 request-free phrases marked");
-    ok(document.querySelectorAll(".pl.hole").length === [...terms(r)].flatMap(t => places(t)).filter(p => p.value.hole).length, "W4 open places shown");
-    ok([...document.querySelectorAll(".pl.hole")].every(e => /open ·/.test(e.textContent)), "W5 open place says why in words");
-    const copy = document.querySelector("#text").cloneNode(true); copy.querySelectorAll(".brick,.unres-chip,.hdl").forEach(e => e.remove());
-    ok(copy.textContent === r.text, "R1 text equals the source (one representation)");
-    const before = textNow();
-    await sleep(80);
-    ok(document.querySelectorAll("#gutter button").length === document.querySelectorAll(".brick").length + document.querySelectorAll(".pl.hole").length + document.querySelectorAll(".unres-chip").length, "S1 gutter has one tick per operation, open place and unresolved request");
-    { const nh = document.querySelectorAll(".pl.hole").length; if (nh) { key(document.body, "]"); await sleep(40); ok(document.activeElement.classList.contains("hole"), "S2 ] jumps to an open place"); if (nh > 1) { const a = document.activeElement; key(document.body, "]"); await sleep(40); ok(document.activeElement !== a && document.activeElement.classList.contains("hole"), "S3 ] again moves on"); } } const nu = document.querySelectorAll(".unres-chip").length; if (nu) { key(document.body, "u"); await sleep(40); ok(document.activeElement.classList.contains("unres-chip"), "S4 u jumps to an unresolved request"); } }
-    { const ws = [...document.querySelectorAll("#text .w")]; const w = ws[Math.min(10, ws.length - 5)]; w.scrollIntoView({ block: "center" }); const [x, y] = center(w); ev("pointerdown", x, y, w); ev("pointerup", x, y, w); await sleep(60); ok(S.span && S.span.a === S.span.b, "T1 click selects one word"); const hd = document.querySelector('.hdl[data-hdl="end"]'); ok(hd, "T2 selection has end handles"); if (hd && S.span) { const target = W[S.span.b + 3].el; const [hx, hy] = center(hd), [tx, ty] = center(target); ev("pointerdown", hx, hy, hd); ev("pointermove", hx + 6, hy, hd); ev("pointermove", tx, ty, target); ev("pointerup", tx, ty, target); await sleep(60); ok(S.span.b - S.span.a === 3, "T3 dragging the end handle widens the span by three words (got " + (S.span.b - S.span.a) + ")"); } setSpan(null); }
-    { const f = document.querySelector(".pl.filled"); if (f) { f.scrollIntoView({ block: "center" }); f.click(); await sleep(80); const b = [...document.querySelectorAll("#insp button[data-adj]")].find(x => !x.disabled); ok(b, "U1 a filled place offers word-by-word adjustment"); if (b) { const n = window.__net.length; b.click(); await answered(); ok(window.__net.slice(n).some(x => x.path === "/edit" && x.body.value.constant !== undefined), "U2 adjusting asks the engine"); ok(S.pending || S.refused, "U3 adjusting is staged or refused"); if (S.pending) cancel(); S.refused = null; S.sel = null; render(); } } }
-    // A: click a rejected/open hole: the inspector says what d1 was offered
-    const hole = document.querySelector(".pl.hole");
-    if (hole) {
-      hole.scrollIntoView({ block: "center" }); hole.click(); await sleep(80);
-      const insp = document.querySelector("#insp");
-      ok(!insp.hidden && /open ·/i.test(insp.innerText), "A1 click on an open place opens it with its reason");
-      ok(/\bd1\b/i.test(insp.innerText) && insp.querySelectorAll(".opt").length > 0, "A2 shows d1's question and options");
-      ok(/put here/i.test(insp.innerText) && insp.querySelectorAll("button.chip").length > 0, "A3 offers values to put there");
-      row.did.push("clicked open place " + hole.dataset.place);
-      // A4: choose a candidate in the inspector: engine preview, staged or refused, never silent
-      const n0 = window.__net.length; const c = insp.querySelector("button.chip"); if (c) { c.click(); await answered(); ok(S.pending || S.refused, "A4 candidate click answers (staged or refused)"); key(document.body, "Escape"); key(document.body, "Escape"); S.refused = null; if (S.pending) cancel(); S.sel = null; render(); }
-    }
-    // B: words into an open hole by pointer: select span near the hole's phrase, drag it onto the hole
-    const holeKeys = [...document.querySelectorAll(".pl.hole")].map(e => e.dataset.place);
-    let staged = 0, refused = 0;
-    for (const hk of holeKeys.slice(0, 3)) {
-      const h = document.querySelector(`[data-place="${CSS.escape(hk)}"]`);
-      const ph = h.closest(".ph"), ws = [...ph.querySelectorAll(".w")];
-      if (ws.length < 2) continue;
-      h.scrollIntoView({ block: "center" });
-      const i0 = W.findIndex(w => w.el === ws[0]), i1 = W.findIndex(w => w.el === ws[Math.min(ws.length - 1, 2)]);
-      const [x0, y0] = center(ws[0]), [x1, y1] = center(ws[Math.min(ws.length - 1, 2)]);
-      ev("pointerdown", x0, y0, ws[0]); ev("pointermove", x0 + 10, y0, ws[0]); ev("pointermove", x1, y1, ws[Math.min(ws.length - 1, 2)]); ev("pointerup", x1, y1, ws[Math.min(ws.length - 1, 2)]);
-      await sleep(60);
-      ok(S.span && S.span.b - S.span.a >= 1, "B1 pointer selects a span of words");
-      const grab = W[S.span.a].el, mid = (S.span.a + S.span.b) >> 1;
-      const res = await drag(W[mid].el, h);
-      const was = window.__net.filter(n => n.path === "/edit").at(-1);
-      ok(was && was.body.path === h.dataset.path && was.body.number === +h.dataset.op && was.body.value.constant !== undefined && was.body.value.at[0] >= 0, "B2 the drop sent /edit with the span and its place");
-      const verdictNow = S.pending ? "staged" : S.refused ? "refused" : "?";
-      if (S.pending) { staged++; ok(document.querySelector("#accept"), "B3 staged shows Accept"); cancel(); } else if (S.refused) { refused++; ok(/✕/.test(document.querySelector("#dock").innerText), "B4 refusal says why"); S.refused = null; paintDock(); }
-      else fail("B5 drop neither staged nor refused: held=" + !!S.held + " hover=" + JSON.stringify(S.hover && { k: S.hover.key, r: !!S.hover.res }) + " dock=" + document.querySelector("#dock").innerText.slice(0, 120));
-      ok(textNow() === before, "B6 text unchanged after cancel");
-      row.did.push(`span→${hk}: ${verdictNow}`);
-    }
-    // C: a world member into a place
-    document.querySelector("#world details[data-k=members]").open = true;
-    let mem = document.querySelector('[data-pick=member][data-member="PAGE"]');
-    const filledSurface = [...document.querySelectorAll(".pl")].find(p => termById(S.base, p.dataset.op) && declared(termById(S.base, p.dataset.op), p.dataset.path) === "Surface");
-    if (mem && filledSurface) {
-      const res = await drag(mem, filledSurface);
-      const was = window.__net.filter(n => n.path === "/edit").at(-1);
-      ok(was && was.body.value.at[0] === -1 && was.body.value.constant === "the page", "C1 member dropped with no span");
-      ok(S.pending ? /the page/.test(document.querySelector("#dock").innerText) : (!!S.refused || /^=$/m.test(document.querySelector("#dock").innerText)), "C2 member drop answered");
-      row.did.push(`member the page→${filledSurface.dataset.place}: ${S.pending ? "staged" : "refused"}`);
-      if (S.pending) cancel(); S.refused = null; paintDock();
-      mem = document.querySelector('[data-pick=member][data-member="PAGE"]');
-    }
-    // D: member into a place of another type: refused with the engine's reason
-    document.querySelector("#world details[data-k=members]").open = true; mem = document.querySelector('[data-pick=member][data-member="PAGE"]');
-    const anyHole = document.querySelector(".pl.hole") || document.querySelector(".pl");
-    if (mem && anyHole) { await drag(mem, anyHole); ok(S.pending || S.refused, "D1 any drop is answered"); if (S.refused) ok(/·/.test(document.querySelector("#dock").innerText), "D2 refusal shows the engine's diagnostics"); if (S.pending) cancel(); S.refused = null; paintDock(); }
-    // E: a result (synthesized) into a place
-    let ops = [...document.querySelectorAll(".op[data-op]")];
-    if (ops.length >= 2) {
-      const src = ops[0], target = [...document.querySelectorAll(".pl")].find(p => p.dataset.op !== src.dataset.op);
-      if (target) { await drag(src, target); const was = window.__net.filter(n => n.path === "/edit").at(-1); ok(was && was.body.value.ref === src.dataset.op, "E1 result dropped as {ref}"); ok(S.pending || S.refused || /^=$/m.test(document.querySelector("#dock").innerText), "E2 answered"); row.did.push(`result ${src.dataset.op}→${target.dataset.place}: ${S.pending ? "staged" : "refused"}`); if (S.pending) cancel(); S.refused = null; paintDock(); }
-    }
-    // F: retag: a filled place's value onto another place
-    ops = [...document.querySelectorAll(".op[data-op]")];
-    const filled = [...document.querySelectorAll(".pl.filled")];
-    if (filled.length >= 1) {
-      const src = filled[0], target = [...document.querySelectorAll(".pl")].find(p => p !== src);
-      if (target) { await drag(src, target); const was = window.__net.filter(n => n.path === "/edit").at(-1); ok(was && was.body.value.constant !== undefined, "F1 retag sends the place's value"); ok(S.pending || S.refused || /^=$/m.test(document.querySelector("#dock").innerText), "F2 answered"); row.did.push(`retag ${src.dataset.place}→${target.dataset.place}: ${S.pending ? "staged" : "refused"}`); if (S.pending) cancel(); S.refused = null; paintDock(); }
-    }
-    // G: a function onto a request-free phrase
-    ops = [...document.querySelectorAll(".op[data-op]")];
-    document.querySelector("#world details[data-k=fns]").open = true;
-    const fn = document.querySelector("[data-pick=fn][data-fn=explain]"), none = [...document.querySelectorAll(".ph.none")].find(p => p.textContent.trim().length > 20);
-    if (fn && none) {
-      const w = none.querySelector(".w"); const res = await drag(fn, w);
-      const was = window.__net.filter(n => n.path === "/edit").at(-1);
-      ok(was && was.body.number === null && /^explain\./.test(was.body.path), "G1 function dropped on a phrase sends number null and function.parameter");
-      ok(S.pending ? /\+ explain/.test(document.querySelector("#dock").innerText) : !!S.refused, "G2 answered");
-      row.did.push(`explain→phrase ${none.dataset.ph}: ${S.pending ? "staged" : "refused"}`);
-      if (S.pending) cancel(); S.refused = null; paintDock();
-    }
-    // H: keyboard parity: word → shift+arrows → space → o → enter
-    S.span = null; setSpan(null);
-    const hole2 = document.querySelector(".pl.hole");
-    if (hole2) {
-      const ph = hole2.closest(".ph"), w = ph.querySelector(".w"); w.scrollIntoView({ block: "center" }); w.focus(); await sleep(30);
-      for (let i = 0; i < 2; i++) key(document.activeElement, "ArrowRight", { shiftKey: true });
-      ok(S.span && S.span.b - S.span.a === 2, "H1 shift+arrow extends the selection");
-      key(document.activeElement, " "); await sleep(30);
-      ok(S.held && S.held.kind === "words", "H2 space picks the selection up");
-      ok(document.activeElement.dataset && document.activeElement.dataset.place, "H3 focus moves to a place");
-      key(document.activeElement, "o"); await sleep(30);
-      const f = document.activeElement; ok(f.classList.contains("pl") && f.classList.contains("hole"), "H4 'o' jumps to an open place");
-      await sleep(250);
-      ok(/✓|✕/.test(document.querySelector("#dock").innerText), "H5 focus previews through the engine");
-      key(f, "Enter"); await settle();
-      const was = window.__net.filter(n => n.path === "/edit").at(-1);
-      ok(was && was.body.path === f.dataset.path && was.body.value.constant !== undefined, "H6 Enter dropped (same /edit body shape as the pointer)");
-      ok(S.pending || S.refused, "H7 answered");
-      if (S.pending) { key(document.activeElement, "Escape"); await sleep(30); ok(!S.pending && textNow() === before, "H8 Escape cancels, text equal"); }
-      S.refused = null; paintDock();
-    }
-    // I: Escape mid-hold, drop outside
-    ops = [...document.querySelectorAll(".op[data-op]")]; if (ops[0]) ops[0].scrollIntoView({ block: "center" });
-    if (ops[0]) { const [sx, sy] = center(ops[0]); ev("pointerdown", sx, sy, ops[0]); ev("pointermove", sx + 9, sy + 9, ops[0]); await sleep(30); ok(S.held, "I1 hold"); key(document.body, "Escape"); await sleep(30); ok(!S.held && !document.querySelector(".ghost"), "I2 escape clears hold and ghost"); ev("pointerup", sx, sy, document.body); }
-    report.readings.push(row); if (row.bad.length) report.failures.push({ id: pre, bad: row.bad });
+  const click = async (el) => { const [x, y] = center(el.querySelector("rect") || el); if (trusted()) { await pe("pointermove", x, y); await pe("pointerdown", x, y); await pe("pointerup", x, y); } else { const t = await pe("pointerdown", x, y); await pe("pointerup", x, y); t.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: x, clientY: y })); } await sleep(150); };
+  const key = async (k, extra = {}) => { if (trusted()) await bridge({ type: "key", key: k, ...extra }); else document.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true, ...extra })); await sleep(60); };
+  const shot = async (name) => { if (trusted()) await bridge({ type: "shot", name }); };
+  const until = async (f, ms = 8000) => { const t = Date.now(); while (Date.now() - t < ms) { const v = f(); if (v) return v; await sleep(60); } return null; };
+  const idle = () => until(() => window.board && !window.board.busy(), 20000);
+  const dock = () => document.getElementById("dock").innerText;
+  const el = (sel) => document.querySelector(sel);
+  // a drag: press on src, move in steps to (dx, dy), wait for the engine's draft under the pointer, read the dock, release
+  async function drag(src, to, opts = {}) {
+    const [sx, sy] = center(src.querySelector("rect") || src);
+    const [dx, dy] = Array.isArray(to) ? to : center(to.querySelector("rect") || to);
+    const grabbed = await pe("pointerdown", sx, sy);
+    for (let i = 1; i <= 8; i++) { await pe("pointermove", sx + ((dx - sx) * i) / 8, sy + ((dy - sy) * i) / 8); await sleep(25); }
+    await until(() => !/…/.test(dock()) && dock().trim(), opts.wait || 6000);
+    await pe("pointermove", dx + 0.5, dy); await sleep(60);
+    const mid = { dock: dock(), net: window.__net.length, rail: document.querySelectorAll("[id^=rl-]").length, ghost: !!document.querySelector("#board svg [opacity='0.5']") };
+    if (opts.bail) { await key("Escape"); return { mid, grabbed }; }
+    await pe("pointerup", dx + 0.5, dy); await sleep(250);
+    return { mid, grabbed };
   }
-  report.posts = window.__net.slice(net0).reduce((m, n) => (m[n.path] = (m[n.path] || 0) + 1, m), {});
-  report.summary = { readings: prefixes.length, failures: report.failures.length };
-  return report;
-};
+  const lastEdit = () => window.__net.filter((n) => n.path === "/edit").at(-1);
+  const proseCheck = () => { // every text node drawn by the page outside the message and the world/d1 data
+    const out = [];
+    const msg = new Set([...document.querySelectorAll("#board text.w")]);
+    for (const t of document.querySelectorAll("#board text, #dock span, #dock button, header")) {
+      if (msg.has(t)) continue;
+      const s = (t.textContent || "").trim();
+      if (/\b[a-z]+ [a-z]+ [a-z]+ [a-z]+ [a-z]+\b/i.test(s) && !isData(s)) out.push(s.slice(0, 80));
+    }
+    return out;
+  };
+  function isData(s) { // a world docstring, a d1 record, or the message's words
+    const r = S.base, w = Object.values(window.board.world());
+    if (r.text.includes(s.replace(/^[“"]|[”"]$/g, "").replace(/…$/, "").split("|").pop())) return true;
+    const docs = JSON.stringify(window.board.world()) + JSON.stringify(r.decisions);
+    return s.split(/\s+/).length < 5 || docs.includes(s.slice(0, 30)) || r.decisions.some((d) => (d.state || "").includes(s.slice(0, 30)));
+  }
+
+  window.audit5 = async function (prefixes, opts = {}) {
+    const report = { when: new Date().toISOString(), readings: [], failures: [], dragology: {} };
+    // G2: the page's own source registers no pointer/mouse/drag listener
+    const src = await fetch("/board.js").then((r) => r.text());
+    const banned = src.match(/addEventListener\(\s*["'](pointer\w+|mouse\w+|drag\w*|drop|touch\w+)["']|on(Pointer|Mouse)(Down|Move|Up)\s*[:=]|onDrag(Start|Over|End)?\s*[:=]|onDrop\s*[:=]|draggable\s*=\s*["']true/g) || [];
+    report.dragology = { loaded: !!window.Dragology && !!document.querySelector('script[src*="dragology-0.2.0"]'), renderer: document.querySelectorAll("#board svg").length === 1, banned, specs: (src.match(/dragologyOnDrag/g) || []).length };
+    for (const pre of prefixes) {
+      const id = [...new Set(window.board.ids())].find((i) => i.startsWith(pre));
+      const row = { id: pre, bad: [], did: [] };
+      const ok = (c, m) => { if (!c) row.bad.push(m); else row.did.push("✓ " + m); return c; };
+      await window.board.choose(id); await sleep(300);
+      const r = S.base;
+      row.chars = r.text.length; row.pieces = (r.pieces || []).length; row.ops = window.board.terms(r).length;
+      // A: one wiki page
+      const L = window.board.layout(r);
+      ok(L.words.map((w) => w.str).join("") === r.text.replace(/\s+/g, "") && [...document.querySelectorAll("#board text.w")].every((t) => r.text.slice(+t.dataset.s, +t.dataset.e) === t.textContent), "A1 the words laid out are the text, once, at their places");
+      ok(L.words.filter((w) => w.piece).length >= L.words.length * 0.6, "A2 the words carry their piece links");
+      const drawnPc = [...document.querySelectorAll("#board [id^=pc-]")];
+      ok(drawnPc.length > 0 && drawnPc.every((g) => (r.pieces || []).some((p) => String(p.start) === g.dataset.start && (p.kind ?? "null") === g.dataset.kind)), "A2 every drawn link = a piece, its target = piece.kind");
+      ok(document.querySelectorAll("#board [id^=op-]").length > 0 || !row.ops, "A3 function spans drawn");
+      // A4/A5: open a link with the pointer: a type page and the d1 kind data
+      const typed = drawnPc.find((g) => /^(Subject|Asked|Surface|Code|Words|Concept|Text|Agent)$/.test(g.dataset.kind)) || drawnPc.find((g) => g.dataset.kind !== "(none)");
+      if (typed) {
+        await click(typed);
+        ok(S.open && S.open.t === "piece", "A4 click opens the link");
+        const pageT = [...document.querySelectorAll("#board [id^=page-] text")].map((t) => t.textContent).join("\n");
+        ok(pageT.includes(typed.dataset.kind) && /: \*|ƒ /.test(pageT), "A4 the page of its target from the world");
+        ok(/d1 · kind/.test(pageT) && document.querySelectorAll("#board [id^=pg-o-]").length >= 2, "A5 d1's options and probabilities for its words");
+      }
+      // A4 by keyboard: Escape, arrows to a link, Enter
+      await key("Escape"); await key("ArrowRight"); await key("ArrowRight");
+      const fid = S.focus; await key("Enter");
+      ok(fid && S.open && S.open.t === "piece", "A4k arrows + Enter open a link");
+      // B1: widen a link by its end handle (pointer)
+      const hd = el("#hd-e");
+      if (ok(hd, "B1 the open link has handles")) {
+        const p = S.open.p, next = L.words.find((w) => w.s > p.end + 1 && w.piece && w.piece.start !== p.start && document.querySelector(`#board text.w[data-s="${w.s}"]`));
+        const tgt = next && document.querySelector(`#board text.w[data-s="${next.s}"]`);
+        if (tgt) {
+          const q = tgt.getBoundingClientRect();
+          const res = await drag(hd, [q.right - 1, q.top + q.height / 2]);
+          const e = lastEdit();
+          ok(e && e.body.path === "kind" && e.body.at[0] === p.start && e.body.at[1] > p.end && e.body.value === p.kind, "B1 widen = /edit kind over the wider words, same kind");
+          ok(/→/.test(res.mid.dock), "B5 the consequence shows before release");
+          ok(S.staged && /✓ a/.test(dock()), "B5 release stages it with Accept / Cancel");
+          await click(el("#cancel"));
+          ok(!S.staged && JSON.stringify(S.base.pieces) === JSON.stringify(r.pieces), "B5 Cancel restores the base");
+        }
+      }
+      // B2: narrow by keyboard: [ on the open link
+      await key("["); await until(() => !/…/.test(dock()) && /→/.test(dock()));
+      const e2 = lastEdit();
+      ok(e2 && e2.body.path === "kind" && e2.body.value === "(none)", "B2k [ narrows: the last word unlinked (/edit kind (none))");
+      await key("Enter"); await sleep(150);
+      ok(S.staged || S.note, "B2k Enter stages or shows the engine's refusal");
+      await key("Escape");
+      // B3: a world type onto words (pointer)
+      await key("Escape"); await sleep(80);
+      const words2 = [...document.querySelectorAll("#board [id^=pc-]")].filter((g) => g.dataset.kind !== "Code");
+      const w2 = words2[Math.min(3, words2.length - 1)];
+      const codeChip = el("#wd-t-Code");
+      if (ok(codeChip && w2, "B3 a type in the world and words to drop it on")) {
+        const res = await drag(codeChip, w2);
+        const e = lastEdit();
+        ok(e && e.body.path === "kind" && e.body.value === "Code" && String(e.body.at[0]) === w2.dataset.start, "B3 type drop = /edit kind Code on those words");
+        ok(/Code\|/.test(res.mid.dock), "B5 the new link shows before release");
+        ok(S.staged, "B3 staged");
+        if (opts.accept && S.staged && pre === prefixes[0]) {
+          await until(() => el("#accept") && !el("#accept").disabled);
+          const before = S.base.snapshot;
+          await click(el("#accept"));
+          await until(() => S.base.snapshot !== before, 20000); await sleep(200);
+          const fresh = await fetch("/readings").then((x) => x.json());
+          const latest = fresh.filter((l) => l.id === id).at(-1);
+          ok(latest.snapshot !== before && latest.corrections.some((c) => c.path === "kind" && c.kind === "Code" && String(c.at[0]) === w2.dataset.start) && latest.pieces.some((p) => p.by === "user" && p.kind === "Code"), "B6 after Accept and reload the store has the correction");
+          // E: undo by keyboard
+          await key("z");
+          await until(() => S.base.snapshot !== latest.snapshot, 20000); await sleep(200);
+          const fresh2 = await fetch("/readings").then((x) => x.json());
+          const l2 = fresh2.filter((l) => l.id === id).at(-1);
+          ok(JSON.stringify(l2.pieces) === JSON.stringify(r.pieces) && l2.corrections.length === r.corrections.length, "E undo restores the snapshot before the accept, in the store");
+        } else if (S.staged) await key("Escape");
+      }
+      // B4: a constructed type onto words (pointer): from the type page of Surface (Later[Surface])
+      await key("Escape"); await key("Escape"); await sleep(100); await click(el("#wd-t-Surface")); await sleep(150);
+      const later = el("#pg-c-Later_Surface_");
+      const w3 = [...document.querySelectorAll("#board [id^=pc-]")].filter((g) => g.dataset.kind !== "Later[Surface]")[2];
+      if (ok(later && w3, "B4 Later[Surface] on the type page")) {
+        const res = await drag(later, w3);
+        const e = lastEdit();
+        ok(e && e.body.value === "Later[Surface]" && String(e.body.at[0]) === w3.dataset.start, "B4 constructed type drop = /edit kind Later[Surface]");
+        ok(/Later\[Surface\]\|/.test(res.mid.dock) && S.staged, "B4 previewed and staged");
+        await key("Escape");
+      }
+      // B3k: a type by keyboard: Tab to the world, arrows to a type, Space, arrows to words, Enter
+      await key("Escape"); await key("Escape"); await sleep(60);
+      await key("Tab");
+      let guard = 0; while (!(S.focus || "").startsWith("wd-t-Surface") && guard++ < 40) await key("ArrowRight");
+      await key(" ");
+      ok(S.hold && S.hold.th.t === "type", "B3k Space picks a type up");
+      if (S.hold) {
+        await key("ArrowRight");
+        await until(() => !/…/.test(dock()) && /→/.test(dock()));
+        await key("Enter"); await sleep(100);
+        const e = lastEdit();
+        ok(e && e.body.path === "kind" && e.body.value === "Surface", "B3k Enter drops it on words (/edit kind Surface)");
+        ok(S.staged, "B3k staged");
+        await key("Escape");
+      }
+      await key("Tab");
+      // C: a rejected or open place takes words, a world member and a result
+      const holes = [...document.querySelectorAll("#board [id^=pl-]")].filter((g) => g.dataset.hole === "1");
+      const unres = [...document.querySelectorAll("#board [id^=un-]")];
+      row.holes = holes.length; row.unresolved = unres.length;
+      // C1 words → a hole (or the rail)
+      const pcs = [...document.querySelectorAll("#board [id^=pc-]")];
+      if (pcs.length) {
+        const src = pcs[Math.min(5, pcs.length - 1)];
+        const [sx, sy] = center(src.querySelector("rect"));
+        await pe("pointerdown", sx, sy); await pe("pointermove", sx + 6, sy + 6); await sleep(120);
+        await until(() => document.querySelectorAll("#board [id^=rl-]").length || window.board.idleQ(), 15000);
+        const rail = await until(() => document.querySelector("#board [id^=rl-]"), 15000);
+        await pe("pointermove", sx + 2, sy + 2);
+        await key("Escape"); await pe("pointerup", sx, sy); await sleep(150);
+        if (S.staged) await key("Escape");
+        const target = holes[0] || (rail && document.querySelector("#board [id^=rl-]")) || document.querySelector("#board [id^=pl-]");
+        if (ok(target, "C1 a place to drop words in (in view or in the rail)")) {
+          const res = await drag(pcs[Math.min(5, pcs.length - 1)], target, { wait: 15000 });
+          const e = window.__net.filter((n) => n.path === "/edit" && n.body.value && n.body.value.constant !== undefined && n.body.value.at && n.body.value.at[0] >= 0).at(-1);
+          ok(e && e.body.number != null, "C1 words into a place = /edit {constant, type, at}");
+          ok(S.staged || S.note, "C1 answered: staged or refused with the engine's code");
+          row.did.push("C1 " + (S.staged ? "staged" : "refused " + JSON.stringify(S.note && S.note.refused && S.note.refused.codes)));
+          if (S.staged) await key("Escape");
+        }
+      }
+      // C2 a world member → a place
+      await key("Escape"); await key("Escape"); await sleep(100); await click(el("#wd-t-Surface")); await sleep(150);
+      const mem = el("#pg-m-Surface-MOD");
+      const place = holes[0] || document.querySelector("#board [id^=pl-]");
+      if (ok(mem && place, "C2 a member and a place")) {
+        await drag(mem, place, { wait: 15000 });
+        const e = window.__net.filter((n) => n.path === "/edit" && n.body.value && n.body.value.at && n.body.value.at[0] === -1).at(-1);
+        ok(e && e.body.value.constant === "the mod", "C2 member into a place = /edit {constant: member words, at: [-1,-1]}");
+        ok(S.staged || S.note, "C2 answered");
+        row.did.push("C2 " + (S.staged ? "staged" : "refused " + JSON.stringify(S.note && S.note.refused && S.note.refused.codes)));
+        if (S.staged) await key("Escape");
+      }
+      await key("Escape");
+      // C3 a result → a later place
+      const opsEl = [...document.querySelectorAll("#board [id^=op-]")];
+      if (opsEl.length >= 2) {
+        const srcOp = opsEl[0], tgt = [...document.querySelectorAll("#board [id^=pl-]")].find((g) => !srcOp.contains(g) && +g.dataset.op > +srcOp.dataset.op);
+        if (ok(tgt, "C3 a later place for a result")) {
+          await drag(srcOp, tgt, { wait: 15000 });
+          const e = window.__net.filter((n) => n.path === "/edit" && n.body.value && n.body.value.ref != null).at(-1);
+          ok(e && String(e.body.value.ref) === srcOp.dataset.op, "C3 result into a place = /edit {ref}");
+          ok(S.staged || S.note, "C3 answered");
+          row.did.push("C3 " + (S.staged ? "staged" : "refused " + JSON.stringify(S.note && S.note.refused && S.note.refused.codes)));
+          if (S.staged) await key("Escape");
+        }
+      }
+      // C1k: words into a place by keyboard: focus a link, Space, arrows to a place, Enter
+      await key("Escape"); await key("ArrowRight");
+      await key(" ");
+      if (S.hold) {
+        let g = 0; while (S.hold && !(S.hold.opts[S.hold.i].body && S.hold.opts[S.hold.i].body.number != null) && g++ < 400) await key("ArrowRight");
+        const o = S.hold && S.hold.opts[S.hold.i];
+        if (ok(o && o.body && o.body.number != null, "C1k Space + arrows reach a place")) {
+          await until(() => !/…/.test(dock()) && dock().trim(), 15000);
+          await key("Enter"); await sleep(150);
+          const e = lastEdit();
+          ok(e && e.body.number === o.body.number && e.body.value.constant !== undefined, "C1k Enter drops the words (same /edit body as the pointer)");
+          ok(S.staged || S.note, "C1k answered");
+          if (S.staged) await key("Escape");
+        }
+      } else row.bad.push("C1k Space did not pick up");
+      // D: while held, only engine-accepted places in the rail; refused ones are not targets
+      {
+        const src = document.querySelectorAll("#board [id^=pc-]")[4];
+        const [sx, sy] = center(src.querySelector("rect"));
+        await pe("pointerdown", sx, sy); await pe("pointermove", sx + 7, sy + 7);
+        await until(() => window.board.idleQ(), 30000); await pe("pointermove", sx + 8, sy + 8); await sleep(150);
+        const rails = [...document.querySelectorAll("#board [id^=rl-]")].map((g) => g.id.slice(3));
+        const held = window.board.held();
+        const verdicts = held && held.places ? held.places.map((o) => [o.target.slice(3), window.board.verdict(window.board.peek(o.body))]) : [];
+        ok(rails.length === 0 || rails.every((k) => verdicts.some(([t, v]) => t === k && v !== "no")), "D1 the rail holds only places the engine did not refuse");
+        ok(verdicts.filter(([, v]) => v === "no").every(([t]) => !rails.includes(t)), "D1 refused places are not in the rail");
+        const railBox = document.querySelector("#board [id^=rl-]");
+        ok(!railBox || (railBox.getBoundingClientRect().bottom <= innerHeight), "D2 the rail is in view");
+        row.did.push(`D verdicts ok ${verdicts.filter(([, v]) => v === "ok").length} / no ${verdicts.filter(([, v]) => v === "no").length}; rail ${rails.length}`);
+        await key("Escape"); await pe("pointerup", sx, sy); await sleep(150);
+        if (S.staged) await key("Escape");
+      }
+      // F: no agent prose
+      const prose = proseCheck();
+      ok(prose.length === 0, "F no sentence written by the page" + (prose.length ? ": " + prose.slice(0, 3).join(" / ") : ""));
+      report.readings.push(row);
+      if (row.bad.length) report.failures.push({ id: pre, bad: row.bad });
+    }
+    report.posts = window.__net.reduce((m, n) => ((m[n.path] = (m[n.path] || 0) + 1), m), {});
+    report.summary = { readings: prefixes.length, failing: report.failures.length, banned: report.dragology.banned.length };
+    return report;
+  };
+  window.auditKit = { sleep, center, pe, click, key, until, drag, dock, lastEdit, shot, trusted };
+})();
