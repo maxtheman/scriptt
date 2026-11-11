@@ -584,6 +584,8 @@ function draggable({ state: st, d, draggedId }) {
   const chip = (e, props, ...kids) => h("g", { id: e.id, transform: translate(e.x, e.y), "data-ask": e.ask, "data-ref": e.ask, ...props }, ...kids);
   const placeProps = (e, label) => ({ "data-role": e.ref ? "reference" : "place", "data-state": e.state, "data-arg": e.path, "data-of": e.app, "data-socket": PLUG.tag, ...(e.plug ? { "data-plug": PLUG.tag } : {}), ...(e.ref ? { "data-to": e.ref } : {}), "aria-label": `place ${e.path} : ${e.type}`, "data-label": label, ...hint(label, e.reason ? "open: " + e.reason : undefined) });
   // The library blends the props of 1 element between 2 states, and a string that differs (aria-label) cannot be blended: a label is the same in every state of an id, and what changes goes in a data- prop.
+  // The library estimates the bounds of a drop target from its rects, circles and lines, not from paths: every place has a hit rect that covers it.
+  const hit = (e) => h("rect", { width: e.w, height: 28, fill: "transparent" });
   const placeLabel = (e) => `${e.ref ? "reference" : "place"} ${e.path} : ${e.type}`;
 
   const draw = {
@@ -609,12 +611,12 @@ function draggable({ state: st, d, draggedId }) {
           h("text", { transform: translate(10, 19), fontFamily: C.code, fontSize: 14, fill: C.t1 }, e.pre, h("tspan", { fontWeight: 600 }, f.fn), h("tspan", { fill: C.t2 }, e.post))));
     },
     // a place: dashed with the name of its type while it is open. A Many place stays open for more, with the number of each piece that it has.
-    hole: (e) => { const label = placeLabel(e); return chip(e, { "data-link": e.pids.length ? "p" + e.pids[0] : "none", ...placeProps(e, label) }, ...frame(e, e.many && e.pids.length), glyph(12, 9, e.type), h("g", { id: e.id + "-o" }, code(28, 19, e.text, { fill: C.t2 }))); },
+    hole: (e) => { const label = placeLabel(e); return chip(e, { "data-link": e.pids.length ? "p" + e.pids[0] : "none", ...placeProps(e, label) }, hit(e), ...frame(e, e.many && e.pids.length), glyph(12, 9, e.type), h("g", { id: e.id + "-o" }, code(28, 19, e.text, { fill: C.t2 }))); },
     // a place that a thing fills: drag the thing to another place of its type, or anywhere else to pull it out (the place is then open). An Empty cannot move: it can only be pulled out.
     link: (e) => {
       const id = `v-${e.f.id}-${e.key}-${sid(e.v)}`, pid = e.pids[0] ?? null, type = pid != null ? P.find((p) => p.id === pid)?.type ?? takes(e.type)[0] : takes(e.type)[0], out = empty(st, e.n, e.key), label = placeLabel(e);
       const options = () => moves(ev, st, e.ask);
-      return chip(e, { "data-link": e.ref ? "a:" + e.ref : pid != null ? "p" + pid : "none", ...placeProps(e, label) }, ...frame(e, true),
+      return chip(e, { "data-link": e.ref ? "a:" + e.ref : pid != null ? "p" + pid : "none", ...placeProps(e, label) }, hit(e), ...frame(e, true),
         h("g", { id, "data-ref": e.ask, "data-link": e.ref ? "a:" + e.ref : pid != null ? "p" + pid : "none", ...grab(id, `place ${e.path} : ${e.type}`, options, pulled(ev, st, e.ask)) }, jig(id, false, edge(e.w, 28), glyph(12, 9, e.type), code(28, 19, e.text, { fontWeight: 600 }))));
     },
     panel: (e) => {

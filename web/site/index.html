@@ -193,13 +193,14 @@ const typeIndex = (type) => { const t = takes(type)[0] ?? "?", k = TYPES.indexOf
 const color = (type) => css(`--class-${typeIndex(type) % 12 + 1}`);
 // A type is a glyph and a color: 6 shapes and 12 colors, so no 2 types share both, and a glyph still tells the type without its color (Graspable Math: the term itself is the thing; here the type is the mark that it carries).
 const SHAPES = [["square", "M1,1H9V9H1Z"], ["circle", "M5,.8A4.2,4.2 0 1 1 4.99,.8Z"], ["triangle", "M5,.8L9.2,9H.8Z"], ["diamond", "M5,.5L9.5,5L5,9.5L.5,5Z"], ["hexagon", "M2.5,1H7.5L9.6,5L7.5,9H2.5L.4,5Z"], ["house", "M1,1H6.5L9.5,5L6.5,9H1Z"]];
-// Plug and socket (the joins of Scratch-like blocks, here 6 by 10): an operation ends in a plug, each argument place begins with the socket that the plug fits, and ends in the plug for the next place.
-const PLUG = { w: 6, h: 10, tag: "6x10" };
+// Everything on the board is a block of one chain: the plug of a block fits the socket of the next. 36 px tall, a plug is 8 by 14.
+const BH = 36, ROWGAP = 12, CHAINGAP = 24, PADX = 12, GW = 18, PLUG = { w: 8, h: 14, tag: "8x14" };
 const shapePath = (w, { socket = false, plug = false, round = false } = {}) => {
-  const a = 14 - PLUG.h / 2, b = 14 + PLUG.h / 2, left = round ? `V26H12A12,12 0 0 1 12,2Z` : socket ? `V26H0V${b}h${PLUG.w}v${-PLUG.h}h${-PLUG.w}Z` : `V26H0Z`;
-  return `M${round ? 12 : 0},2H${w}${plug ? `V${a}h${PLUG.w}v${PLUG.h}h${-PLUG.w}` : ""}${left}`;
+  const a = BH / 2 - PLUG.h / 2, b = BH / 2 + PLUG.h / 2, r = BH / 2;
+  const right = plug ? `V${a}h${PLUG.w}v${PLUG.h}h${-PLUG.w}` : "";
+  const left = round ? `V${BH}H${r}A${r},${r} 0 0 1 ${r},0Z` : socket ? `V${BH}H0V${b}h${PLUG.w}v${-PLUG.h}h${-PLUG.w}Z` : `V${BH}H0Z`;
+  return `M${round ? r : 0},0H${w}${right}${left}`;
 };
-const placeW = (s, font = FONT.code) => tw(s, font) + 34;
 const appId = (ev, f) => (f.id[0] === "d" ? ev.demands[+f.id.slice(1)]?.id : undefined) ?? f.id;  // the id of an operation: the line's own, else its place in the demands
 const appsOf = (ev, st) => st.parts.flatMap((p, n) => p.fns.map((f) => ({ n, f, id: appId(ev, f) })));
 
@@ -339,32 +340,6 @@ const fill = (st, n, key, v, pid, many = false, ref = null) => edit(pid == null 
 
 // ---------- the layout: where each thing is drawn for 1 state, on a board W wide ----------
 const LH = 28;
-function textFlow(ev, a, b, P, maxW, tags) {  // the words from a to b as typed, with each piece and each tag in its place, wrapped at maxW
-  const items = [], space = tw(" ", FONT.body);
-  let x = 0, line = 0, gap = 0, w = 0;
-  const place = (it, iw) => {
-    if (x > 0 && x + gap + iw > maxW) { line++; x = 0; } else if (x > 0) x += gap;
-    const last = items.at(-1);
-    if (it.kind === "run" && last?.kind === "run" && last.y === line * LH) { last.text += (x > last.x + last.w ? " " : "") + it.text; last.w = x + iw - last.x; }
-    else items.push({ ...it, x, y: line * LH, w: iw });
-    x += iw; w = Math.max(w, x); gap = 0;
-  };
-  const words = (s) => { for (let seg of s.match(/\n|[^\S\n]+|\S+/g) || []) {
-    if (seg === "\n") { line++; x = 0; gap = 0; continue; }
-    if (/^\s/.test(seg)) { gap = space; continue; }
-    while (seg.length > 1 && tw(seg, FONT.body) > maxW) { let k = seg.length; while (k > 1 && tw(seg.slice(0, k), FONT.body) > maxW) k--; place({ kind: "run", text: seg.slice(0, k) }, tw(seg.slice(0, k), FONT.body)); seg = seg.slice(k); }
-    place({ kind: "run", text: seg }, tw(seg, FONT.body));
-  } };
-  const marks = [...P.filter((p) => p.start >= a && p.end <= b).map((p) => ({ at: p.start, p })), ...tags].sort((m, k) => m.at - k.at || (m.p ? 1 : 0) - (k.p ? 1 : 0));
-  let i = a;
-  for (const m of marks) {
-    words(ev.text.slice(i, m.at));
-    if (m.p) { place({ kind: "piece", p: m.p }, tw(m.p.words, FONT.body) + (OPEN ? 28 + (m.p.of ? 6 + tw(short(m.p.value, 20), FONT.code) : 0) : 0)); i = m.p.end; }
-    else { gap = m.join ? 0 : m.first === false ? space : space * 2; place(m.item, m.item.w); i = Math.max(i, m.at); }  // a place joins the operation or the place before it: the plug is in the socket
-  }
-  words(ev.text.slice(i, b));
-  return { items, w, h: (line + 1) * LH };
-}
 function flowRow(ts, maxW) {  // chips in a row that wraps. br starts a new line, top is the space above it
   let x = 0, y = 0, lh = 0, w = 0;
   for (const t of ts) { if (x > 0 && (t.br || x + t.w > maxW)) { y += lh + (t.top ?? 8); x = 0; lh = 0; } t.x = x; t.y = y; x += t.w + 8; lh = Math.max(lh, t.h); w = Math.max(w, x - 8); }
@@ -375,63 +350,75 @@ const chipW = (s, font = FONT.code) => tw(s, font) + 16;
 // In drag mode, the tag at the end of a part opens in place: for each function, its pill (the part's number, the function, d1's
 // share, the type of what comes back), then only its holes that the part does not fill with a piece of its own words: an open hole,
 // a hole that a piece of another part fills (a link to that part), or a value that no piece gave.
-function clauseItems(ev, st, n, P) {
+function clauseItems(ev, st, n, P) {  // what d1 read in a phrase, as blocks: the operations with their places, or the choice of a phrase with none
   const part = partsOf(ev)[n], s = st.parts[n], out = [], brand = part.brand ?? ev.brand ?? "Asked", apps = appsOf(ev, st);
   if (!s.fns.length) {
-    const c = choiceOf(part), un = !!part.unresolved, abst = c === "none" || un, text = c + (part.scores?.[c] != null ? " " + two(part.scores[c]) : "");
-    return [{ kind: abst ? "abstain" : "tag", id: `c-${n}-${sid(text)}`, n, text, brand, ask: `c:${n}`, unresolved: un, reason: part.unresolved?.reason, w: tw(text, FONT.code) + (abst ? 16 : 0), h: 28 }];
+    const c = choiceOf(part), un = !!part.unresolved, text = un ? `? ${brand}` : c;
+    return [{ kind: un || c === "none" ? "abstain" : "tag", id: `c-${n}-${sid(text)}`, n, text, brand, ask: `c:${n}`, unresolved: un, reason: part.unresolved?.reason, w: 2 * PADX + tw(text, FONT.code) }];
   }
   for (const f of s.fns) {
-    const d = f.id[0] === "d" ? ev.demands[+f.id.slice(1)] : null, score = d ? two(d.p) : "", returns = WORLD.functions[f.fn]?.returns ?? d?.returns ?? "", app = appId(ev, f), holes = holesOf(ev, f.fn);
-    const pre = `${clause(n)} `, post = `${score ? " " + score : ""}${returns ? " ➔ " + returns : ""}`;
-    out.push({ kind: "verb", id: "f-" + f.id, f, n, app, returns, plug: holes.length > 0, pre, post, ask: `v:${n}:${f.fn}`, w: tw(pre, FONT.code) + tw(f.fn, FONT.codeB) + tw(post, FONT.code) + 16, h: 28 });
-    holes.forEach(([path, type], j) => {
+    const d = f.id[0] === "d" ? ev.demands[+f.id.slice(1)] : null, returns = WORLD.functions[f.fn]?.returns ?? d?.returns ?? "", app = appId(ev, f), holes = holesOf(ev, f.fn), pre = `${clause(n)} `;
+    out.push({ kind: "verb", id: "f-" + f.id, f, n, app, returns, pre, ask: `v:${n}:${f.fn}`, keep: holes.length > 0, w: 2 * PADX + 6 + tw(pre, FONT.code) + tw(f.fn, FONT.codeB) + (returns ? GW : 0) });
+    for (const [path, type] of holes) {
       const key = `${f.fn}.${path}`, v = s.things[key], pids = piecesIn(s, key), faint = !(key in s.things), many = isMany(type);
-      const base = { f, n, key, path, type, v, pids, faint, many, app, plug: j < holes.length - 1, join: true, reason: v == null ? d?.parameters?.[path]?.reason : undefined, id: `h-${f.id}-${key}`, ask: `h:${n}:${f.fn}:${path}`, h: 28 };
+      const base = { f, n, key, path, type, v, pids, faint, many, app, reason: v == null ? d?.parameters?.[path]?.reason : undefined, id: `h-${f.id}-${key}`, ask: `h:${n}:${f.fn}:${path}` };
+      const done = (o, text, font = FONT.code) => out.push({ ...base, ...o, text, w: 2 * PADX + GW + tw(text, font) });
       if (many) {
-        const refs = (Array.isArray(v) ? v : []).map((x, j) => { const pid = Array.isArray(s.by[key]) ? s.by[key][j] : null, k = pid != null ? P.findIndex((p) => p.id === pid) : -1; return k >= 0 ? `#${numOf(st, P, pid)}` : `"${short(x, 16)}"`; });
-        const text = `${v == null ? "◻ " : ""}${path}: ${v == null ? "" : "[" + refs.join(", ") + "] + "}${names(type).join(" | ")}`;
-        out.push({ ...base, kind: "hole", state: v == null ? "hole" : refs.length ? "filled" : "none", text, w: placeW(text) });
-        return;
+        const refs = (Array.isArray(v) ? v : []).map((x, j) => { const pid = Array.isArray(s.by[key]) ? s.by[key][j] : null, k = pid != null ? P.findIndex((p) => p.id === pid) : -1; return k >= 0 ? `#${numOf(st, P, pid)}` : `“${short(x, 14)}”`; });
+        done({ kind: "hole", state: v == null ? "hole" : refs.length ? "filled" : "none" }, v == null ? `${path} +` : refs.length ? `${path} ${refs.join(" ")} +` : `${path} [ ]`);
+        continue;
       }
-      if (v == null) { const text = `${faint ? "◌" : "◻"} ${path}: ${names(type).join(" | ")}`; out.push({ ...base, kind: "hole", state: faint ? "optional" : "hole", text, w: placeW(text) }); return; }
-      if (v === EMPTY) { const text = `${path}: ${EMPTY}`; out.push({ ...base, kind: "link", state: "empty", text, w: placeW(text, FONT.codeB) }); return; }
+      if (v == null) { done({ kind: "hole", state: faint ? "optional" : "hole" }, path); continue; }
+      if (v === EMPTY) { done({ kind: "link", state: "empty" }, `${path} ${EMPTY}`, FONT.codeB); continue; }
       const piece = pids.length ? P.find((p) => p.id === pids[0]) : null;
       const ref = s.refs?.[key] ?? (!piece && /\(\)$/.test(v) ? apps.find((a) => `${a.f.fn}()` === v)?.id : null) ?? null, from = ref != null ? apps.find((a) => a.id === ref) : null;
       const to = piece ? piece.part : from ? from.n : -1;
-      const text = piece && piece.part === n ? `${path} #${numOf(st, P, piece.id)}` : to >= 0 ? `${path} ↩ ${clause(to)}${piece ? ` #${numOf(st, P, piece.id)}` : ""}` : `${path}: ${short(v, 24)}`;
-      out.push({ ...base, kind: "link", state: "filled", ref: from ? from.id : null, text, w: placeW(text, FONT.codeB) });
-    });
+      done({ kind: "link", state: "filled", ref: from ? from.id : null }, piece && piece.part === n ? `${path} #${numOf(st, P, piece.id)}` : to >= 0 ? `${path} ↩ ${clause(to)}${piece ? ` #${numOf(st, P, piece.id)}` : ""}` : `${path} “${short(v, 18)}”`, FONT.codeB);
+    }
   }
   return out;
 }
 // The number that a piece has while a hole takes it: the order of the pieces in holes, in the order of the message.
 const numOf = (st, P, pid) => { const used = new Set(st.parts.flatMap((p) => Object.values(p.by).flat())); return P.filter((p) => used.has(p.id)).findIndex((p) => p.id === pid) + 1; };
-function layoutBase(ev, st) {
-  const parts = partsOf(ev), P = piecesOf(ev), L = { els: [], box: {} };
-  const add = (e) => { L.els.push(e); if (e.id) L.box[e.id] = e; return e; };
-  let tags;
-  if (!OPEN) {  // the message as typed. At the end of each sentence: its tag, the functions it asks for, or d1's choice
-    tags = parts.map((part, n) => {
-      const fns = st.parts[n].fns.map((f) => f.fn), c = choiceOf(part), tag = fns.length ? fns.join(" + ") : FNS.includes(c) ? "nothing" : c;
-      const text = tag + (tag === c && part.scores?.[c] != null ? " " + two(part.scores[c]) : "");
-      return { at: part.end, item: { kind: "tag", text, n, brand: part.brand ?? ev.brand ?? "Asked", ask: `c:${n}`, w: tw(text, FONT.code) } };
-    });
-  } else {  // the same paragraph, with each tag opened in place: the pills of its functions and the holes that the words do not fill
-    tags = parts.flatMap((part, n) => clauseItems(ev, st, n, P).map((item, k) => ({ at: part.end, first: k === 0, join: item.join, item })));
-  }
-  const maxW = OPEN || W < 720 ? W : Math.round(W * 0.7), f = textFlow(ev, 0, ev.text.trimEnd().length, P, maxW - 24, tags);
-  add({ kind: "bubble", id: "b-all", x: 0, y: 0, w: f.w + 24, h: f.h + 8 });
-  const items = f.items.map((it, k) => ({ ...it, id: it.id ?? (it.kind === "piece" ? "pc-" + it.p.id : `t-all-${k}-${sid(it.text)}`), x: 12 + it.x, y: 4 + it.y }));
-  if (OPEN) parts.forEach((_, n) => {  // the place where a function is dropped on a part: around the end of the part
-    const mine = items.filter((it) => it.n === n && it.kind !== "run" && it.kind !== "piece");
-    if (!mine.length) return;
-    const x0 = Math.min(...mine.map((it) => it.x)), y0 = Math.min(...mine.map((it) => it.y)), x1 = Math.max(...mine.map((it) => it.x + it.w)), y1 = Math.max(...mine.map((it) => it.y + LH));
-    add({ kind: "socket", id: "p-" + n, x: x0 - 4, y: y0, w: x1 - x0 + 8, h: y1 - y0 });
+// One chain of blocks flows over rows. A block joins the one before it on the same row (plug in socket); a row starts and ends flat.
+function flowChain(blocks, maxW, y0) {
+  let x = 0, row = 0;
+  const out = [], put = (b, need = b.w) => { if (x > 0 && x + need > maxW) { row++; x = 0; } b.x = x; b.y = y0 + row * (BH + ROWGAP); b.h = BH; b.row = row; x += b.w; out.push(b); };
+  blocks.forEach((b, i) => {
+    if (b.kind !== "run") { put(b, b.keep ? b.w + (blocks[i + 1]?.w ?? 0) : b.w); return; }  // an operation keeps its first place on its row
+    let cur = [];
+    let part = 0;
+    const flush = () => { if (cur.length) { const t = cur.join(" "); put({ ...b, id: part ? `${b.id}-${part}` : b.id, text: t, w: 2 * PADX + tw(t, FONT.body) }); part++; cur = []; } };
+    for (const w of b.text.split(" ")) {
+      if (cur.length && 2 * PADX + tw([...cur, w].join(" "), FONT.body) > (x > 0 ? maxW - x : maxW)) flush();
+      cur.push(w);
+    }
+    flush();
   });
-  items.forEach(add);
-  let y = f.h + 8;  // nothing under the paragraph until something is selected
-  L.height = Math.max(y, LH);
+  out.forEach((b, i) => { b.socket = i > 0 && out[i - 1].row === b.row; b.plug = i < out.length - 1 && out[i + 1].row === b.row; });
+  return { blocks: out, h: (row + 1) * BH + row * ROWGAP };
+}
+function layoutBase(ev, st) {
+  const parts = partsOf(ev), P = piecesOf(ev), L = { els: [], box: {} }, text = ev.text, add = (e) => { L.els.push(e); if (e.id) L.box[e.id] = e; return e; };
+  let y = 0, k = 0;
+  const chain = (start, end, n) => {  // the words of [start, end) with the values in them, then what d1 read in them: one chain
+    const brand = (n != null ? parts[n].brand : null) ?? ev.brand ?? "Asked", blocks = [];
+    let i = start;
+    const run = (to) => { const t = text.slice(i, to).replace(/\s+/g, " ").trim(); if (t) blocks.push({ kind: "run", id: `t-all-${k++}-${sid(t)}`, text: t, n, brand, ask: n != null ? `c:${n}` : null }); };
+    for (const p of P.filter((q) => q.start >= start && q.end <= end)) { run(p.start); blocks.push({ kind: "piece", p, id: "pc-" + p.id, n, w: 2 * PADX + GW + tw(p.words, FONT.body) }); i = p.end; }
+    run(end);
+    if (n != null) blocks.push(...clauseItems(ev, st, n, P));
+    if (!blocks.length) return;
+    const f = flowChain(blocks, W - 2, y);
+    if (n != null && OPEN) add({ kind: "socket", id: "p-" + n, x: 0, y: y - 6, w: W, h: f.h + 12 });  // the whole chain takes an operation that is dropped on it
+    f.blocks.forEach(add);
+    y += f.h + CHAINGAP;
+  };
+  const order = parts.map((part, n) => ({ ...part, n })).sort((a, b) => a.start - b.start);
+  let at0 = 0;
+  for (const part of order) { if (text.slice(at0, part.start).trim()) chain(at0, part.start, null); chain(part.start, part.end, part.n); at0 = Math.max(at0, part.end); }
+  if (text.slice(at0).trim()) chain(at0, text.length, null);
+  L.height = Math.max(y - CHAINGAP, BH);
   return L;
 }
 const layoutMemo = new WeakMap();
@@ -546,85 +533,83 @@ function panelOf(ev, st, ref, base) {
     y += fr.h + 8;
   }
   const target = base.els.find((e) => e.ask === ref || (e.kind === "piece" && "p:" + e.p.id === ref));
-  return { kind: "panel", id: "pn", x: 0, y: base.height + 20, w: W, h: y + 4, ref, items, sel: target ? { x: target.x, y: target.y, w: target.w, h: target.h ?? 28 } : null };
+  return { kind: "panel", id: "pn", x: 0, y: base.height + 28, w: W, h: y + 4, ref, items, sel: target ? { x: target.x, y: target.y, w: target.w, h: target.h ?? BH } : null };
 }
 
 
 // ---------- the board: a pure function from a state to SVG (Dragology 0.2.0). ----------
 // Each thing that can be picked up lists the states that a drop can produce, each as d.dropTarget(the id of the place, the state).
-// While the pointer is inside a place, the library draws that state (the speculative preview); outside every place it draws the state of whenFar.
-// The dragged thing floats under the pointer, its ghost stays where the preview puts it, and withOverlay marks every place that takes it.
-// An element with an id keeps its class, role and tab stop in every state: the library blends the states of a drop.
+// While the pointer is inside a place, the library draws that state (the speculative preview); far from every place it draws the state of whenFar.
+// An element with an id keeps its class, role and tab stop in every state: the library blends the states of a drop, and a string prop that differs (aria-label) cannot be blended.
 function draggable({ state: st, d, draggedId }) {
   const ev = EVENTS[MSGS[at]], L = layout(ev, st), P = piecesOf(ev);
   const txt = (x, y, s, props) => h("text", { transform: translate(x, y), fontFamily: C.text, fontSize: 16, fill: C.t1, ...props }, s);
   const code = (x, y, s, props) => txt(x, y, s, { fontFamily: C.code, fontSize: 14, ...props });
-  const edge = (w, hh) => h("rect", { className: "edge", x: -2, y: -2, width: w + 4, height: hh + 4, rx: 3, fill: "transparent", stroke: C.t1, strokeWidth: 2, strokeOpacity: 0 });
-  const jig = (id, wide, ...kids) => h("g", { className: `jig${wide ? " wide" : ""}${sid(id) % 2 ? " late" : ""}` }, ...kids);
-  const mark = (x, type) => h("rect", { x, y: 10, width: 8, height: 8, fill: color(type) });
-  const badge = (id, x, y, k, c) => { const s = "#" + k, w = tw(s, FONT.codeB) + 8; return h("g", { id, transform: translate(x - w / 2, y - 9) }, h("rect", { width: w, height: 18, rx: 9, fill: C.bg, stroke: C.t1, strokeWidth: 2 }), code(w / 2, 13, s, { fontSize: 11, fontWeight: 600, textAnchor: "middle" })); };
-  const outline = (b, now) => h("rect", { transform: translate(b.x - 4, b.y - 4), width: b.w + 8, height: (b.h ?? 28) + 8, rx: 4, fill: C.accent, fillOpacity: now ? 0.12 : 0, stroke: C.accent, strokeWidth: now ? 3 : 2 });
-  const hint = (label, extra) => (label ? { onPointerEnter: () => DRAGGING || HELD || say(extra ? `${label} — ${extra}` : label), onPointerLeave: () => DRAGGING || HELD || say(LINE) } : {});
-  const glyph = (x, y, type) => { const k = typeIndex(type); return h("path", { d: SHAPES[k % 6][1], transform: translate(x, y), fill: color(type), stroke: C.t1, strokeWidth: 1.2, "data-glyph": `${SHAPES[k % 6][0]}-${k % 12}`, "data-type": takes(type)[0] }); };
-  const grab = (id, label, options, far = st) => ({
-    className: "grab", role: "button", tabIndex: 0, "aria-label": label, "data-targets": options().length + (far !== st ? 1 : 0), ...(options().length + (far !== st ? 1 : 0) ? {} : { "aria-disabled": "true" }),
-    dragologyOnDrag: () => {
-      const o = options();
-      DRAGGING = true;
-      return d.closest(o.map((x) => d.dropTarget(x.target, x.state, { boundsState: st }))).whenFar(far).withFloating({ ghost: true })
-        .withOverlay(h("g", null, ...o.map((x) => L.box[x.target]).filter(Boolean).map((b) => outline(b))));
-    },
-    dragologyZIndex: draggedId === id ? "/1" : false,
-    onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); hold(id, [...options(), ...(far !== st ? [{ target: id, state: far }] : [])]); } },
-  });
-  // the box of a hole: solid when a thing is in it, dashed while it is open. Both rects are always drawn, so that the library can blend 2 states of it.
-  // Both paths are always drawn, so that the library can blend 2 states of a place. Solid: it holds something. Dashed: a hole. Dotted: an Empty. The border is the neutral ink, so it holds 3:1 on any background.
-  const frame = (e, solid) => { const d = shapePath(e.w, { socket: true, plug: e.plug }), dash = e.state === "empty" ? "1.5 3" : e.state === "optional" ? "2 3" : "4 3"; return [h("path", { className: "mark", d, fill: C.bg, stroke: C.t1, strokeWidth: 2, strokeOpacity: solid ? 1 : 0 }), h("path", { d, fill: "none", stroke: C.t1, strokeWidth: 2, strokeDasharray: dash, strokeOpacity: solid ? 0 : 1 })]; };
-  const chip = (e, props, ...kids) => h("g", { id: e.id, transform: translate(e.x, e.y), "data-ask": e.ask, "data-ref": e.ask, ...props }, ...kids);
-  const placeProps = (e, label) => ({ "data-role": e.ref ? "reference" : "place", "data-state": e.state, "data-arg": e.path, "data-of": e.app, "data-socket": PLUG.tag, ...(e.plug ? { "data-plug": PLUG.tag } : {}), ...(e.ref ? { "data-to": e.ref } : {}), "aria-label": `place ${e.path} : ${e.type}`, "data-label": label, ...hint(label, e.reason ? "open: " + e.reason : undefined) });
-  // The library blends the props of 1 element between 2 states, and a string that differs (aria-label) cannot be blended: a label is the same in every state of an id, and what changes goes in a data- prop.
+  const edge = (w) => h("rect", { dragologyKey: "edge", className: "edge", x: -2, y: -2, width: w + 4, height: BH + 4, rx: 3, fill: "transparent", stroke: C.t1, strokeWidth: 2, strokeOpacity: 0 });
+  const jig = (id, ...kids) => h("g", { dragologyKey: "jig", className: `jig${sid(id) % 2 ? " late" : ""}` }, ...kids);
+  const badge = (id, x, y, k) => { const t = "#" + k, w = tw(t, FONT.codeB) + 8; return h("g", { id, dragologyKey: "badge", "data-badge": "", transform: translate(x - w / 2, y - 9) }, h("rect", { dragologyKey: "r", width: w, height: 18, rx: 9, fill: C.bg, stroke: C.t1, strokeWidth: 2 }), code(w / 2, 13, t, { dragologyKey: "t", fontSize: 11, fontWeight: 600, textAnchor: "middle" })); };
+  const outline = (b, now) => h("rect", { transform: translate(b.x - 4, b.y - 4), width: b.w + 8, height: (b.h ?? BH) + 8, rx: 4, fill: C.accent, fillOpacity: now ? 0.14 : 0.05, stroke: C.accent, strokeWidth: now ? 3 : 2 });
+  const tip = (label) => h("title", { dragologyKey: "tip" }, label);
+  const glyph = (x, y, type) => { const k = typeIndex(type); return h("path", { dragologyKey: "glyph", d: SHAPES[k % 6][1], transform: translate(x, y), fill: color(type), stroke: C.t1, strokeWidth: 1.2, "data-glyph": `${SHAPES[k % 6][0]}-${k % 12}`, "data-type": takes(type)[0] }); };
+  // A drag can end anywhere within 160 px of a place that takes the thing, and lands there; farther away it pulls the thing out (whenFar).
+  const grab = (id, label, options, far = st) => {
+    if (!OPEN) return {};
+    const n = options().length + (far !== st ? 1 : 0);
+    return {
+      className: "grab", role: "button", tabIndex: 0, "aria-label": label, "data-targets": n, ...(n ? {} : { "aria-disabled": "true" }),
+      dragologyOnDrag: () => {
+        const o = options();
+        DRAGGING = true;
+        // the thing's own place is a target too: a press that does not move keeps the reading (without it, "far from every place" would pull the thing out on a click)
+        return d.closest([{ target: id, state: st }, ...o].map((x) => d.dropTarget(x.target, x.state, { boundsState: st }))).whenFar(far, { gap: 160 }).withFloating({ ghost: true })
+          .withOverlay(h("g", null, ...o.map((x) => L.box[x.target]).filter(Boolean).map((b) => outline(b))));
+      },
+      dragologyZIndex: draggedId === id ? "/1" : false,
+      onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); hold(id, [...options(), ...(far !== st ? [{ target: id, state: far }] : [])]); } },
+    };
+  };
+  const block = (e, { fill = C.bg, stroke = C.t1, round = false, dash } = {}) => h("path", { dragologyKey: "body", className: "mark", d: shapePath(e.w, { socket: e.socket, plug: e.plug, round }), fill, stroke, strokeWidth: 2, ...(dash ? { strokeDasharray: dash } : {}) });
+  const box = (e, props, ...kids) => h("g", { id: e.id, transform: translate(e.x, e.y), "data-block": "", "data-w": Math.round(e.w), ...(e.plug ? { "data-plug": PLUG.tag } : {}), ...(e.socket ? { "data-socket": PLUG.tag } : {}), ...props }, ...kids);
+  // A place: solid when it holds something, dashed while it is a hole, dotted for an Empty. Both paths are always drawn so that the library can blend 2 states of it.
+  const solid = (e) => e.state === "filled" || e.state === "none";
+  const frame = (e) => { const dd = shapePath(e.w, { socket: e.socket, plug: e.plug }), dash = e.state === "empty" ? "1.5 3" : e.state === "optional" ? "2 4" : "5 3"; return [h("path", { dragologyKey: "solid", className: "mark", d: dd, fill: C.bg, stroke: C.t1, strokeWidth: 2, strokeOpacity: solid(e) ? 1 : 0 }), h("path", { dragologyKey: "dash", d: dd, fill: "none", stroke: C.t1, strokeWidth: 2, strokeDasharray: dash, strokeOpacity: solid(e) ? 0 : 1 })]; };
+  const hit = (e) => h("rect", { dragologyKey: "hit", x: -8, y: -10, width: e.w + 16, height: BH + 20, fill: "transparent" });  // the zone of a place: its block and 8 to 10 px around it
   const placeLabel = (e) => `${e.ref ? "reference" : "place"} ${e.path} : ${e.type}`;
+  const placeProps = (e) => ({ "data-role": e.ref ? "reference" : "place", "data-state": e.state, "data-arg": e.path, "data-of": e.app, "data-ref": e.ask, "aria-label": `place ${e.path} : ${e.type}`, "data-label": placeLabel(e), ...(e.ref ? { "data-to": e.ref } : {}) });
 
   const draw = {
     socket: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, fill: "transparent" }),
-    bubble: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, rx: 20, fill: C.surface }),
-    run: (e) => txt(e.x, e.y + 19, e.text, { id: e.id }),
-    tag: (e) => code(e.x, e.y + 19, e.text, { id: e.id, fill: C.t2, "data-ask": e.ask, "data-ref": e.ask, "data-role": "phrase", "data-brand": e.brand, "aria-label": `${e.brand} · ${e.text}`, "data-label": `${e.brand} · ${e.text}`, ...hint(`${e.brand} · ${e.text}`) }),
-    abstain: (e) => { const label = e.unresolved ? `${e.brand} · unresolved — ${e.reason}` : `${e.brand} · ${e.text}`; return chip(e, { "data-role": e.unresolved ? "unresolved" : "phrase", "data-brand": e.brand, "aria-label": label, "data-label": label, ...hint(label) }, h("rect", { className: "mark", width: e.w, height: 28, rx: 2, fill: "none", stroke: C.t1, strokeWidth: 2, strokeDasharray: "4 3" }), code(8, 19, e.text, { fill: C.t2 })); },
+    run: (e) => box(e, { "data-role": "text", ...(e.ask ? { "data-ref": e.ask } : {}), ...(e.brand === "Written" ? { "data-brand": "Written" } : {}) }, block(e, { fill: C.surface, stroke: C.rule }), txt(PADX, 24, e.text, { dragologyKey: "text", fill: e.brand === "Written" ? C.t2 : C.t1 })),
+    tag: (e) => { const label = `${e.brand} · ${e.text}`; return box(e, { "data-role": "phrase", "data-brand": e.brand, "data-ref": e.ask, "data-label": label, "aria-label": label }, tip(label), block(e, { fill: C.surface, stroke: C.rule }), code(PADX, 23, e.text, { dragologyKey: "text", fill: C.t2 })); },
+    abstain: (e) => { const label = e.unresolved ? `${e.brand} · unresolved — ${e.reason}` : `${e.brand} · ${e.text}`; return box(e, { "data-role": e.unresolved ? "unresolved" : "phrase", "data-brand": e.brand, "data-ref": e.ask, "data-label": label, "aria-label": label }, tip(label), block(e, { dash: "5 3" }), code(PADX, 23, e.text, { dragologyKey: "text", fill: C.t2 })); },
     piece: (e) => {
-      const p = e.p, c = color(p.type), k = numOf(st, P, p.id), label = `value ${p.words} : ${takes(p.type)[0]}`;
-      const as = { "data-role": "value", "data-ref": "p:" + p.id, "data-link": "p" + p.id, "aria-label": label, "data-label": label, ...hint(label) };
-      if (!OPEN) return h("g", { id: e.id, transform: translate(e.x, e.y), ...as }, h("rect", { x: -2, y: 3, width: e.w + 4, height: 22, rx: 2, fill: c, fillOpacity: 0.2 }), h("rect", { x: -2, y: 23, width: e.w + 4, height: 2, fill: c }), txt(0, 19, p.words));
-      const options = () => moves(ev, st, "p:" + p.id);
-      return h("g", { id: e.id, transform: translate(e.x, e.y), ...as, ...grab(e.id, label, options, pulled(ev, st, "p:" + p.id)) },
-        jig(e.id, false, h("rect", { className: "mark", y: 2, width: e.w, height: 24, rx: 2, fill: C.bg, stroke: C.t1, strokeWidth: 2 }), edge(e.w, 28), glyph(6, 9, p.type), txt(22, 19, p.words),
-          p.of ? code(28 + tw(p.words, FONT.body), 19, short(p.value, 20), { fill: C.t2 }) : null),
-        k ? badge(`${e.id}-k${k}`, e.w, 3, k, c) : null);
+      const p = e.p, k = numOf(st, P, p.id), label = `value ${p.words} : ${takes(p.type)[0]}`, options = () => moves(ev, st, "p:" + p.id);
+      return box(e, { "data-role": "value", "data-ref": "p:" + p.id, "data-link": "p" + p.id, "data-label": label, "aria-label": label, ...grab(e.id, label, options, pulled(ev, st, "p:" + p.id)) },
+        jig(e.id, tip(label), block(e), edge(e.w), h("rect", { dragologyKey: "bar", x: 2, y: BH - 5, width: e.w - 4, height: 3, fill: color(p.type) }), glyph(PADX, 13, p.type), txt(PADX + GW, 24, p.words, { dragologyKey: "text" })),
+        k ? badge(`${e.id}-k${k}`, e.w - 4, 2, k) : null);
     },
-    verb: (e) => {  // an operation: drag it to another part, or off the paragraph to take it away. Its plug fits the socket of its first place.
-      const f = e.f, options = () => moves(ev, st, e.ask), label = `operation ${f.fn} → ${e.returns}`;
-      return chip(e, { "data-role": "operation", "data-id": e.app, "data-fn": f.fn, "data-link": "a:" + e.app, "data-label": label, ...(e.plug ? { "data-plug": PLUG.tag } : {}), ...grab(e.id, label, options, pulled(ev, st, e.ask)), ...hint(label, WORLD.functions[f.fn]?.asks) },
-        jig(e.id, false, h("path", { className: "mark", d: shapePath(e.w, { plug: e.plug, round: true }), fill: C.surface, stroke: C.t1, strokeWidth: 2 }), edge(e.w, 28),
-          h("text", { transform: translate(10, 19), fontFamily: C.code, fontSize: 14, fill: C.t1 }, e.pre, h("tspan", { fontWeight: 600 }, f.fn), h("tspan", { fill: C.t2 }, e.post))));
+    verb: (e) => {
+      const f = e.f, label = `operation ${f.fn} → ${e.returns}`, options = () => moves(ev, st, e.ask);
+      return box(e, { "data-role": "operation", "data-id": e.app, "data-fn": f.fn, "data-link": "a:" + e.app, "data-ref": e.ask, "data-label": label, "aria-label": label, ...grab(e.id, label, options, pulled(ev, st, e.ask)) },
+        jig(e.id, tip(label + (WORLD.functions[f.fn]?.asks ? " — " + WORLD.functions[f.fn].asks : "")), block(e, { fill: C.surface, round: true }), edge(e.w),
+          h("text", { dragologyKey: "text", transform: translate(18, 23), fontFamily: C.code, fontSize: 14, fill: C.t1 }, e.pre, h("tspan", { fontWeight: 600 }, f.fn)), e.returns ? glyph(e.w - PADX - 10, 13, e.returns) : null));
     },
-    // a place: dashed with the name of its type while it is open. A Many place stays open for more, with the number of each piece that it has.
-    hole: (e) => { const label = placeLabel(e); return chip(e, { "data-link": e.pids.length ? "p" + e.pids[0] : "none", ...placeProps(e, label) }, ...frame(e, e.many && e.pids.length), glyph(12, 9, e.type), h("g", { id: e.id + "-o" }, code(28, 19, e.text, { fill: C.t2 }))); },
-    // a place that a thing fills: drag the thing to another place of its type, or anywhere else to pull it out (the place is then open). An Empty cannot move: it can only be pulled out.
+    hole: (e) => box(e, { "data-link": e.pids.length ? "p" + e.pids[0] : "none", ...placeProps(e) }, hit(e), ...frame(e), tip(placeLabel(e) + (e.reason ? " — " + e.reason : "")), glyph(PADX, 13, e.type), code(PADX + GW, 23, e.text, { dragologyKey: "text", fill: C.t2 })),
+    // a place that a thing fills: drag the thing to another place of its type, or far away to pull it out (the place is then open). An Empty cannot move: it can only be pulled out.
     link: (e) => {
-      const id = `v-${e.f.id}-${e.key}-${sid(e.v)}`, pid = e.pids[0] ?? null, type = pid != null ? P.find((p) => p.id === pid)?.type ?? takes(e.type)[0] : takes(e.type)[0], out = empty(st, e.n, e.key), label = placeLabel(e);
-      const options = () => moves(ev, st, e.ask);
-      return chip(e, { "data-link": e.ref ? "a:" + e.ref : pid != null ? "p" + pid : "none", ...placeProps(e, label) }, ...frame(e, true),
-        h("g", { id, "data-ref": e.ask, "data-link": e.ref ? "a:" + e.ref : pid != null ? "p" + pid : "none", ...grab(id, `place ${e.path} : ${e.type}`, options, pulled(ev, st, e.ask)) }, jig(id, false, edge(e.w, 28), glyph(12, 9, e.type), code(28, 19, e.text, { fontWeight: 600 }))));
+      const id = `v-${e.f.id}-${e.key}-${sid(e.v)}`, pid = e.pids[0] ?? null, options = () => moves(ev, st, e.ask), link = e.ref ? "a:" + e.ref : pid != null ? "p" + pid : "none";
+      return box(e, { "data-link": link, ...placeProps(e) }, tip(placeLabel(e)), hit(e), ...frame(e),
+        h("g", { id, dragologyKey: "grab", "data-part": "", "data-ref": e.ask, "data-link": link, ...grab(id, `place ${e.path} : ${e.type}`, options, pulled(ev, st, e.ask)) }, jig(id, tip(placeLabel(e)), edge(e.w), glyph(PADX, 13, e.type), code(PADX + GW, 23, e.text, { dragologyKey: "text", fontWeight: 600 }))));
     },
     panel: (e) => {
       const nx = Math.max(20, Math.min(e.w - 20, e.sel ? e.sel.x + e.sel.w / 2 : 40));
       const item = (it) => {
         if (it.kind === "label") return code(it.x, it.y + 19, it.text, { id: it.id, fill: C.t2 });
         if (it.kind === "rule") return h("path", { id: it.id, d: `M12,${it.y}H${it.w}`, stroke: C.rule, strokeWidth: 1 });
-        if (it.kind === "name") { const x = it.x + (it.type ? 20 : 0); return h("g", { id: it.id }, it.type ? glyph(it.x, it.y + 9, it.type) : null, txt(x, it.y + 19, it.text, { fontWeight: 600 }), code(x + tw(it.text, FONT.strong) + 10, it.y + 19, it.role, { fill: C.t2 })); }
+        if (it.kind === "name") { const x = it.x + (it.type ? 20 : 0); return h("g", { id: it.id, dragologyKey: it.id }, it.type ? glyph(it.x, it.y + 9, it.type) : null, txt(x, it.y + 19, it.text, { dragologyKey: "name", fontWeight: 600 }), code(x + tw(it.text, FONT.strong) + 10, it.y + 19, it.role, { dragologyKey: "role", fill: C.t2 })); }
         const act = !!it.act || it.more, press = () => (it.more ? (MORE = true, draw()) : applyAct(it.act));
         const props = act ? { ...(it.act ? { "data-act": it.act, onPointerEnter: () => DRAGGING || HELD || hoverAct(it.act), onPointerLeave: () => DRAGGING || HELD || hoverAct(null) } : { "data-more": "" }), className: "act", role: "button", tabIndex: 0, "aria-label": it.act ?? "more", onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); press(); } } } : {};
-        return h("g", { id: it.id, transform: translate(it.x, it.y), ...props }, h("rect", { y: 2, width: it.w, height: 24, rx: act ? 12 : 2, fill: C.bg, stroke: act ? C.accent : C.rule, strokeWidth: 2 }), it.type ? glyph(8, 9, it.type) : null, code(it.type ? 26 : act ? 10 : 8, 19, it.text, { fill: act ? C.accent : C.t1 }));
+        return h("g", { id: it.id, dragologyKey: it.id, transform: translate(it.x, it.y), ...props }, h("rect", { dragologyKey: "r", y: 2, width: it.w, height: 24, rx: act ? 12 : 2, fill: C.bg, stroke: act ? C.accent : C.rule, strokeWidth: 2 }), it.type ? glyph(8, 9, it.type) : null, code(it.type ? 26 : act ? 10 : 8, 19, it.text, { dragologyKey: "text", fill: act ? C.accent : C.t1 }));
       };
       return h("g", { id: e.id, transform: translate(e.x, e.y), "data-panel": "", "data-ref": e.ref },
         h("rect", { id: "pn-box", width: e.w, height: e.h, rx: 2, fill: C.bg, stroke: C.rule, strokeWidth: 2 }),
@@ -666,8 +651,9 @@ function draw() {
 function paint() {  // the board again, from the current state: no other part of the page changes
   const i = MSGS[at], st = HELD ? HELD.opts[HELD.i].state : reading(i);
   root ??= createRoot($("board"));
-  root.render(h(DraggableRenderer, { key: `${i}-${OPEN}`, draggable, state: st, width: W, height: layout(EVENTS[i], st).height, onDropState: dropped, onDragState: previewed }));
+  root.render(h(DraggableRenderer, { key: `${i}-${OPEN}`, draggable, state: structuredClone(st), width: W, height: layout(EVENTS[i], st).height, onDropState: dropped, onDragState: previewed }));
 }
+const remount = () => { root?.unmount(); root = null; HELD = null; DRAGGING = false; draw(); };  // a fresh board (the audit uses it to end the drag that a synthetic press starts)
 function select(ref) {  // click: the thing opens in the panel. A click on nothing puts the panel away.
   SEL = ref; MORE = false; HOVER = null; HELD = null;
   if (ref && OPEN && picks(EVENTS[MSGS[at]], reading(MSGS[at])).some(([id]) => id === ref)) PICK = ref;
