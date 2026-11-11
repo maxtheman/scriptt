@@ -4828,5 +4828,1938 @@
     }
    }
   }
+ },
+ "3b0b4ae70d2a1981": {
+  "identity": "3b0b4ae70d2a1981",
+  "types": {
+   "str": {
+    "base": "str",
+    "kind": "*"
+   },
+   "Words": {
+    "brand": "Words",
+    "of": {
+     "base": "str"
+    },
+    "kind": "*"
+   },
+   "Asked": {
+    "brand": "Asked",
+    "of": {
+     "brand": "Words",
+     "of": {
+      "base": "str"
+     }
+    },
+    "kind": "*"
+   },
+   "Written": {
+    "brand": "Written",
+    "of": {
+     "brand": "Words",
+     "of": {
+      "base": "str"
+     }
+    },
+    "kind": "*"
+   },
+   "Observed": {
+    "brand": "Observed",
+    "of": {
+     "brand": "Words",
+     "of": {
+      "base": "str"
+     }
+    },
+    "kind": "*"
+   },
+   "Surface": {
+    "sum": "Surface",
+    "alternatives": [
+     {
+      "member": "PAGE",
+      "words": "the page",
+      "type": {
+       "brand": "Asked",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     },
+     {
+      "member": "MOD",
+      "words": "the mod",
+      "type": {
+       "brand": "Asked",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     }
+    ],
+    "kind": "*"
+   },
+   "Path": {
+    "base": "Path",
+    "kind": "*"
+   },
+   "int": {
+    "base": "int",
+    "kind": "*"
+   },
+   "Cell": {
+    "product": "Cell",
+    "fields": {
+     "notebook": {
+      "base": "Path"
+     },
+     "number": {
+      "base": "int"
+     }
+    },
+    "kind": "*"
+   },
+   "Review": {
+    "product": "Review",
+    "fields": {
+     "cell": {
+      "product": "Cell",
+      "fields": {
+       "notebook": {
+        "base": "Path"
+       },
+       "number": {
+        "base": "int"
+       }
+      }
+     },
+     "evidence": {
+      "constructor": "Many",
+      "of": {
+       "brand": "Words",
+       "of": {
+        "base": "str"
+       }
+      }
+     }
+    },
+    "kind": "*"
+   },
+   "Subject": {
+    "sum": "Subject",
+    "alternatives": [
+     {
+      "sum": "Surface",
+      "alternatives": [
+       {
+        "member": "PAGE",
+        "words": "the page",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       },
+       {
+        "member": "MOD",
+        "words": "the mod",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "base": "Path"
+     }
+    ],
+    "kind": "*"
+   },
+   "NoneType": {
+    "base": "NoneType",
+    "kind": "*"
+   }
+  },
+  "constructors": {
+   "Many": {
+    "kind": "* -> *",
+    "describes": "a collection of values in one reading; zero values is an explicit empty collection, not a hole"
+   },
+   "Maybe": {
+    "kind": "* -> *",
+    "describes": "deliberate optionality: one value, or a deliberate absence that d1 answered"
+   },
+   "Later": {
+    "kind": "* -> *",
+    "describes": "a value that depends on work not yet done: an unavailable dependency, not a scheduled computation"
+   }
+  },
+  "functions": {
+   "redesign": {
+    "asks": "change how it looks",
+    "parameters": [
+     [
+      "surface",
+      {
+       "sum": "Surface",
+       "alternatives": [
+        {
+         "member": "PAGE",
+         "words": "the page",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        },
+        {
+         "member": "MOD",
+         "words": "the mod",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        }
+       ]
+      }
+     ]
+    ],
+    "result": {
+     "constructor": "Later",
+     "of": {
+      "sum": "Surface",
+      "alternatives": [
+       {
+        "member": "PAGE",
+        "words": "the page",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       },
+       {
+        "member": "MOD",
+        "words": "the mod",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "show": {
+    "asks": "show it",
+    "parameters": [
+     [
+      "subject",
+      {
+       "sum": "Subject",
+       "alternatives": [
+        {
+         "sum": "Surface",
+         "alternatives": [
+          {
+           "member": "PAGE",
+           "words": "the page",
+           "type": {
+            "brand": "Asked",
+            "of": {
+             "brand": "Words",
+             "of": {
+              "base": "str"
+             }
+            }
+           }
+          },
+          {
+           "member": "MOD",
+           "words": "the mod",
+           "type": {
+            "brand": "Asked",
+            "of": {
+             "brand": "Words",
+             "of": {
+              "base": "str"
+             }
+            }
+           }
+          }
+         ]
+        },
+        {
+         "base": "Path"
+        }
+       ]
+      }
+     ]
+    ],
+    "result": {
+     "sum": "Subject",
+     "alternatives": [
+      {
+       "sum": "Surface",
+       "alternatives": [
+        {
+         "member": "PAGE",
+         "words": "the page",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        },
+        {
+         "member": "MOD",
+         "words": "the mod",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "base": "Path"
+      }
+     ]
+    }
+   },
+   "compare": {
+    "asks": "compare several of them",
+    "parameters": [
+     [
+      "surfaces",
+      {
+       "constructor": "Many",
+       "of": {
+        "sum": "Surface",
+        "alternatives": [
+         {
+          "member": "PAGE",
+          "words": "the page",
+          "type": {
+           "brand": "Asked",
+           "of": {
+            "brand": "Words",
+            "of": {
+             "base": "str"
+            }
+           }
+          }
+         },
+         {
+          "member": "MOD",
+          "words": "the mod",
+          "type": {
+           "brand": "Asked",
+           "of": {
+            "brand": "Words",
+            "of": {
+             "base": "str"
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Written",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "open_cell": {
+    "asks": "open a cell",
+    "parameters": [
+     [
+      "cell",
+      {
+       "product": "Cell",
+       "fields": {
+        "notebook": {
+         "base": "Path"
+        },
+        "number": {
+         "base": "int"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Observed",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "review": {
+    "asks": "review a cell",
+    "parameters": [
+     [
+      "review",
+      {
+       "product": "Review",
+       "fields": {
+        "cell": {
+         "product": "Cell",
+         "fields": {
+          "notebook": {
+           "base": "Path"
+          },
+          "number": {
+           "base": "int"
+          }
+         }
+        },
+        "evidence": {
+         "constructor": "Many",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "constructor": "Later",
+     "of": {
+      "brand": "Written",
+      "of": {
+       "brand": "Words",
+       "of": {
+        "base": "str"
+       }
+      }
+     }
+    }
+   },
+   "follow": {
+    "asks": "follow a rule",
+    "parameters": [
+     [
+      "rule",
+      {
+       "brand": "Asked",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "base": "NoneType"
+    }
+   },
+   "approve": {
+    "asks": "approve a review",
+    "parameters": [
+     [
+      "review",
+      {
+       "product": "Review",
+       "fields": {
+        "cell": {
+         "product": "Cell",
+         "fields": {
+          "notebook": {
+           "base": "Path"
+          },
+          "number": {
+           "base": "int"
+          }
+         }
+        },
+        "evidence": {
+         "constructor": "Many",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Asked",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "explain": {
+    "asks": "explain something",
+    "parameters": [
+     [
+      "subject",
+      {
+       "constructor": "Maybe",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Written",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "reshape_cell": {
+    "asks": "reshape a cell",
+    "parameters": [
+     [
+      "cell",
+      {
+       "product": "Cell",
+       "fields": {
+        "notebook": {
+         "base": "Path"
+        },
+        "number": {
+         "base": "int"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "constructor": "Later",
+     "of": {
+      "product": "Cell",
+      "fields": {
+       "notebook": {
+        "base": "Path"
+       },
+       "number": {
+        "base": "int"
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "6886e77e7f53c8e6": {
+  "identity": "6886e77e7f53c8e6",
+  "types": {
+   "str": {
+    "base": "str",
+    "kind": "*"
+   },
+   "Words": {
+    "brand": "Words",
+    "of": {
+     "base": "str"
+    },
+    "kind": "*"
+   },
+   "Asked": {
+    "brand": "Asked",
+    "of": {
+     "brand": "Words",
+     "of": {
+      "base": "str"
+     }
+    },
+    "kind": "*"
+   },
+   "Written": {
+    "brand": "Written",
+    "of": {
+     "brand": "Words",
+     "of": {
+      "base": "str"
+     }
+    },
+    "kind": "*"
+   },
+   "Observed": {
+    "brand": "Observed",
+    "of": {
+     "brand": "Words",
+     "of": {
+      "base": "str"
+     }
+    },
+    "kind": "*"
+   },
+   "Surface": {
+    "sum": "Surface",
+    "alternatives": [
+     {
+      "member": "PAGE",
+      "words": "the page",
+      "type": {
+       "brand": "Asked",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     },
+     {
+      "member": "MOD",
+      "words": "the mod",
+      "type": {
+       "brand": "Asked",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     }
+    ],
+    "kind": "*"
+   },
+   "Path": {
+    "base": "Path",
+    "kind": "*"
+   },
+   "int": {
+    "base": "int",
+    "kind": "*"
+   },
+   "Cell": {
+    "product": "Cell",
+    "fields": {
+     "notebook": {
+      "base": "Path"
+     },
+     "number": {
+      "base": "int"
+     }
+    },
+    "kind": "*"
+   },
+   "Review": {
+    "product": "Review",
+    "fields": {
+     "cell": {
+      "product": "Cell",
+      "fields": {
+       "notebook": {
+        "base": "Path"
+       },
+       "number": {
+        "base": "int"
+       }
+      }
+     },
+     "evidence": {
+      "constructor": "Many",
+      "of": {
+       "brand": "Words",
+       "of": {
+        "base": "str"
+       }
+      }
+     }
+    },
+    "kind": "*"
+   },
+   "Subject": {
+    "sum": "Subject",
+    "alternatives": [
+     {
+      "sum": "Surface",
+      "alternatives": [
+       {
+        "member": "PAGE",
+        "words": "the page",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       },
+       {
+        "member": "MOD",
+        "words": "the mod",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "base": "Path"
+     }
+    ],
+    "kind": "*"
+   },
+   "NoneType": {
+    "base": "NoneType",
+    "kind": "*"
+   },
+   "Token": {
+    "brand": "Token",
+    "of": {
+     "base": "str"
+    },
+    "kind": "*"
+   }
+  },
+  "constructors": {
+   "Many": {
+    "kind": "* -> *",
+    "describes": "a collection of values in one reading; zero values is an explicit empty collection, not a hole"
+   },
+   "Maybe": {
+    "kind": "* -> *",
+    "describes": "deliberate optionality: one value, or a deliberate absence that d1 answered"
+   },
+   "Later": {
+    "kind": "* -> *",
+    "describes": "a value that depends on work not yet done: an unavailable dependency, not a scheduled computation"
+   }
+  },
+  "functions": {
+   "redesign": {
+    "asks": "change how it looks",
+    "parameters": [
+     [
+      "surface",
+      {
+       "sum": "Surface",
+       "alternatives": [
+        {
+         "member": "PAGE",
+         "words": "the page",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        },
+        {
+         "member": "MOD",
+         "words": "the mod",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        }
+       ]
+      }
+     ]
+    ],
+    "result": {
+     "constructor": "Later",
+     "of": {
+      "sum": "Surface",
+      "alternatives": [
+       {
+        "member": "PAGE",
+        "words": "the page",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       },
+       {
+        "member": "MOD",
+        "words": "the mod",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "show": {
+    "asks": "show it",
+    "parameters": [
+     [
+      "subject",
+      {
+       "sum": "Subject",
+       "alternatives": [
+        {
+         "sum": "Surface",
+         "alternatives": [
+          {
+           "member": "PAGE",
+           "words": "the page",
+           "type": {
+            "brand": "Asked",
+            "of": {
+             "brand": "Words",
+             "of": {
+              "base": "str"
+             }
+            }
+           }
+          },
+          {
+           "member": "MOD",
+           "words": "the mod",
+           "type": {
+            "brand": "Asked",
+            "of": {
+             "brand": "Words",
+             "of": {
+              "base": "str"
+             }
+            }
+           }
+          }
+         ]
+        },
+        {
+         "base": "Path"
+        }
+       ]
+      }
+     ]
+    ],
+    "result": {
+     "sum": "Subject",
+     "alternatives": [
+      {
+       "sum": "Surface",
+       "alternatives": [
+        {
+         "member": "PAGE",
+         "words": "the page",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        },
+        {
+         "member": "MOD",
+         "words": "the mod",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "base": "Path"
+      }
+     ]
+    }
+   },
+   "compare": {
+    "asks": "compare several of them",
+    "parameters": [
+     [
+      "surfaces",
+      {
+       "constructor": "Many",
+       "of": {
+        "sum": "Surface",
+        "alternatives": [
+         {
+          "member": "PAGE",
+          "words": "the page",
+          "type": {
+           "brand": "Asked",
+           "of": {
+            "brand": "Words",
+            "of": {
+             "base": "str"
+            }
+           }
+          }
+         },
+         {
+          "member": "MOD",
+          "words": "the mod",
+          "type": {
+           "brand": "Asked",
+           "of": {
+            "brand": "Words",
+            "of": {
+             "base": "str"
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Written",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "open_cell": {
+    "asks": "open a cell",
+    "parameters": [
+     [
+      "cell",
+      {
+       "product": "Cell",
+       "fields": {
+        "notebook": {
+         "base": "Path"
+        },
+        "number": {
+         "base": "int"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Observed",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "review": {
+    "asks": "review a cell",
+    "parameters": [
+     [
+      "review",
+      {
+       "product": "Review",
+       "fields": {
+        "cell": {
+         "product": "Cell",
+         "fields": {
+          "notebook": {
+           "base": "Path"
+          },
+          "number": {
+           "base": "int"
+          }
+         }
+        },
+        "evidence": {
+         "constructor": "Many",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "constructor": "Later",
+     "of": {
+      "brand": "Written",
+      "of": {
+       "brand": "Words",
+       "of": {
+        "base": "str"
+       }
+      }
+     }
+    }
+   },
+   "follow": {
+    "asks": "follow a rule",
+    "parameters": [
+     [
+      "rule",
+      {
+       "brand": "Asked",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "base": "NoneType"
+    }
+   },
+   "approve": {
+    "asks": "approve a review",
+    "parameters": [
+     [
+      "review",
+      {
+       "product": "Review",
+       "fields": {
+        "cell": {
+         "product": "Cell",
+         "fields": {
+          "notebook": {
+           "base": "Path"
+          },
+          "number": {
+           "base": "int"
+          }
+         }
+        },
+        "evidence": {
+         "constructor": "Many",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Asked",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "explain": {
+    "asks": "explain something",
+    "parameters": [
+     [
+      "subject",
+      {
+       "constructor": "Maybe",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Written",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "make_token": {
+    "asks": "make a token",
+    "parameters": [
+     [
+      "surface",
+      {
+       "sum": "Surface",
+       "alternatives": [
+        {
+         "member": "PAGE",
+         "words": "the page",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        },
+        {
+         "member": "MOD",
+         "words": "the mod",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        }
+       ]
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Token",
+     "of": {
+      "base": "str"
+     }
+    }
+   },
+   "use_token": {
+    "asks": "use a token",
+    "parameters": [
+     [
+      "token",
+      {
+       "brand": "Token",
+       "of": {
+        "base": "str"
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Observed",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   }
+  }
+ },
+ "24411101b0dd9a87": {
+  "identity": "24411101b0dd9a87",
+  "types": {
+   "str": {
+    "base": "str",
+    "kind": "*"
+   },
+   "Words": {
+    "brand": "Words",
+    "of": {
+     "base": "str"
+    },
+    "kind": "*"
+   },
+   "Asked": {
+    "brand": "Asked",
+    "of": {
+     "brand": "Words",
+     "of": {
+      "base": "str"
+     }
+    },
+    "kind": "*"
+   },
+   "Written": {
+    "brand": "Written",
+    "of": {
+     "brand": "Words",
+     "of": {
+      "base": "str"
+     }
+    },
+    "kind": "*"
+   },
+   "Observed": {
+    "brand": "Observed",
+    "of": {
+     "brand": "Words",
+     "of": {
+      "base": "str"
+     }
+    },
+    "kind": "*"
+   },
+   "Surface": {
+    "sum": "Surface",
+    "alternatives": [
+     {
+      "member": "PAGE",
+      "words": "the page",
+      "type": {
+       "brand": "Asked",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     },
+     {
+      "member": "MOD",
+      "words": "the mod",
+      "type": {
+       "brand": "Asked",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     }
+    ],
+    "kind": "*"
+   },
+   "Path": {
+    "base": "Path",
+    "kind": "*"
+   },
+   "int": {
+    "base": "int",
+    "kind": "*"
+   },
+   "Cell": {
+    "product": "Cell",
+    "fields": {
+     "notebook": {
+      "base": "Path"
+     },
+     "number": {
+      "base": "int"
+     }
+    },
+    "kind": "*"
+   },
+   "Review": {
+    "product": "Review",
+    "fields": {
+     "cell": {
+      "product": "Cell",
+      "fields": {
+       "notebook": {
+        "base": "Path"
+       },
+       "number": {
+        "base": "int"
+       }
+      }
+     },
+     "evidence": {
+      "constructor": "Many",
+      "of": {
+       "brand": "Words",
+       "of": {
+        "base": "str"
+       }
+      }
+     }
+    },
+    "kind": "*"
+   },
+   "Subject": {
+    "sum": "Subject",
+    "alternatives": [
+     {
+      "sum": "Surface",
+      "alternatives": [
+       {
+        "member": "PAGE",
+        "words": "the page",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       },
+       {
+        "member": "MOD",
+        "words": "the mod",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "base": "Path"
+     }
+    ],
+    "kind": "*"
+   },
+   "NoneType": {
+    "base": "NoneType",
+    "kind": "*"
+   }
+  },
+  "constructors": {
+   "Many": {
+    "kind": "* -> *",
+    "describes": "a collection of values in one reading; zero values is an explicit empty collection, not a hole"
+   },
+   "Maybe": {
+    "kind": "* -> *",
+    "describes": "deliberate optionality: one value, or a deliberate absence that d1 answered"
+   },
+   "Later": {
+    "kind": "* -> *",
+    "describes": "a value that depends on work not yet done: an unavailable dependency, not a scheduled computation"
+   }
+  },
+  "functions": {
+   "redesign": {
+    "asks": "change how it looks",
+    "parameters": [
+     [
+      "surface",
+      {
+       "sum": "Surface",
+       "alternatives": [
+        {
+         "member": "PAGE",
+         "words": "the page",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        },
+        {
+         "member": "MOD",
+         "words": "the mod",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        }
+       ]
+      }
+     ]
+    ],
+    "result": {
+     "constructor": "Later",
+     "of": {
+      "sum": "Surface",
+      "alternatives": [
+       {
+        "member": "PAGE",
+        "words": "the page",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       },
+       {
+        "member": "MOD",
+        "words": "the mod",
+        "type": {
+         "brand": "Asked",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "show": {
+    "asks": "show it",
+    "parameters": [
+     [
+      "subject",
+      {
+       "sum": "Subject",
+       "alternatives": [
+        {
+         "sum": "Surface",
+         "alternatives": [
+          {
+           "member": "PAGE",
+           "words": "the page",
+           "type": {
+            "brand": "Asked",
+            "of": {
+             "brand": "Words",
+             "of": {
+              "base": "str"
+             }
+            }
+           }
+          },
+          {
+           "member": "MOD",
+           "words": "the mod",
+           "type": {
+            "brand": "Asked",
+            "of": {
+             "brand": "Words",
+             "of": {
+              "base": "str"
+             }
+            }
+           }
+          }
+         ]
+        },
+        {
+         "base": "Path"
+        }
+       ]
+      }
+     ]
+    ],
+    "result": {
+     "sum": "Subject",
+     "alternatives": [
+      {
+       "sum": "Surface",
+       "alternatives": [
+        {
+         "member": "PAGE",
+         "words": "the page",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        },
+        {
+         "member": "MOD",
+         "words": "the mod",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        }
+       ]
+      },
+      {
+       "base": "Path"
+      }
+     ]
+    }
+   },
+   "compare": {
+    "asks": "compare several of them",
+    "parameters": [
+     [
+      "surfaces",
+      {
+       "constructor": "Many",
+       "of": {
+        "sum": "Surface",
+        "alternatives": [
+         {
+          "member": "PAGE",
+          "words": "the page",
+          "type": {
+           "brand": "Asked",
+           "of": {
+            "brand": "Words",
+            "of": {
+             "base": "str"
+            }
+           }
+          }
+         },
+         {
+          "member": "MOD",
+          "words": "the mod",
+          "type": {
+           "brand": "Asked",
+           "of": {
+            "brand": "Words",
+            "of": {
+             "base": "str"
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Written",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "open_cell": {
+    "asks": "open a cell",
+    "parameters": [
+     [
+      "cell",
+      {
+       "product": "Cell",
+       "fields": {
+        "notebook": {
+         "base": "Path"
+        },
+        "number": {
+         "base": "int"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Observed",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "review": {
+    "asks": "review a cell",
+    "parameters": [
+     [
+      "review",
+      {
+       "product": "Review",
+       "fields": {
+        "cell": {
+         "product": "Cell",
+         "fields": {
+          "notebook": {
+           "base": "Path"
+          },
+          "number": {
+           "base": "int"
+          }
+         }
+        },
+        "evidence": {
+         "constructor": "Many",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "constructor": "Later",
+     "of": {
+      "brand": "Written",
+      "of": {
+       "brand": "Words",
+       "of": {
+        "base": "str"
+       }
+      }
+     }
+    }
+   },
+   "follow": {
+    "asks": "follow a rule",
+    "parameters": [
+     [
+      "rule",
+      {
+       "brand": "Asked",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "base": "NoneType"
+    }
+   },
+   "approve": {
+    "asks": "approve a review",
+    "parameters": [
+     [
+      "review",
+      {
+       "product": "Review",
+       "fields": {
+        "cell": {
+         "product": "Cell",
+         "fields": {
+          "notebook": {
+           "base": "Path"
+          },
+          "number": {
+           "base": "int"
+          }
+         }
+        },
+        "evidence": {
+         "constructor": "Many",
+         "of": {
+          "brand": "Words",
+          "of": {
+           "base": "str"
+          }
+         }
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Asked",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "explain": {
+    "asks": "explain something",
+    "parameters": [
+     [
+      "subject",
+      {
+       "constructor": "Maybe",
+       "of": {
+        "brand": "Words",
+        "of": {
+         "base": "str"
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Written",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "gather": {
+    "asks": "gather notes on it",
+    "parameters": [
+     [
+      "surface",
+      {
+       "sum": "Surface",
+       "alternatives": [
+        {
+         "member": "PAGE",
+         "words": "the page",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        },
+        {
+         "member": "MOD",
+         "words": "the mod",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        }
+       ]
+      }
+     ]
+    ],
+    "result": {
+     "constructor": "Many",
+     "of": {
+      "brand": "Observed",
+      "of": {
+       "brand": "Words",
+       "of": {
+        "base": "str"
+       }
+      }
+     }
+    }
+   },
+   "summarize": {
+    "asks": "summarize notes",
+    "parameters": [
+     [
+      "notes",
+      {
+       "constructor": "Many",
+       "of": {
+        "brand": "Observed",
+        "of": {
+         "brand": "Words",
+         "of": {
+          "base": "str"
+         }
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Written",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   },
+   "find": {
+    "asks": "find a note on it",
+    "parameters": [
+     [
+      "surface",
+      {
+       "sum": "Surface",
+       "alternatives": [
+        {
+         "member": "PAGE",
+         "words": "the page",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        },
+        {
+         "member": "MOD",
+         "words": "the mod",
+         "type": {
+          "brand": "Asked",
+          "of": {
+           "brand": "Words",
+           "of": {
+            "base": "str"
+           }
+          }
+         }
+        }
+       ]
+      }
+     ]
+    ],
+    "result": {
+     "constructor": "Maybe",
+     "of": {
+      "brand": "Observed",
+      "of": {
+       "brand": "Words",
+       "of": {
+        "base": "str"
+       }
+      }
+     }
+    }
+   },
+   "keep": {
+    "asks": "keep a note",
+    "parameters": [
+     [
+      "note",
+      {
+       "constructor": "Maybe",
+       "of": {
+        "brand": "Observed",
+        "of": {
+         "brand": "Words",
+         "of": {
+          "base": "str"
+         }
+        }
+       }
+      }
+     ]
+    ],
+    "result": {
+     "brand": "Written",
+     "of": {
+      "brand": "Words",
+      "of": {
+       "base": "str"
+      }
+     }
+    }
+   }
+  }
  }
 }

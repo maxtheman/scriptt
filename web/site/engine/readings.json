@@ -1,7 +1,7 @@
 [
  {
   "form": 5,
-  "id": "617b81f4b75b40d8b1e32155f28fdcd1",
+  "id": "929d320c801048f292b60245fb0b046a",
   "text": "Redesign the mod. Then show it. Test the search too.",
   "source": "243d9d05090584b2",
   "world": "b193ec94c1e33177",
@@ -36,7 +36,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -66,6 +67,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -101,6 +103,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -930,12 +933,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "e5f365c333b4436ba330fb24902b18b0",
+  "snapshot": "1ec5cc17f37844518780c7a9a3b4c8a6",
   "case": "C15 specimen"
  },
  {
   "form": 5,
-  "id": "45d400cb2493497d9588b2d151c687da",
+  "id": "9e7a462e29214e2caec1699b38b78bc8",
   "text": "Redesign the mod and show it.",
   "source": "98612ff7602a0ffa",
   "world": "567ca7e6e8bd3b95",
@@ -970,7 +973,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      },
      {
@@ -990,6 +994,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -1359,12 +1364,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "c79639cb56a44150ae2b628a5cbdcf7c",
+  "snapshot": "45acbe6cf0514fc69bee2ded62c66fd4",
   "case": "C16 conjunction"
  },
  {
   "form": 5,
-  "id": "aa63dc9b30024c5e9278caaa55d7b8de",
+  "id": "211b0e712d594bcda60b9054da32b701",
   "text": "Frobnicate the widget and redesign the mod.",
   "source": "4882bed27b25080c",
   "world": "567ca7e6e8bd3b95",
@@ -1399,7 +1404,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -1698,12 +1704,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "0f221331ec7e4b9fba42aa34793b5bf6",
+  "snapshot": "43cefa520f61462f9fe1d0bd76c93aad",
   "case": "C16 unknown_and_known"
  },
  {
   "form": 5,
-  "id": "a28869eb3f0b437fa0504f2c0e676521",
+  "id": "2bffc78184e147968c322610b0697f11",
   "text": "Compare the page and the mod.",
   "source": "00c5430b5303e95b",
   "world": "567ca7e6e8bd3b95",
@@ -1751,6 +1757,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -2020,12 +2027,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "b4f4cd4fc3c5435fbd60f1149a9f8297",
+  "snapshot": "a8b7bff94c1f4590afd3cd6f27eadd6b",
   "case": "C16 compare_conjunction"
  },
  {
   "form": 5,
-  "id": "fce9c7b56e3e47c0aab1359394620da3",
+  "id": "bccb99bb310a402e86256f357f02aa1a",
   "text": "Show me the mod, redesigned.",
   "source": "c9e91f66caa51197",
   "world": "567ca7e6e8bd3b95",
@@ -2068,7 +2075,8 @@
          "diagnostics": [],
          "complete": true,
          "pending": true,
-         "ready": false
+         "deferred": true,
+         "ready": true
         }
        }
       },
@@ -2077,6 +2085,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -2374,12 +2383,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "e1fb9bba811748ab8e3919d9b6109192",
+  "snapshot": "e9d78395fceb4a0ca5b6c63371ba159f",
   "case": "C16 nested"
  },
  {
   "form": 5,
-  "id": "60119f84e18c4ff9990f46a017b039f2",
+  "id": "c4e8fc941ee04cf9af84630d5c45e1d0",
   "text": "Redesign the mod. Redesign the mod again.",
   "source": "5f3b1a1c58ae9ada",
   "world": "567ca7e6e8bd3b95",
@@ -2414,7 +2423,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -2449,7 +2459,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -2887,12 +2898,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "e7501ad7455a4e08a0f5f0bc4384d451",
+  "snapshot": "86909ecc3b654a9a9d8517c9d2656548",
   "case": "C17 identical_operations"
  },
  {
   "form": 5,
-  "id": "5bd28306b0f7422f93a100e29fa78322",
+  "id": "6a9201a647de49b992feaf4462a3e0e9",
   "text": "Redesign the mod. Show it. Compare it with the page.",
   "source": "d6258d413a212169",
   "world": "567ca7e6e8bd3b95",
@@ -2927,7 +2938,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -2957,6 +2969,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -3000,6 +3013,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -3698,12 +3712,527 @@
    }
   ],
   "corrections": [],
-  "snapshot": "5df47253190a4e7aaa6393be91d027a8",
+  "snapshot": "1472366c941d46149fb113e2bfa8c13f",
   "case": "C17 shared_result"
  },
  {
   "form": 5,
-  "id": "3d5e0fa1b5894ba79af6ea6486daa201",
+  "id": "d13406ac4bc8450f9f5d5bee528514dc",
+  "text": "Redesign the mod. Redesign the mod again.",
+  "source": "5f3b1a1c58ae9ada",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 18,
+    "brand": "Asked",
+    "starts_by": "the first word",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "constant": "the mod",
+        "type": "Surface",
+        "at": [
+         9,
+         16
+        ]
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": true,
+       "deferred": true,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   },
+   {
+    "start": 18,
+    "end": 41,
+    "brand": "Asked",
+    "starts_by": "after .",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "1",
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "constant": "the mod",
+        "type": "Surface",
+        "at": [
+         27,
+         34
+        ]
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": true,
+       "deferred": true,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     9,
+     16
+    ]
+   },
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     27,
+     34
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.9,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.011111111111111112
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "redesign"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how it looks. Which surface does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "none": 0.1
+      }
+     }
+    },
+    "function": "redesign",
+    "operation": 0,
+    "path": "surface",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       9,
+       16
+      ]
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the mod",
+     "type": "Surface",
+     "at": [
+      9,
+      16
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how it looks. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod again.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.9,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.011111111111111112
+      }
+     }
+    },
+    "function": null,
+    "operation": 1,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "redesign"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod again.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how it looks. Which surface does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "1",
+        "description": "redesign(surface='the mod')"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "1": 0.05,
+       "none": 0.05
+      }
+     }
+    },
+    "function": "redesign",
+    "operation": 1,
+    "path": "surface",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       27,
+       34
+      ]
+     },
+     {
+      "ref": "0"
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the mod",
+     "type": "Surface",
+     "at": [
+      27,
+      34
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod again.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how it looks. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "1581a8e9f485412e90fa87ad8e818375",
+  "case": "C17 one_artifact"
+ },
+ {
+  "form": 5,
+  "id": "7fb575fd9d554102b5b82888bbd7c19c",
   "text": "Redesign the mod. Pack it in a box.",
   "source": "d902e9d2bcf18b23",
   "world": "9f6f358a7ee9d111",
@@ -3738,7 +4267,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -3773,6 +4303,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -4288,12 +4819,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "d4b4584b2c0c402c8a376a819c64bce8",
+  "snapshot": "9dcba258da524463b2b6411b898b1527",
   "case": "C10 record"
  },
  {
   "form": 5,
-  "id": "9c70ada5ba2f49389fdc993a9667fdc6",
+  "id": "6101d0b4b724447bb9eec2932888a0c4",
   "text": "Redesign the mod. Compare it with the page.",
   "source": "cf13ff762b8a527a",
   "world": "9f6f358a7ee9d111",
@@ -4328,7 +4859,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -4371,6 +4903,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -4886,12 +5419,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "ea73a30712284a0bbb4a6d55f6c68f65",
+  "snapshot": "675f1d3ff29b45b98bfb2298b031f8d4",
   "case": "C10 several"
  },
  {
   "form": 5,
-  "id": "9dc62ebe2cbf458a9bf82f4938b2628c",
+  "id": "d8f5656ece34407893d26f130a3408f0",
   "text": "Redesign the mod. Describe it.",
   "source": "42b15eed308dce45",
   "world": "9f6f358a7ee9d111",
@@ -4926,7 +5459,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -4956,6 +5490,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -5445,12 +5980,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "ec7b55180c3c4b9993bf00345bc901df",
+  "snapshot": "09efffdefa7e401fa50b0f18ae85127c",
   "case": "C10 maybe"
  },
  {
   "form": 5,
-  "id": "0a713c6a18864033b157b2d289b97ea1",
+  "id": "aefdbd1f28ee4023be8d4715ba01ed4a",
   "text": "Redesign the mod. Pack it in a box. Explain that.",
   "source": "4b825646ed327f90",
   "world": "9f6f358a7ee9d111",
@@ -5485,7 +6020,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -5520,6 +6056,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -5550,6 +6087,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -6320,12 +6858,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "f10be9315a754e738e3ae8f130f3fdf9",
+  "snapshot": "dfddfe8af13a455d98c24a8155d417ae",
   "case": "C10 through_result"
  },
  {
   "form": 5,
-  "id": "bf6b4655b5054f89b76b24ab4298c3b6",
+  "id": "b03943fb1cde482cbd7590d274ebd642",
   "text": "Pack the mod in a box.",
   "source": "6990c75e5e0ed1be",
   "world": "9f6f358a7ee9d111",
@@ -6365,6 +6903,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -6656,12 +7195,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "a81a1233f19f43fcbee82d5d15a18a4f",
+  "snapshot": "03d5022fafab4cd6a259f3befae57558",
   "case": "C10 plain"
  },
  {
   "form": 5,
-  "id": "25f5b686b5194d27a8dd051c902f0fe6",
+  "id": "09ae2caee7f845e7a7e6646f7ad2d9b5",
   "text": "Tag the mod in a box.",
   "source": "9398cac3d271f053",
   "world": "a4cba636f3b05fbb",
@@ -6692,6 +7231,7 @@
        "diagnostics": [],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -6931,12 +7471,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "32bc4cc1929442f1ac7a8bab63a415f9",
+  "snapshot": "494e299e7cf940e292dfcd6b94d95494",
   "case": "C10 many_of_records"
  },
  {
   "form": 5,
-  "id": "b4ac8fefcce44437ae84eb393e895fef",
+  "id": "20d3dcebff084333bc54ecb1f92ebd19",
   "text": "Email my accountant.",
   "source": "4ab85b95b9cf9847",
   "world": "567ca7e6e8bd3b95",
@@ -7109,12 +7649,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "05518faa132a412c875c2fa03a7702d9",
+  "snapshot": "49efc8b16c474ea9948ead665ea1eb8d",
   "case": "C01 unsupported"
  },
  {
   "form": 5,
-  "id": "a5e4ce03bdb148e9895b9f3c9bbfc0e4",
+  "id": "05896d6b06dc4725a20fdff8b13a9df2",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -7149,7 +7689,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -7370,12 +7911,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "1f3cc6d3dffd4056b8ef19f30c8588d9",
+  "snapshot": "bd542af42dc043aaba0a4268e1b07244",
   "case": "C01 supported"
  },
  {
   "form": 5,
-  "id": "9903adfbfbd74c37904927e3b7f7bd47",
+  "id": "b9cef6c8df2546798b9b3cc92ba427d6",
   "text": "These seven words are the entire earlier reply.",
   "source": "4d70a18927f7cb10",
   "world": "567ca7e6e8bd3b95",
@@ -7394,12 +7935,12 @@
   "constants": [],
   "decisions": [],
   "corrections": [],
-  "snapshot": "75f6dbad49bb4603b25e0e31228c62c3",
+  "snapshot": "964d36158baf4b50851daacc0c0a6af3",
   "case": "C13 whole_quote"
  },
  {
   "form": 5,
-  "id": "911f9594aa95464aaf5aa7806576509c",
+  "id": "a6996e7912da47cfa7e9b88e73a5f04d",
   "text": "\"I compared the page and the mod for you today.\" Compare them.",
   "source": "4cfc739687a1d07d",
   "world": "567ca7e6e8bd3b95",
@@ -7439,6 +7980,7 @@
        "diagnostics": [],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -7630,12 +8172,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "0071afa6d378404994daa9ee2349f605",
+  "snapshot": "07535e0be77a4394896805f51184eb53",
   "case": "C13 quoted_members"
  },
  {
   "form": 5,
-  "id": "6e8cfc814fc747b2b4bf47e62313cf5f",
+  "id": "261145b8501540ffa7689f7615c58251",
   "text": "\"I compared the page and the mod for you today.\" Compare the page and the mod.",
   "source": "6fced846b618bc53",
   "world": "567ca7e6e8bd3b95",
@@ -7692,6 +8234,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -7977,12 +8520,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "dfee15f5e37046968d7b280ee28968bb",
+  "snapshot": "7fae70a9efbb497c8eb89d7eccb2ec93",
   "case": "C13 own_members"
  },
  {
   "form": 5,
-  "id": "f51a942e709840aab356655c5a93893e",
+  "id": "619fa513348543cda47378eb155bcb2e",
   "text": "\"These seven words are the entire earlier reply.\" Redesign the mod.",
   "source": "efd45e754476b15d",
   "world": "567ca7e6e8bd3b95",
@@ -8026,7 +8569,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -8247,12 +8791,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "08ec25f2b77e4f3b918aa4d358649f1f",
+  "snapshot": "b1dc349d4da1493ab80ba2a18df0435b",
   "case": "C13 quote_and_request"
  },
  {
   "form": 5,
-  "id": "0719959233c141009ceee5ed2f101657",
+  "id": "0fad42a3a8764fdc9c6cd4d8923e6f9e",
   "text": "Explain in general, not the mod.",
   "source": "99092d03003a7a09",
   "world": "e7738a24d5c8fcaf",
@@ -8282,6 +8826,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -8520,12 +9065,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "dc426b6f613a42a99beb62d071b72a3c",
+  "snapshot": "03a1e1572b1c486ca4c3157d375f3213",
   "case": "C05 absent"
  },
  {
   "form": 5,
-  "id": "fcdabd907db44ee3a547d161b9725f38",
+  "id": "6d97e5d3f08c47f0bb4a1deaa794da49",
   "text": "Explain the mod and the page.",
   "source": "7b488757bdc58be5",
   "world": "e7738a24d5c8fcaf",
@@ -8556,6 +9101,7 @@
        "diagnostics": [],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -8815,12 +9361,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "7f49e67ce9b24760b0afb8c0f6050824",
+  "snapshot": "c069439abf4d4106b4d6d60d68f08e4c",
   "case": "C05 unresolved"
  },
  {
   "form": 5,
-  "id": "e2c5f7c79d234edaa064b5ba21382c1c",
+  "id": "40f4dfd8cf7f4c939430bea41be7060d",
   "text": "Explain the mod and the page.",
   "source": "7b488757bdc58be5",
   "world": "e7738a24d5c8fcaf",
@@ -8856,6 +9402,7 @@
        ],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -9111,12 +9658,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "7c8f4949fe444689ba5d8b83e60162f0",
+  "snapshot": "0eeafc35c5154142b484cb21aceafe5e",
   "case": "C05 malformed"
  },
  {
   "form": 5,
-  "id": "0ce7df4b05944cb9ba10744d81030eae",
+  "id": "f7f087a304764d4981d432fdfb30b038",
   "text": "Explain the mod and the page.",
   "source": "7b488757bdc58be5",
   "world": "e7738a24d5c8fcaf",
@@ -9152,6 +9699,7 @@
        ],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -9401,12 +9949,313 @@
    }
   ],
   "corrections": [],
-  "snapshot": "5787d1a5aa244b4aaa7205a1b6c0ba74",
+  "snapshot": "f34122e068274dc1a85cd78516814a3c",
   "case": "C05 missing"
  },
  {
   "form": 5,
-  "id": "32a6166e4c0749dbb4c0824c2d3ed571",
+  "id": "5bda5b62055f44ffbf70a64e14307eaf",
+  "text": "Explain the mod and the page.",
+  "source": "7b488757bdc58be5",
+  "world": "e7738a24d5c8fcaf",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 29,
+    "brand": "Asked",
+    "starts_by": "",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "explain",
+      "type": "Written",
+      "parameters": {
+       "subject": "Maybe[Surface]"
+      },
+      "arguments": {
+       "subject": {
+        "hole": "Maybe[Surface]",
+        "reason": "invalid answer"
+       }
+      },
+      "judgments": {
+       "valid": false,
+       "diagnostics": [
+        [
+         "subject",
+         "model_answer"
+        ]
+       ],
+       "complete": false,
+       "pending": false,
+       "deferred": false,
+       "ready": false
+      }
+     }
+    ],
+    "unresolved": null
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     8,
+     15
+    ]
+   },
+   {
+    "constant": "the page",
+    "type": "Surface",
+    "at": [
+     20,
+     28
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Explain the mod and the page.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.9,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.011111111111111112
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "explain"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Explain the mod and the page.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to explain something. Which subject does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "1",
+        "description": "'the page'"
+       },
+       {
+        "id": "2",
+        "description": "redesign(surface=...)"
+       },
+       {
+        "id": "absent",
+        "description": "the text leaves it out on purpose"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 1.5,
+       "1": 0.0,
+       "2": 0.0,
+       "absent": 0.0,
+       "none": 0.0
+      }
+     }
+    },
+    "function": "explain",
+    "operation": 0,
+    "path": "subject",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       8,
+       15
+      ]
+     },
+     {
+      "constant": "the page",
+      "type": "Surface",
+      "at": [
+       20,
+       28
+      ]
+     },
+     {
+      "id": null,
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": null
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Explain the mod and the page.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to explain something. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "bf09f577fd5149c48a7da4e250437fd1",
+  "case": "C05 out_of_range"
+ },
+ {
+  "form": 5,
+  "id": "0e10511ccdea4f1796b74a8d4a7d41ae",
   "text": "Explain.",
   "source": "99dd304d9aa4f54c",
   "world": "e7738a24d5c8fcaf",
@@ -9436,6 +10285,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -9632,12 +10482,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "3087b431de79484ebf5f5cf21dd3e1a8",
+  "snapshot": "7b0a998c24f1469c8d3a0ad0783fd2bd",
   "case": "C05 nothing_in_scope"
  },
  {
   "form": 5,
-  "id": "d09c2879d7694db7bf2d0982981fda90",
+  "id": "1b339f52357e4f7f850be788a9976fdc",
   "text": "Explain.",
   "source": "99dd304d9aa4f54c",
   "world": "e7738a24d5c8fcaf",
@@ -9668,6 +10518,7 @@
        "diagnostics": [],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -9864,12 +10715,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "25e32fbb44584240a70afd6c86c98854",
+  "snapshot": "36cbc944531f447195be952319b3209c",
   "case": "C05 nothing_in_scope_rejected"
  },
  {
   "form": 5,
-  "id": "0b0e07effe294db4ba20190152d17355",
+  "id": "c6f7ba9a7d894a3395bf807fcae953ab",
   "text": "Explain the mod.",
   "source": "bb0d958f897ea567",
   "world": "e7738a24d5c8fcaf",
@@ -9904,6 +10755,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -10149,12 +11001,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "ed680dd491314801aee0bafa91470517",
+  "snapshot": "abf769755a0d434daa28cbb58a5c4eb0",
   "case": "C05 given"
  },
  {
   "form": 5,
-  "id": "c06e0d7185844ef2b59beb1c475b0695",
+  "id": "eda3d8e4b2cd4739b996517e44c632fe",
   "text": "Compare them.",
   "source": "103f3832b8c08783",
   "world": "567ca7e6e8bd3b95",
@@ -10185,6 +11037,7 @@
        "diagnostics": [],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -10359,12 +11212,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "6b9e0bef592145769611f9239ce78d7c",
+  "snapshot": "5fa7bebccc8c4a6c86570a79d5e1e64e",
   "case": "C06 unknown"
  },
  {
   "form": 5,
-  "id": "0441d811cf844fc7b78708b07c025993",
+  "id": "cfe04906c3b24294a569ba399b897e08",
   "text": "Compare them.",
   "source": "103f3832b8c08783",
   "world": "567ca7e6e8bd3b95",
@@ -10395,6 +11248,7 @@
        "diagnostics": [],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -10569,12 +11423,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "7a45a28b9589445e886efc74cb707286",
+  "snapshot": "82f233be7b064968bc8b6f4f1fbeda08",
   "case": "C06 explicit_empty"
  },
  {
   "form": 5,
-  "id": "37443074dd3c4901adf7b2d62c49da09",
+  "id": "e73e95ffd5a9458797e55a979d499e02",
   "text": "I like the page. Compare it, not the mod.",
   "source": "bde2829b937f1b01",
   "world": "567ca7e6e8bd3b95",
@@ -10623,6 +11477,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -10959,12 +11814,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "8fa15718aac74fc89adc6b353728ca4f",
+  "snapshot": "ddf94dfcbcfd458da8b8f53e7b5f7e58",
   "case": "C06 earlier_not_local"
  },
  {
   "form": 5,
-  "id": "0bbffc5465084dcfa7a7976d4f0f1f78",
+  "id": "7eb52dd23db7436aac4f6b6f0b073d46",
   "text": "Compare the page and the mod.",
   "source": "00c5430b5303e95b",
   "world": "567ca7e6e8bd3b95",
@@ -10995,6 +11850,7 @@
        "diagnostics": [],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -11247,12 +12103,301 @@
    }
   ],
   "corrections": [],
-  "snapshot": "64cebc31d8cd41dba02b124895883c9b",
+  "snapshot": "99fc53cfc17647f1a34fb5e5824c8fb4",
   "case": "C06 all_rejected"
  },
  {
   "form": 5,
-  "id": "86089a9981b64f0990df11920d7a9b1e",
+  "id": "51580ccfb2a14c1bbff90b763fd25bdf",
+  "text": "Compare none of them, neither the page nor the mod.",
+  "source": "8d286a72451b6c8e",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 51,
+    "brand": "Asked",
+    "starts_by": "",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "compare",
+      "type": "Written",
+      "parameters": {
+       "surfaces": "Many[Surface]"
+      },
+      "arguments": {
+       "surfaces": {
+        "several": [],
+        "type": "Many[Surface]"
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": false,
+       "deferred": false,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the page",
+    "type": "Surface",
+    "at": [
+     30,
+     38
+    ]
+   },
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     43,
+     50
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Compare none of them, neither the page nor the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.9,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.011111111111111112
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "compare"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Compare none of them, neither the page nor the mod.",
+    "asked": {
+     "0": {
+      "type": "boolean",
+      "instructions": "The message asks the reader to compare several of them. In the message, are the words \"'the page'\" the surfaces for that?"
+     },
+     "1": {
+      "type": "boolean",
+      "instructions": "The message asks the reader to compare several of them. In the message, are the words \"'the mod'\" the surfaces for that?"
+     },
+     "2": {
+      "type": "boolean",
+      "instructions": "The message asks the reader to compare several of them. In the message, are the words \"redesign(surface=...)\" the surfaces for that?"
+     },
+     "absent": {
+      "type": "boolean",
+      "instructions": "The text asks the reader to compare several of them. Does the text leave out the surfaces on purpose?"
+     }
+    },
+    "answers": {
+     "0": {
+      "p_true": 0.1
+     },
+     "1": {
+      "p_true": 0.1
+     },
+     "2": {
+      "p_true": 0.1
+     },
+     "absent": {
+      "p_true": 0.9
+     }
+    },
+    "function": "compare",
+    "operation": 0,
+    "path": "surfaces",
+    "offered": [
+     {
+      "constant": "the page",
+      "type": "Surface",
+      "at": [
+       30,
+       38
+      ]
+     },
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       43,
+       50
+      ]
+     },
+     {
+      "id": null,
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": "absent"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Compare none of them, neither the page nor the mod.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to compare several of them. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "f1250bdd59b14a749f008447ef750735",
+  "case": "C06 absent_many"
+ },
+ {
+  "form": 5,
+  "id": "01c6dafb66b74f8e812163bd43304b6c",
   "text": "Email an accountant.",
   "source": "6b3b6e4d89217afc",
   "world": "f0b9d9f56bd3049e",
@@ -11435,12 +12580,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "08eddc15586e4f93a0f1a76be1666d8f",
+  "snapshot": "b7fde45de3b247af9e4894d24eb787f2",
   "case": "C14 reserved_name"
  },
  {
   "form": 5,
-  "id": "4ed5f5edebc349b2bc2f48377f0de062",
+  "id": "efa9e3dd054345908cc7d74003842c63",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -11538,12 +12683,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "f1e4eba674844138a26b171875094a68",
+  "snapshot": "b1a8445def004af7ace80b39032b4435",
   "case": "C14 out_of_set"
  },
  {
   "form": 5,
-  "id": "e87a404afa4a4b4b8868beaf5af23a6e",
+  "id": "975d86900667421e8b9ee7d6f508478a",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -11635,12 +12780,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "ed2265809d4047f78054df0617ee81f9",
+  "snapshot": "b2761e1513e4467e8662a4e97e9569cb",
   "case": "C14 missing"
  },
  {
   "form": 5,
-  "id": "3e5b98d83ed94f8aaa0ebdcfe31f08b9",
+  "id": "f6b401fd5fe243f4b81093aaa3d5707b",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -11738,12 +12883,564 @@
    }
   ],
   "corrections": [],
-  "snapshot": "b737dbea65a941a399773b486c8dcbec",
+  "snapshot": "6ee25aac5eff449b9f4e153d9037adf9",
   "case": "C14 not_numbers"
  },
  {
   "form": 5,
-  "id": "2681d80117c146ee94844a908bfeaacb",
+  "id": "d181bbccde55489bb8e4d311ece747e8",
+  "text": "Redesign the mod.",
+  "source": "9dc4677f41805788",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 17,
+    "brand": "Asked",
+    "starts_by": "",
+    "quotes": null,
+    "terms": [],
+    "unresolved": {
+     "id": "0",
+     "reason": "invalid answer"
+    }
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     9,
+     16
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": NaN,
+       "show": 0.0,
+       "compare": 0.0,
+       "open_cell": 0.0,
+       "review": 0.0,
+       "follow": 0.0,
+       "approve": 0.0,
+       "explain": 0.0,
+       "(none)": 0.0,
+       "(nothing)": 0.0
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": null
+   }
+  ],
+  "corrections": [],
+  "snapshot": "f0f8be3f4d3346b98b3971e8a46c062d",
+  "case": "C14 nan"
+ },
+ {
+  "form": 5,
+  "id": "72095111ea3c4609bc4b138c3e0d3fcf",
+  "text": "Redesign the mod.",
+  "source": "9dc4677f41805788",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 17,
+    "brand": "Asked",
+    "starts_by": "",
+    "quotes": null,
+    "terms": [],
+    "unresolved": {
+     "id": "0",
+     "reason": "invalid answer"
+    }
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     9,
+     16
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": Infinity,
+       "show": 0.0,
+       "compare": 0.0,
+       "open_cell": 0.0,
+       "review": 0.0,
+       "follow": 0.0,
+       "approve": 0.0,
+       "explain": 0.0,
+       "(none)": 0.0,
+       "(nothing)": 0.0
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": null
+   }
+  ],
+  "corrections": [],
+  "snapshot": "d56517707d744782b1365c252c3fea3a",
+  "case": "C14 infinite"
+ },
+ {
+  "form": 5,
+  "id": "63d78c5997404d319abc5be4f434fdd9",
+  "text": "Redesign the mod.",
+  "source": "9dc4677f41805788",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 17,
+    "brand": "Asked",
+    "starts_by": "",
+    "quotes": null,
+    "terms": [],
+    "unresolved": {
+     "id": "0",
+     "reason": "invalid answer"
+    }
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     9,
+     16
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 1.5,
+       "(nothing)": -0.5
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": null
+   }
+  ],
+  "corrections": [],
+  "snapshot": "793b70b353254cbb8a108620efc7780c",
+  "case": "C14 negative"
+ },
+ {
+  "form": 5,
+  "id": "347ee5df7e9e436e8381bd84e60d78f8",
+  "text": "Redesign the mod.",
+  "source": "9dc4677f41805788",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 17,
+    "brand": "Asked",
+    "starts_by": "",
+    "quotes": null,
+    "terms": [],
+    "unresolved": {
+     "id": "0",
+     "reason": "invalid answer"
+    }
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     9,
+     16
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 1.5,
+       "show": 0.0,
+       "compare": 0.0,
+       "open_cell": 0.0,
+       "review": 0.0,
+       "follow": 0.0,
+       "approve": 0.0,
+       "explain": 0.0,
+       "(none)": 0.0,
+       "(nothing)": 0.0
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": null
+   }
+  ],
+  "corrections": [],
+  "snapshot": "7d8863260f104c0684deba5271866985",
+  "case": "C14 out_of_range"
+ },
+ {
+  "form": 5,
+  "id": "c1436b03b779469ea3ed8dfe0767005d",
+  "text": "Redesign the mod.",
+  "source": "9dc4677f41805788",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 17,
+    "brand": "Asked",
+    "starts_by": "",
+    "quotes": null,
+    "terms": [],
+    "unresolved": {
+     "id": "0",
+     "reason": "invalid answer"
+    }
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     9,
+     16
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.5,
+       "show": 0.0,
+       "compare": 0.0,
+       "open_cell": 0.0,
+       "review": 0.0,
+       "follow": 0.0,
+       "approve": 0.0,
+       "explain": 0.0,
+       "(none)": 0.0,
+       "(nothing)": 0.0
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": null
+   }
+  ],
+  "corrections": [],
+  "snapshot": "560b9d5b39584933b7cd7f1b7929297b",
+  "case": "C14 unnormalized"
+ },
+ {
+  "form": 5,
+  "id": "e389de238b04466f9b4d24ac1b943814",
   "text": "Show whichever of the page, the site, the ui, the mod, the pane, the visualization, the harness, the hook and the tests changed.",
   "source": "65aaf6fb9a983e02",
   "world": "b193ec94c1e33177",
@@ -11774,6 +13471,7 @@
        "diagnostics": [],
        "complete": false,
        "pending": false,
+       "deferred": false,
        "ready": false
       }
      }
@@ -12210,12 +13908,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "801b3f5748f94ee0bd082ba68b215588",
+  "snapshot": "060c8a2ff8434fa9a8e7f39e06573b2c",
   "case": "C14 bounded"
  },
  {
   "form": 5,
-  "id": "e2efcfa9319542938b2bb06dee10c665",
+  "id": "b5aae5fcd67044d79b1106fe61ffa87a",
   "text": "Redesign the mod, show it, compare it with the page and explain it.",
   "source": "dc2bb4d7c639a041",
   "world": "567ca7e6e8bd3b95",
@@ -12250,7 +13948,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      },
      {
@@ -12270,6 +13969,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      },
@@ -12303,6 +14003,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
+       "deferred": false,
        "ready": false
       }
      }
@@ -12880,12 +14581,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "0737d0e730c14216b19ab9baa6af293b",
+  "snapshot": "2aa64ab750da443da6acf0eb2c48c726",
   "case": "C14 too_many_operations"
  },
  {
   "form": 5,
-  "id": "2bfa4a6a1e5a4dfaa721cd6c2e99412f",
+  "id": "efdfb69b438f4f2bba14b02a2b9301ae",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -12920,7 +14621,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -13141,12 +14843,3309 @@
    }
   ],
   "corrections": [],
-  "snapshot": "28937d92c9234a0998a9efff62293e2b",
+  "snapshot": "62420b17803c46fa9b558e6c4367741b",
   "case": "C14 well_formed"
  },
  {
   "form": 5,
-  "id": "a15d9ca41054470ea9ece08f1dbcc35c",
+  "id": "da0d10b564d8424a991416c77dcf9cf4",
+  "text": "Reshape cell 3 of notes.md. Open that cell.",
+  "source": "9c8bd0d5ea9d626a",
+  "world": "3b0b4ae70d2a1981",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 28,
+    "brand": "Asked",
+    "starts_by": "the first word",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "reshape_cell",
+      "type": "Later[Cell]",
+      "parameters": {
+       "cell": "Cell"
+      },
+      "arguments": {
+       "cell": {
+        "fields": {
+         "notebook": {
+          "constant": "notes.md",
+          "type": "Path",
+          "at": [
+           18,
+           26
+          ]
+         },
+         "number": {
+          "constant": 3,
+          "type": "int",
+          "at": [
+           13,
+           14
+          ]
+         }
+        },
+        "type": "Cell"
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": true,
+       "deferred": true,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   },
+   {
+    "start": 28,
+    "end": 43,
+    "brand": "Asked",
+    "starts_by": "after .",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "1",
+      "function": "open_cell",
+      "type": "Observed",
+      "parameters": {
+       "cell": "Cell"
+      },
+      "arguments": {
+       "cell": {
+        "ref": "0"
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": true,
+       "deferred": false,
+       "ready": false
+      }
+     }
+    ],
+    "unresolved": null
+   }
+  ],
+  "constants": [
+   {
+    "constant": 3,
+    "type": "int",
+    "at": [
+     13,
+     14
+    ]
+   },
+   {
+    "constant": "notes.md",
+    "type": "Path",
+    "at": [
+     18,
+     26
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Reshape cell 3 of notes.md.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "reshape_cell",
+        "description": "reshape a cell"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.01,
+       "show": 0.01,
+       "compare": 0.01,
+       "open_cell": 0.01,
+       "review": 0.01,
+       "follow": 0.01,
+       "approve": 0.01,
+       "explain": 0.01,
+       "reshape_cell": 0.9,
+       "(none)": 0.01,
+       "(nothing)": 0.01
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "reshape_cell"
+   },
+   {
+    "by": "rule",
+    "rule": "a record with no whole value in scope is built from its fields",
+    "state": "Reshape cell 3 of notes.md.",
+    "asked": {},
+    "answers": null,
+    "function": "reshape_cell",
+    "operation": 0,
+    "path": "cell",
+    "offered": [
+     {
+      "fields": {
+       "notebook": {
+        "hole": "Path",
+        "reason": ""
+       },
+       "number": {
+        "hole": "int",
+        "reason": ""
+       }
+      },
+      "type": "Cell"
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "fields": {
+      "notebook": {
+       "hole": "Path",
+       "reason": ""
+      },
+      "number": {
+       "hole": "int",
+       "reason": ""
+      }
+     },
+     "type": "Cell"
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Reshape cell 3 of notes.md.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to reshape a cell. Which notebook does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'notes.md'"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "none": 0.1
+      }
+     }
+    },
+    "function": "reshape_cell",
+    "operation": 0,
+    "path": "cell.notebook",
+    "offered": [
+     {
+      "constant": "notes.md",
+      "type": "Path",
+      "at": [
+       18,
+       26
+      ]
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "notes.md",
+     "type": "Path",
+     "at": [
+      18,
+      26
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Reshape cell 3 of notes.md.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to reshape a cell. Which number does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'3'"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "none": 0.1
+      }
+     }
+    },
+    "function": "reshape_cell",
+    "operation": 0,
+    "path": "cell.number",
+    "offered": [
+     {
+      "constant": 3,
+      "type": "int",
+      "at": [
+       13,
+       14
+      ]
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": 3,
+     "type": "int",
+     "at": [
+      13,
+      14
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Reshape cell 3 of notes.md.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to reshape a cell. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "reshape_cell",
+        "description": "reshape a cell"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.01,
+       "show": 0.01,
+       "compare": 0.01,
+       "open_cell": 0.01,
+       "review": 0.01,
+       "follow": 0.01,
+       "approve": 0.01,
+       "explain": 0.01,
+       "reshape_cell": 0.01,
+       "(none)": 0.01,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Open that cell.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "reshape_cell",
+        "description": "reshape a cell"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.01,
+       "show": 0.01,
+       "compare": 0.01,
+       "open_cell": 0.9,
+       "review": 0.01,
+       "follow": 0.01,
+       "approve": 0.01,
+       "explain": 0.01,
+       "reshape_cell": 0.01,
+       "(none)": 0.01,
+       "(nothing)": 0.01
+      }
+     }
+    },
+    "function": null,
+    "operation": 1,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "open_cell"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Open that cell.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to open a cell. Which cell does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "reshape_cell(cell=Cell(notebook='notes.md', number='3'))"
+       },
+       {
+        "id": "1",
+        "description": "reshape_cell(cell=...)"
+       },
+       {
+        "id": "2",
+        "description": "Cell(notebook=..., number=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "1": 0.03333333333333333,
+       "2": 0.03333333333333333,
+       "none": 0.03333333333333333
+      }
+     }
+    },
+    "function": "open_cell",
+    "operation": 1,
+    "path": "cell",
+    "offered": [
+     {
+      "ref": "0"
+     },
+     {
+      "id": null,
+      "function": "reshape_cell",
+      "type": "Later[Cell]",
+      "parameters": {
+       "cell": "Cell"
+      },
+      "arguments": {
+       "cell": {
+        "hole": "Cell",
+        "reason": ""
+       }
+      }
+     },
+     {
+      "fields": {
+       "notebook": {
+        "hole": "Path",
+        "reason": ""
+       },
+       "number": {
+        "hole": "int",
+        "reason": ""
+       }
+      },
+      "type": "Cell"
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "ref": "0"
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Open that cell.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to open a cell. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "reshape_cell",
+        "description": "reshape a cell"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.01,
+       "show": 0.01,
+       "compare": 0.01,
+       "open_cell": 0.01,
+       "review": 0.01,
+       "follow": 0.01,
+       "approve": 0.01,
+       "explain": 0.01,
+       "reshape_cell": 0.01,
+       "(none)": 0.01,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "047905bdd1914fed86f1396b1713e882",
+  "case": "C07 reshape_open"
+ },
+ {
+  "form": 5,
+  "id": "8e8eac40f2a44d39b8900bf1733a989a",
+  "text": "Redesign the page. Show the mod redesigned.",
+  "source": "8318c91a53cc0ed8",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 19,
+    "brand": "Asked",
+    "starts_by": "the first word",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "constant": "the page",
+        "type": "Surface",
+        "at": [
+         9,
+         17
+        ]
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": true,
+       "deferred": true,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   },
+   {
+    "start": 19,
+    "end": 43,
+    "brand": "Asked",
+    "starts_by": "after .",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "2",
+      "function": "show",
+      "type": "Subject",
+      "parameters": {
+       "subject": "Subject"
+      },
+      "arguments": {
+       "subject": {
+        "id": "1",
+        "function": "redesign",
+        "type": "Later[Surface]",
+        "parameters": {
+         "surface": "Surface"
+        },
+        "arguments": {
+         "surface": {
+          "constant": "the mod",
+          "type": "Surface",
+          "at": [
+           24,
+           31
+          ]
+         }
+        },
+        "judgments": {
+         "valid": true,
+         "diagnostics": [],
+         "complete": true,
+         "pending": true,
+         "deferred": true,
+         "ready": true
+        }
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": true,
+       "deferred": false,
+       "ready": false
+      }
+     }
+    ],
+    "unresolved": null
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the page",
+    "type": "Surface",
+    "at": [
+     9,
+     17
+    ]
+   },
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     24,
+     31
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the page.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.9,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.011111111111111112
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "redesign"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the page.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how it looks. Which surface does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the page'"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "none": 0.1
+      }
+     }
+    },
+    "function": "redesign",
+    "operation": 0,
+    "path": "surface",
+    "offered": [
+     {
+      "constant": "the page",
+      "type": "Surface",
+      "at": [
+       9,
+       17
+      ]
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the page",
+     "type": "Surface",
+     "at": [
+      9,
+      17
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the page.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how it looks. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Show the mod redesigned.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.9,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.011111111111111112
+      }
+     }
+    },
+    "function": null,
+    "operation": 2,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "show"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Show the mod redesigned.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to show it. Which subject does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "1",
+        "description": "redesign(surface='the page')"
+       },
+       {
+        "id": "2",
+        "description": "'the page'"
+       },
+       {
+        "id": "3",
+        "description": "redesign(surface=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.025,
+       "1": 0.025,
+       "2": 0.025,
+       "3": 0.9,
+       "none": 0.025
+      }
+     }
+    },
+    "function": "show",
+    "operation": 2,
+    "path": "subject",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       24,
+       31
+      ]
+     },
+     {
+      "ref": "0"
+     },
+     {
+      "constant": "the page",
+      "type": "Surface",
+      "at": [
+       9,
+       17
+      ]
+     },
+     {
+      "id": null,
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "id": null,
+     "function": "redesign",
+     "type": "Later[Surface]",
+     "parameters": {
+      "surface": "Surface"
+     },
+     "arguments": {
+      "surface": {
+       "hole": "Surface",
+       "reason": ""
+      }
+     }
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Show the mod redesigned.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how it looks. Which surface does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "1",
+        "description": "redesign(surface='the page')"
+       },
+       {
+        "id": "2",
+        "description": "'the page'"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "1": 0.03333333333333333,
+       "2": 0.03333333333333333,
+       "none": 0.03333333333333333
+      }
+     }
+    },
+    "function": "redesign",
+    "operation": 1,
+    "path": "surface",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       24,
+       31
+      ]
+     },
+     {
+      "ref": "0"
+     },
+     {
+      "constant": "the page",
+      "type": "Surface",
+      "at": [
+       9,
+       17
+      ]
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the mod",
+     "type": "Surface",
+     "at": [
+      24,
+      31
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Show the mod redesigned.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to show it. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "9bed22bf5906447f9382365f52189e7e",
+  "case": "C08 page_then_mod"
+ },
+ {
+  "form": 5,
+  "id": "868c9cfb7297416dbba6de804ea04f77",
+  "text": "Make a token for the mod. Use that token.",
+  "source": "56459f848a0ea35e",
+  "world": "6886e77e7f53c8e6",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 26,
+    "brand": "Asked",
+    "starts_by": "the first word",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "make_token",
+      "type": "Token",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "constant": "the mod",
+        "type": "Surface",
+        "at": [
+         17,
+         24
+        ]
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": false,
+       "deferred": false,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   },
+   {
+    "start": 26,
+    "end": 41,
+    "brand": "Asked",
+    "starts_by": "after .",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "1",
+      "function": "use_token",
+      "type": "Observed",
+      "parameters": {
+       "token": "Token"
+      },
+      "arguments": {
+       "token": {
+        "ref": "0"
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": false,
+       "deferred": false,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     17,
+     24
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Make a token for the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "make_token",
+        "description": "make a token"
+       },
+       {
+        "id": "use_token",
+        "description": "use a token"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.009090909090909092,
+       "show": 0.009090909090909092,
+       "compare": 0.009090909090909092,
+       "open_cell": 0.009090909090909092,
+       "review": 0.009090909090909092,
+       "follow": 0.009090909090909092,
+       "approve": 0.009090909090909092,
+       "explain": 0.009090909090909092,
+       "make_token": 0.9,
+       "use_token": 0.009090909090909092,
+       "(none)": 0.009090909090909092,
+       "(nothing)": 0.009090909090909092
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "make_token"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Make a token for the mod.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to make a token. Which surface does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "1",
+        "description": "redesign(surface=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "1": 0.05,
+       "none": 0.05
+      }
+     }
+    },
+    "function": "make_token",
+    "operation": 0,
+    "path": "surface",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       17,
+       24
+      ]
+     },
+     {
+      "id": null,
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the mod",
+     "type": "Surface",
+     "at": [
+      17,
+      24
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Make a token for the mod.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to make a token. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "make_token",
+        "description": "make a token"
+       },
+       {
+        "id": "use_token",
+        "description": "use a token"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.009090909090909092,
+       "show": 0.009090909090909092,
+       "compare": 0.009090909090909092,
+       "open_cell": 0.009090909090909092,
+       "review": 0.009090909090909092,
+       "follow": 0.009090909090909092,
+       "approve": 0.009090909090909092,
+       "explain": 0.009090909090909092,
+       "make_token": 0.009090909090909092,
+       "use_token": 0.009090909090909092,
+       "(none)": 0.009090909090909092,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Use that token.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "make_token",
+        "description": "make a token"
+       },
+       {
+        "id": "use_token",
+        "description": "use a token"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.009090909090909092,
+       "show": 0.009090909090909092,
+       "compare": 0.009090909090909092,
+       "open_cell": 0.009090909090909092,
+       "review": 0.009090909090909092,
+       "follow": 0.009090909090909092,
+       "approve": 0.009090909090909092,
+       "explain": 0.009090909090909092,
+       "make_token": 0.009090909090909092,
+       "use_token": 0.9,
+       "(none)": 0.009090909090909092,
+       "(nothing)": 0.009090909090909092
+      }
+     }
+    },
+    "function": null,
+    "operation": 1,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "use_token"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Use that token.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to use a token. Which token does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "make_token(surface='the mod')"
+       },
+       {
+        "id": "1",
+        "description": "make_token(surface=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "1": 0.05,
+       "none": 0.05
+      }
+     }
+    },
+    "function": "use_token",
+    "operation": 1,
+    "path": "token",
+    "offered": [
+     {
+      "ref": "0"
+     },
+     {
+      "id": null,
+      "function": "make_token",
+      "type": "Token",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "ref": "0"
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Use that token.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to use a token. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "make_token",
+        "description": "make a token"
+       },
+       {
+        "id": "use_token",
+        "description": "use a token"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.009090909090909092,
+       "show": 0.009090909090909092,
+       "compare": 0.009090909090909092,
+       "open_cell": 0.009090909090909092,
+       "review": 0.009090909090909092,
+       "follow": 0.009090909090909092,
+       "approve": 0.009090909090909092,
+       "explain": 0.009090909090909092,
+       "make_token": 0.009090909090909092,
+       "use_token": 0.009090909090909092,
+       "(none)": 0.009090909090909092,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "339a00770e274f4eb38eb1c2d9426e4c",
+  "case": "C09 chain"
+ },
+ {
+  "form": 5,
+  "id": "f4ff5028a1b340cba90c42b3ffcb41ab",
+  "text": "Use a token.",
+  "source": "bb002b0d4f81ede6",
+  "world": "6886e77e7f53c8e6",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 12,
+    "brand": "Asked",
+    "starts_by": "",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "use_token",
+      "type": "Observed",
+      "parameters": {
+       "token": "Token"
+      },
+      "arguments": {
+       "token": {
+        "hole": "Token",
+        "reason": "no candidate"
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": false,
+       "pending": false,
+       "deferred": false,
+       "ready": false
+      }
+     }
+    ],
+    "unresolved": null
+   }
+  ],
+  "constants": [],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Use a token.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "make_token",
+        "description": "make a token"
+       },
+       {
+        "id": "use_token",
+        "description": "use a token"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.009090909090909092,
+       "show": 0.009090909090909092,
+       "compare": 0.009090909090909092,
+       "open_cell": 0.009090909090909092,
+       "review": 0.009090909090909092,
+       "follow": 0.009090909090909092,
+       "approve": 0.009090909090909092,
+       "explain": 0.009090909090909092,
+       "make_token": 0.009090909090909092,
+       "use_token": 0.9,
+       "(none)": 0.009090909090909092,
+       "(nothing)": 0.009090909090909092
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "use_token"
+   },
+   {
+    "by": "rule",
+    "rule": "nothing in scope fits the hole, so nobody is asked",
+    "state": "Use a token.",
+    "asked": {},
+    "answers": null,
+    "function": "use_token",
+    "operation": 0,
+    "path": "token",
+    "offered": [],
+    "cut": [],
+    "chosen": "none"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Use a token.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to use a token. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "make_token",
+        "description": "make a token"
+       },
+       {
+        "id": "use_token",
+        "description": "use a token"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.009090909090909092,
+       "show": 0.009090909090909092,
+       "compare": 0.009090909090909092,
+       "open_cell": 0.009090909090909092,
+       "review": 0.009090909090909092,
+       "follow": 0.009090909090909092,
+       "approve": 0.009090909090909092,
+       "explain": 0.009090909090909092,
+       "make_token": 0.009090909090909092,
+       "use_token": 0.009090909090909092,
+       "(none)": 0.009090909090909092,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "5d18266ab8eb4d1a913bf444133075f0",
+  "case": "C09 contrast"
+ },
+ {
+  "form": 5,
+  "id": "b4fdd883f71b4d09a50dcd5f6b72dcd6",
+  "text": "Gather notes on the mod. Summarize them.",
+  "source": "ec28f3bc1936b141",
+  "world": "24411101b0dd9a87",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 25,
+    "brand": "Asked",
+    "starts_by": "the first word",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "gather",
+      "type": "Many[Observed]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "constant": "the mod",
+        "type": "Surface",
+        "at": [
+         16,
+         23
+        ]
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": false,
+       "deferred": false,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   },
+   {
+    "start": 25,
+    "end": 40,
+    "brand": "Asked",
+    "starts_by": "after .",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "1",
+      "function": "summarize",
+      "type": "Written",
+      "parameters": {
+       "notes": "Many[Observed]"
+      },
+      "arguments": {
+       "notes": {
+        "ref": "0"
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": false,
+       "deferred": false,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     16,
+     23
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Gather notes on the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "gather",
+        "description": "gather notes on it"
+       },
+       {
+        "id": "summarize",
+        "description": "summarize notes"
+       },
+       {
+        "id": "find",
+        "description": "find a note on it"
+       },
+       {
+        "id": "keep",
+        "description": "keep a note"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.007692307692307693,
+       "show": 0.007692307692307693,
+       "compare": 0.007692307692307693,
+       "open_cell": 0.007692307692307693,
+       "review": 0.007692307692307693,
+       "follow": 0.007692307692307693,
+       "approve": 0.007692307692307693,
+       "explain": 0.007692307692307693,
+       "gather": 0.9,
+       "summarize": 0.007692307692307693,
+       "find": 0.007692307692307693,
+       "keep": 0.007692307692307693,
+       "(none)": 0.007692307692307693,
+       "(nothing)": 0.007692307692307693
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "gather"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Gather notes on the mod.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to gather notes on it. Which surface does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "1",
+        "description": "redesign(surface=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "1": 0.05,
+       "none": 0.05
+      }
+     }
+    },
+    "function": "gather",
+    "operation": 0,
+    "path": "surface",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       16,
+       23
+      ]
+     },
+     {
+      "id": null,
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the mod",
+     "type": "Surface",
+     "at": [
+      16,
+      23
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Gather notes on the mod.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to gather notes on it. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "gather",
+        "description": "gather notes on it"
+       },
+       {
+        "id": "summarize",
+        "description": "summarize notes"
+       },
+       {
+        "id": "find",
+        "description": "find a note on it"
+       },
+       {
+        "id": "keep",
+        "description": "keep a note"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.007692307692307693,
+       "show": 0.007692307692307693,
+       "compare": 0.007692307692307693,
+       "open_cell": 0.007692307692307693,
+       "review": 0.007692307692307693,
+       "follow": 0.007692307692307693,
+       "approve": 0.007692307692307693,
+       "explain": 0.007692307692307693,
+       "gather": 0.007692307692307693,
+       "summarize": 0.007692307692307693,
+       "find": 0.007692307692307693,
+       "keep": 0.007692307692307693,
+       "(none)": 0.007692307692307693,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Summarize them.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "gather",
+        "description": "gather notes on it"
+       },
+       {
+        "id": "summarize",
+        "description": "summarize notes"
+       },
+       {
+        "id": "find",
+        "description": "find a note on it"
+       },
+       {
+        "id": "keep",
+        "description": "keep a note"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.007692307692307693,
+       "show": 0.007692307692307693,
+       "compare": 0.007692307692307693,
+       "open_cell": 0.007692307692307693,
+       "review": 0.007692307692307693,
+       "follow": 0.007692307692307693,
+       "approve": 0.007692307692307693,
+       "explain": 0.007692307692307693,
+       "gather": 0.007692307692307693,
+       "summarize": 0.9,
+       "find": 0.007692307692307693,
+       "keep": 0.007692307692307693,
+       "(none)": 0.007692307692307693,
+       "(nothing)": 0.007692307692307693
+      }
+     }
+    },
+    "function": null,
+    "operation": 1,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "summarize"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Summarize them.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to summarize notes. Which notes does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "gather(surface='the mod')"
+       },
+       {
+        "id": "1",
+        "description": "gather(surface=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "1": 0.05,
+       "none": 0.05
+      }
+     }
+    },
+    "function": "summarize",
+    "operation": 1,
+    "path": "notes",
+    "offered": [
+     {
+      "ref": "0"
+     },
+     {
+      "id": null,
+      "function": "gather",
+      "type": "Many[Observed]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "ref": "0"
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Summarize them.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to summarize notes. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "gather",
+        "description": "gather notes on it"
+       },
+       {
+        "id": "summarize",
+        "description": "summarize notes"
+       },
+       {
+        "id": "find",
+        "description": "find a note on it"
+       },
+       {
+        "id": "keep",
+        "description": "keep a note"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.007692307692307693,
+       "show": 0.007692307692307693,
+       "compare": 0.007692307692307693,
+       "open_cell": 0.007692307692307693,
+       "review": 0.007692307692307693,
+       "follow": 0.007692307692307693,
+       "approve": 0.007692307692307693,
+       "explain": 0.007692307692307693,
+       "gather": 0.007692307692307693,
+       "summarize": 0.007692307692307693,
+       "find": 0.007692307692307693,
+       "keep": 0.007692307692307693,
+       "(none)": 0.007692307692307693,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "1162a9be1af54896929e6f590051c74f",
+  "case": "C09 whole_many"
+ },
+ {
+  "form": 5,
+  "id": "cbf43bc2132547a5814022aeb12b8e57",
+  "text": "Find a note on the mod. Keep it.",
+  "source": "9bd0197bff9897d9",
+  "world": "24411101b0dd9a87",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 24,
+    "brand": "Asked",
+    "starts_by": "the first word",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "find",
+      "type": "Maybe[Observed]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "constant": "the mod",
+        "type": "Surface",
+        "at": [
+         15,
+         22
+        ]
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": false,
+       "deferred": false,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   },
+   {
+    "start": 24,
+    "end": 32,
+    "brand": "Asked",
+    "starts_by": "after .",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "1",
+      "function": "keep",
+      "type": "Written",
+      "parameters": {
+       "note": "Maybe[Observed]"
+      },
+      "arguments": {
+       "note": {
+        "ref": "0"
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": false,
+       "deferred": false,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": null
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     15,
+     22
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Find a note on the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "gather",
+        "description": "gather notes on it"
+       },
+       {
+        "id": "summarize",
+        "description": "summarize notes"
+       },
+       {
+        "id": "find",
+        "description": "find a note on it"
+       },
+       {
+        "id": "keep",
+        "description": "keep a note"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.007692307692307693,
+       "show": 0.007692307692307693,
+       "compare": 0.007692307692307693,
+       "open_cell": 0.007692307692307693,
+       "review": 0.007692307692307693,
+       "follow": 0.007692307692307693,
+       "approve": 0.007692307692307693,
+       "explain": 0.007692307692307693,
+       "gather": 0.007692307692307693,
+       "summarize": 0.007692307692307693,
+       "find": 0.9,
+       "keep": 0.007692307692307693,
+       "(none)": 0.007692307692307693,
+       "(nothing)": 0.007692307692307693
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "find"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Find a note on the mod.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to find a note on it. Which surface does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "1",
+        "description": "redesign(surface=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "1": 0.05,
+       "none": 0.05
+      }
+     }
+    },
+    "function": "find",
+    "operation": 0,
+    "path": "surface",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       15,
+       22
+      ]
+     },
+     {
+      "id": null,
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the mod",
+     "type": "Surface",
+     "at": [
+      15,
+      22
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Find a note on the mod.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to find a note on it. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "gather",
+        "description": "gather notes on it"
+       },
+       {
+        "id": "summarize",
+        "description": "summarize notes"
+       },
+       {
+        "id": "find",
+        "description": "find a note on it"
+       },
+       {
+        "id": "keep",
+        "description": "keep a note"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.007692307692307693,
+       "show": 0.007692307692307693,
+       "compare": 0.007692307692307693,
+       "open_cell": 0.007692307692307693,
+       "review": 0.007692307692307693,
+       "follow": 0.007692307692307693,
+       "approve": 0.007692307692307693,
+       "explain": 0.007692307692307693,
+       "gather": 0.007692307692307693,
+       "summarize": 0.007692307692307693,
+       "find": 0.007692307692307693,
+       "keep": 0.007692307692307693,
+       "(none)": 0.007692307692307693,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Keep it.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "gather",
+        "description": "gather notes on it"
+       },
+       {
+        "id": "summarize",
+        "description": "summarize notes"
+       },
+       {
+        "id": "find",
+        "description": "find a note on it"
+       },
+       {
+        "id": "keep",
+        "description": "keep a note"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.007692307692307693,
+       "show": 0.007692307692307693,
+       "compare": 0.007692307692307693,
+       "open_cell": 0.007692307692307693,
+       "review": 0.007692307692307693,
+       "follow": 0.007692307692307693,
+       "approve": 0.007692307692307693,
+       "explain": 0.007692307692307693,
+       "gather": 0.007692307692307693,
+       "summarize": 0.007692307692307693,
+       "find": 0.007692307692307693,
+       "keep": 0.9,
+       "(none)": 0.007692307692307693,
+       "(nothing)": 0.007692307692307693
+      }
+     }
+    },
+    "function": null,
+    "operation": 1,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "keep"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Keep it.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to keep a note. Which note does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "find(surface='the mod')"
+       },
+       {
+        "id": "1",
+        "description": "find(surface=...)"
+       },
+       {
+        "id": "absent",
+        "description": "the text leaves it out on purpose"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "1": 0.03333333333333333,
+       "absent": 0.03333333333333333,
+       "none": 0.03333333333333333
+      }
+     }
+    },
+    "function": "keep",
+    "operation": 1,
+    "path": "note",
+    "offered": [
+     {
+      "ref": "0"
+     },
+     {
+      "id": null,
+      "function": "find",
+      "type": "Maybe[Observed]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "ref": "0"
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Keep it.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to keep a note. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "gather",
+        "description": "gather notes on it"
+       },
+       {
+        "id": "summarize",
+        "description": "summarize notes"
+       },
+       {
+        "id": "find",
+        "description": "find a note on it"
+       },
+       {
+        "id": "keep",
+        "description": "keep a note"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.007692307692307693,
+       "show": 0.007692307692307693,
+       "compare": 0.007692307692307693,
+       "open_cell": 0.007692307692307693,
+       "review": 0.007692307692307693,
+       "follow": 0.007692307692307693,
+       "approve": 0.007692307692307693,
+       "explain": 0.007692307692307693,
+       "gather": 0.007692307692307693,
+       "summarize": 0.007692307692307693,
+       "find": 0.007692307692307693,
+       "keep": 0.007692307692307693,
+       "(none)": 0.007692307692307693,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "8d927f4111e54a2d859b3a0f43b5f920",
+  "case": "C09 whole_maybe"
+ },
+ {
+  "form": 5,
+  "id": "1760fe91bfc14dbfb3ee57bfc1651a42",
   "text": "Redesign the mod. Then show it. Test the search too.",
   "source": "243d9d05090584b2",
   "world": "b193ec94c1e33177",
@@ -13181,7 +18180,8 @@
        "diagnostics": [],
        "complete": true,
        "pending": true,
-       "ready": false
+       "deferred": true,
+       "ready": true
       }
      }
     ],
@@ -13216,6 +18216,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -13251,6 +18252,7 @@
        "diagnostics": [],
        "complete": true,
        "pending": false,
+       "deferred": false,
        "ready": true
       }
      }
@@ -14080,7 +19082,7 @@
    }
   ],
   "corrections": [],
-  "snapshot": "256a9ab5cca3490a9ba3996d3d913b8b",
-  "case": "C15 specimen, show rebound to the original mod by an edit"
+  "snapshot": "bd40414a41c245a781d749c37b322d60",
+  "case": "C15 specimen, show rebound to the original mod by an edit (preview)"
  }
 ]

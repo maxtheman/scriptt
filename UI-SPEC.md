@@ -1,7 +1,7 @@
 # UI specification (10 Nov 2026, revised)
 
 This replaces the earlier version of this file. It is checked against real saved readings from the repaired engine:
-`web/site/engine/readings.json` (38 form-5 lines written by the engine's `record()`, repair commit 82c8e34, each
+`web/site/engine/readings.json` (52 form-5 lines written by the engine's `record()`, repair commit 0249f2b, each
 tagged with its case) and `web/site/engine/worlds.json` (`agree.world_record()` for each world hash). The lead
 regenerates both when the engine changes; never edit them by hand.
 
@@ -53,9 +53,12 @@ output, or asks the engine.
 
 - Operation ids are stable identities, not positions: a new operation gets a new id and nothing is renumbered; order on
   the page comes from the phrases, never from the id.
-- `judgments.ready` is changing meaning to "can start now" (valid, complete, no input waiting on a pending result); a
-  separate judgment will say the operation's own result is deferred (`Later`). `redesign(mod)` can start with its result
-  deferred; `show(redesign(mod))` waits. The repair report gives the final names.
+- `judgments` = `valid`, `diagnostics`, `complete`, `pending` (its result is not available yet), `deferred` (its own
+  declared result comes later: `Later`), `ready` (can start now: valid, complete, no input still pending). In the
+  specimen: `redesign` ready, deferred; `show` not ready (waits on redesign's result); `test` ready.
+- Applying a function to a thing is live in the engine: `edit(reading, None, "function.parameter", value)` (preview),
+  with `correction=True` to accept (there is no separate `correct`); a new operation gets the next stable id; refusals
+  come back as (None, parameter, rule).
 - A reference's source word is not separately represented: "it" is part of its phrase; the argument place holds
   `{"ref": 0}`. Highlight the phrase, not a word.
 - Project-wide navigation — "which actual notebook is this", every mention of that same object across messages —
