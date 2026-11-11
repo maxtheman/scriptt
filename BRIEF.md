@@ -74,6 +74,34 @@ even nesting of functional spans."
   Look at the real examples before claiming a library can't do something. Max caught that once: "I don't think that's
   true."
 
+## Dragology: every drag goes through it (the most failed requirement)
+
+Max: "by far… people keep failing to use the Dragology library… You can drag it anywhere, but it doesn't do anything when
+you drag it most places and it doesn't speculatively render… I bet you we've rolled our own three times."
+
+They did. Board 4 vendors `web/site/vendor/dragology-0.2.0.iife.js` but never loads it, and drags with its own document
+`pointerdown`/`pointermove` handlers (`web/site/board.js:610`, `:626`).
+
+- **Load Dragology and use it for every drag.** No hand-written pointer, mouse or HTML5 drag handlers for moving
+  things.
+- **Model the board as Dragology states.** Each possible drop is a state the library renders speculatively while you
+  drag:
+  - `d.between` / `d.closest` over the candidate states;
+  - `d.dropTarget` for places;
+  - `whenFar` for pulling something out into open space (an unbind, no trash can).
+
+  The page shows the engine's draft for the state under the pointer.
+- **Every drag does something everywhere:** snap to a place, re-pipe words, widen or narrow a link, or pull out with
+  `whenFar`. Nothing should be draggable to a spot where nothing happens with no visible reason.
+- **Reference:** the released board, `~/Documents/scriptt-release/web/public/index.html`, already uses Dragology:
+  - `<script src="vendor/dragology-0.2.0.iife.js">`, at line 131;
+  - `dragologyOnDrag`, `whenFar`, at line 379.
+
+  Upstream library and examples (permutation-lab, animate-algebra-tree): https://github.com/declarative-dragging/dragology.
+  Read the examples before deciding something can't be done.
+- **The audit fails the build** if `board.js` registers its own pointer, mouse or drag listeners for moving things, or
+  if a drag test does not go through Dragology's drop targets with real pointer events.
+
 ## Jobs, by severity
 
 ### Severity 1: the thing itself, never delivered
