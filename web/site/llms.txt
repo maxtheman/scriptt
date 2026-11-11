@@ -7,13 +7,15 @@ Facts for an agent that sets scriptt up in a project:
 - It needs Python 3.14 or later. It uses the standard library only.
 - Install, in the folder of the project: `curl -fsSL https://scriptt.ai/install.sh | sh`. It writes `.scriptt/harness.py`, `.scriptt/agree.py`, `.scriptt/scriptt16.py`, `.scriptt/SKILL.md` and `.scriptt/world.py`, then runs `python3.14 .scriptt/harness.py install`. That adds a UserPromptSubmit hook and a Stop hook to `.claude/settings.local.json`, copies the skill to `.claude/skills/scriptt/SKILL.md`, and writes `.scriptt/config.json` if there is none. An existing `.scriptt/world.py` is not replaced.
 - The public release of d1 is pending. The user must name an endpoint that they already have. `.scriptt/config.json` has 1 of 2 shapes:
-  - A System One endpoint: `{"url": "http://127.0.0.1:8791/v1/systemone", "body": {"model": "d1-2B-MLX-8bit"}}`
-  - A CoreAI endpoint: `{"url": "http://HOST:PORT/v1/decide", "key_file": "PATH TO THE FILE WITH THE TOKEN", "body": {"model": "d1-2b", "priority": "bulk", "autoload": true}}`
+  - A System One endpoint: `{"url": "http://127.0.0.1:8791/v1/systemone", "body": {"model": "d1-2B-MLX-8bit"}, "block": true}`
+  - A CoreAI endpoint: `{"url": "http://HOST:PORT/v1/decide", "key_file": "PATH TO THE FILE WITH THE TOKEN", "body": {"model": "d1-2b", "priority": "bulk", "autoload": true}, "block": true}`
+- `"block": true` lets the Stop hook send Claude back (at most twice) when a call has no evidence. The installer writes it.
 - With no d1, each hook prints 1 line on stderr that starts with `scriptt:`, and Claude Code goes on.
 - `.scriptt/world.py` declares the project's vocabulary as Python types: an enum for each closed list of named things, a dataclass for each thing made of named fields, `NewType` brands (`Asked` for the user's words, `Written` for an agent's), `Many[T]`, `Maybe[T]` and `Later[T]`, and functions. A function is something a message can ask for. Its 1-line docstring completes the sentence "The text asks the reader to ...". The installed `world.py` is an example from another project. Propose a `world.py` for the project (5 to 10 functions) and write it only after the user says yes.
 - Test, with no Claude Code session: `echo '{"hook_event_name": "UserPromptSubmit", "session_id": "setup-test", "prompt": "THE MESSAGE"}' | python3.14 .scriptt/harness.py`. It prints JSON. `hookSpecificOutput.additionalContext` is the block that the agent receives, and it starts with `scriptt:`. Each reading is saved as 1 line of `.scriptt/events.jsonl` (form 5).
 - `python3.14 .scriptt/harness.py serve` opens the board on `http://127.0.0.1:8787`: each message with every word linked to its type. The user drags types onto words and values into arguments. Each change goes through the engine, and an accepted change is kept on every rerun.
-- The Claude desktop app can draw the reading on each message. In a terminal session of Claude Code: `/plugin install scriptt --marketplace maxtheman/scriptt`.
+- The Claude desktop app can draw the reading on each message with the scriptt plugin, not yet tested in the desktop app. In a terminal session of Claude Code: `/plugin marketplace add maxtheman/scriptt`, then `/plugin install scriptt@scriptt`.
+- A `world.py` written for 0.1.6 has faults under 0.1.7: `python3.14 .scriptt/harness.py world` lists them, and the hooks read nothing until they are fixed.
 - Remove: delete the 2 `harness.py` entries from `.claude/settings.local.json`, then `.claude/skills/scriptt/` and `.scriptt/`.
 
 ## Files

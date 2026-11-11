@@ -366,7 +366,7 @@ def install():
         (settings.parent / "skills" / "scriptt").mkdir(parents=True, exist_ok=True)
         (settings.parent / "skills" / "scriptt" / "SKILL.md").write_text((HOME / "SKILL.md").read_text())
     if not (HOME / "config.json").exists():
-        (HOME / "config.json").write_text(json.dumps({"url": "http://127.0.0.1:8791/v1/systemone", "body": {"model": "d1-2B-MLX-8bit"}, "block": False}, indent=2) + "\n")
+        (HOME / "config.json").write_text(json.dumps({"url": "http://127.0.0.1:8791/v1/systemone", "body": {"model": "d1-2B-MLX-8bit"}, "block": True}, indent=2) + "\n")
     store()
     faults = world().faults
     print(f"hooks are in {settings}\nd1 is set in {HOME / 'config.json'}" + "".join(f"\nworld.py fault: {text}" for _, _, text in faults))
@@ -447,12 +447,14 @@ def serve(port: int):
     POST /restore    {snapshot: n from 1} -> {saved, diagnostics}: the n-th snapshot becomes the latest
     POST /rerun      {reading} or {snapshot: n from 1} -> {saved, corrections, diagnostics}: the source read again with d1,
                      each correction retained or invalidated with its reason, saved as a new snapshot of that reading
-    The page is HOME/site if it exists (a lab folder can link it to a board's web/site), else web/site beside this folder.
+    The page is HOME/site if it exists, else web/site of this repository, else the board's files from https://scriptt.ai/.
     A value is a term as a record writes it ({"constant", "type", "at"}, {"ref"}, {"hole", "reason"}, ...), or null to remove the binding.
     """
     from http.server import BaseHTTPRequestHandler, HTTPServer
 
-    site = next((folder for folder in (HOME / "site", HOME.parent / "web" / "site") if folder.exists()), None)
+    repository = HOME.parent / "web" / "site" if (HOME.parent / "next" / "scriptt16.py").exists() else None  # only when run from the scriptt repository
+    site = next((folder for folder in (HOME / "site", repository) if folder and folder.exists()), None)
+    hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
     class Page(BaseHTTPRequestHandler):
         def reply(self, body: bytes, kind: str = "application/json", status: int = 200):
             self.send_response(status)
@@ -462,6 +464,8 @@ def serve(port: int):
             self.wfile.write(body)
 
         def do_GET(self):
+            if self.headers.get("Host") not in hosts:  # a page on another name that resolves here (DNS rebinding) reads nothing
+                return self.send_error(403)
             path, _, query = self.path.partition("?")
             if path == "/":  # the board lives at /board/, here as on scriptt.ai; the mod's ?reading= goes with it
                 self.send_response(302)
@@ -476,14 +480,17 @@ def serve(port: int):
             try:
                 if site and (site / name).resolve().is_relative_to(site.resolve()) and (site / name).is_file():
                     body = (site / name).read_bytes()
-                else:  # no copy of the page on this computer: the public one
+                elif name.startswith("board/") or name in ("favicon.svg", "favicon-32.png"):  # no copy of the board here: the public one
                     body = urllib.request.urlopen("https://scriptt.ai/" + urllib.request.quote(name), timeout=30).read()
+                else:
+                    return self.send_error(404)
             except OSError:
                 return self.send_error(404)
-            self.reply(body, {"html": "text/html; charset=utf-8", "js": "text/javascript"}.get(name.rsplit(".", 1)[-1], "text/plain"))
+            kinds = {"html": "text/html; charset=utf-8", "js": "text/javascript", "svg": "image/svg+xml", "png": "image/png", "css": "text/css", "json": "application/json"}
+            self.reply(body, kinds.get(name.rsplit(".", 1)[-1], "text/plain; charset=utf-8"))
 
         def do_POST(self):
-            if self.headers.get("Origin", f"http://127.0.0.1:{port}") not in (f"http://127.0.0.1:{port}", f"http://localhost:{port}"):
+            if self.headers.get("Host") not in hosts or self.headers.get("Origin", f"http://127.0.0.1:{port}") not in (f"http://127.0.0.1:{port}", f"http://localhost:{port}"):
                 return self.send_error(403)
             try:
                 answer = posted(self.path, json.loads(self.rfile.read(int(self.headers["Content-Length"]))))

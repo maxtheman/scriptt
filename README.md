@@ -1,4 +1,13 @@
-# script&lt;T&gt; 0.1.7
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/site/wordmark-dark.png">
+    <img src="web/site/wordmark-light.png" alt="script<T>" width="320">
+  </picture>
+</h1>
+
+**0.1.7** · [scriptt.ai](https://scriptt.ai) · [roadmap](ROADMAP.md)
+
+![A message to Claude Code typed word by word, a type dragged onto words, and the check when Claude stops](web/site/sizzle.gif)
 
 scriptt shows you how Claude Code understood your message before it starts work, and sends Claude back when it skips
 a step.
@@ -50,7 +59,9 @@ Say where d1 runs in `.scriptt/config.json`:
 - `url`: a System One endpoint (`.../v1/systemone`) or a CoreAI endpoint (`.../v1/decide`).
 - `key` or `key_file`: a Bearer token, if the endpoint needs one.
 - `body`: fields added to each request, such as the model.
-- `block`: `true` lets the Stop hook send Claude back.
+- `block`: `true` (the installer's default) lets the Stop hook send Claude back.
+
+A `world.py` written for 0.1.6 has faults under 0.1.7. `python3.14 .scriptt/harness.py world` lists them, and the hooks read nothing until they are fixed.
 
 ## The board
 
@@ -61,7 +72,7 @@ any argument. The engine previews each drop. Accept keeps it as your correction,
 invalidated with the reason. [scriptt.ai](https://scriptt.ai) runs the same board on its own text, with the engine
 running in the browser through Pyodide.
 
-The Claude desktop app can draw the reading on each message you type: see [mod/](mod/README.md).
+The Claude desktop app can draw the reading on each message you type with a plugin, not yet tested in the app: see [mod/](mod/README.md).
 
 ## This repository
 

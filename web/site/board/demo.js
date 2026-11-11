@@ -18,7 +18,6 @@
     py.runPython(`
 import json, sys
 sys.path.insert(0, "/demo/.scriptt")
-sys.argv = ["harness.py", "world"]
 import agree, harness, scriptt16
 
 def answer(path, body):

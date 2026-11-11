@@ -1,4 +1,4 @@
-"""The reader of scriptt next: type-directed synthesis over the world of a folder.
+"""The reader of scriptt: type-directed synthesis over the world of a folder.
 
 The world (``agree.World``) is a closed type system. Reading a message means
 building well-typed terms from it:
@@ -60,8 +60,8 @@ The API is plain functions over ``Reading``; a reading is never changed in place
 * ``check(reading, reply, artifacts, criteria, model)`` -> one outcome per
   obligation and criterion, from evidence only, and a verdict.
 
-Out of scope: running operations, the old browser board, teaching d1 from
-corrections and changing world.py automatically.
+Out of scope: running operations, teaching d1 from corrections and changing
+world.py automatically.
 """
 
 import copy
@@ -93,7 +93,7 @@ PASS, FAIL, UNVERIFIED = "PASS", "FAIL", "UNVERIFIED"
 
 NONE, NOTHING = "(none)", "(nothing)"
 ELSE = {NONE: shipped.ELSE["none"], NOTHING: shipped.ELSE["nothing"]}
-"""The two answers of an operation question that are no function: d1's legacy "none" and "nothing",
+"""The two answers of an operation question that are no function: d1's "none" and "nothing",
 with ids that no function name can take, so no declaration of the world can turn an abstention into a call."""
 
 

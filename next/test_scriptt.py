@@ -271,6 +271,12 @@ def test_hooks_and_server() -> None:
             assert [one["status"] for one in rerun["corrections"]] == ["retained"], rerun
             first = 1 + next(n for n, one in enumerate(readings) if one["id"] == line["id"])
             assert post("restore", {"snapshot": first})["saved"]["corrections"] == []
+            rebound = urllib.request.Request("http://127.0.0.1:8799/log", headers={"Host": "evil.example:8799"})
+            try:
+                urllib.request.urlopen(rebound)
+                raise AssertionError("a page on another host name can read the log")
+            except urllib.error.HTTPError as error:
+                assert error.code == 403
             refused = urllib.request.Request("http://127.0.0.1:8799/edit", json.dumps(clear).encode(), {"Origin": "https://example.com"})
             try:
                 urllib.request.urlopen(refused)

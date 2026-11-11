@@ -5,7 +5,7 @@
 # [tool.marimo.display]
 # cell_output = "below"
 # ///
-"""One message through the repaired reader, by its public API only.
+"""One message through the reader, by its public API only.
 
 "Redesign the mod. Then show it. Test the search too." is read against
 next/world.py, validated, inspected, edited (show rebound to the original mod),
@@ -13,11 +13,11 @@ saved, reloaded and validated again. Every table below is computed by
 agree.py and scriptt16.py; the cells that show an algorithm show its source
 with inspect.getsource, so there is no second copy of any rule here.
 
-d1 here is the test stand-in, answering from a fixed script, so the notebook
-runs offline and the same every time. What the real d1 would answer is not
-measured here (unverified).
+d1 here is the scripted stand-in of test_scriptt.py, so the notebook runs
+offline and the same every time. It shows what the engine does with d1's
+answers, not what the real d1 answers.
 
-    python -m marimo edit next/notebook.py        (from the repository; not on port 2746)
+    python -m marimo edit next/notebook.py        (from the repository)
 """
 
 import marimo

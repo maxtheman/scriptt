@@ -13,3 +13,6 @@ __pycache__/
 # Worlds that the examples and cases write
 *.duckdb
 *.duckdb.wal
+
+# Frames that web/social/sizzle.sh renders
+web/social/.frames/

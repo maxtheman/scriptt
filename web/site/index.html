@@ -96,7 +96,7 @@
 
   <section class="pane demo">
     <div class="tabs"><span class="on">board · this page, as d1 read it</span></div>
-    <iframe src="/board/?demo" title="The board, on the text of this page"></iframe>
+    <iframe src="/board/?demo" title="The board, on the text of this page" loading="lazy"></iframe>
   </section>
 
   <section class="pane">
@@ -120,7 +120,7 @@
         <li><code>Many</code>, <code>Maybe</code> and <code>Later</code> wrap another type. <code>Many[T]</code> is a list. <code>Maybe[T]</code> is a value you may leave out on purpose. <code>Later[T]</code> is a value that exists only after another call finishes.</li>
         <li>A function is a request. Its signature gives the types it takes and returns.</li>
       </ul>
-      <p>These are standard Python, so type checkers such as mypy and ty already understand <code>world.py</code>. Each type has a fixed set of possible values, so every decision is a multiple-choice question. A 2-billion-parameter model can answer it, and a program can check the answer.</p>
+      <p>Each type has a fixed set of possible values, so every decision is a multiple-choice question. A 2-billion-parameter model can answer it, and a program can check the answer.</p>
       <h2>UserPromptSubmit</h2>
       <p>Claude Code runs a <code>UserPromptSubmit</code> hook each time you send a message, before Claude sees it, and adds the hook's output to the message. scriptt's hook splits the message into sentences and into text you pasted from earlier replies. For each of your sentences it asks d1 which function the sentence asks for, or none, and which value from the message or the record fits each argument's type. d1 gives a probability for each option instead of generating text, which makes it very fast. The answers become typed calls. An argument with no fitting value stays open, with the reason why. Claude receives the calls, the open arguments and the unlabelled words. Every question, option and probability goes into <code>.scriptt/events.jsonl</code>.</p>
       <h2>Stop</h2>
@@ -145,9 +145,9 @@
 
 4. Ask me where d1 runs. The public release of d1 is pending, so the endpoint must be one that I already have. Write .scriptt/config.json in 1 of these 2 shapes.
    A System One endpoint:
-   {"url": "http://127.0.0.1:8791/v1/systemone", "body": {"model": "d1-2B-MLX-8bit"}}
+   {"url": "http://127.0.0.1:8791/v1/systemone", "body": {"model": "d1-2B-MLX-8bit"}, "block": true}
    A CoreAI endpoint:
-   {"url": "http://HOST:PORT/v1/decide", "key_file": "PATH TO THE FILE WITH THE TOKEN", "body": {"model": "d1-2b", "priority": "bulk", "autoload": true}}
+   {"url": "http://HOST:PORT/v1/decide", "key_file": "PATH TO THE FILE WITH THE TOKEN", "body": {"model": "d1-2b", "priority": "bulk", "autoload": true}, "block": true}
    If I have no endpoint, keep the config.json that the installer wrote, tell me that each hook will print 1 line on stderr and that Claude Code will go on, and continue with step 5.
 
 5. Read this project: the README, the source folders and the last 20 commit messages. Propose a first .scriptt/world.py for it, in the form that the docstring of world.py describes:
@@ -160,7 +160,7 @@
    echo '{"hook_event_name": "UserPromptSubmit", "session_id": "setup-test", "prompt": "THE MESSAGE"}' | python3.14 .scriptt/harness.py
    Check: it prints JSON, and hookSpecificOutput.additionalContext starts with "scriptt:". .scriptt/events.jsonl has 1 more line. Show me that block. If d1 is not reachable, it prints 1 line on stderr that starts with "scriptt:". Show me that line.
 
-7. Tell me that `python3.14 .scriptt/harness.py serve` opens the board on http://127.0.0.1:8787, where I can drag a different type onto words or a different value into a call, and that my changes are kept on every rerun. Tell me that the Claude desktop app can show the reading on each of my messages, with this line in a terminal session of Claude Code: /plugin install scriptt --marketplace maxtheman/scriptt</template>
+7. Tell me that `python3.14 .scriptt/harness.py serve` opens the board on http://127.0.0.1:8787, where I can drag a different type onto words or a different value into a call, and that my changes are kept on every rerun. Tell me that the Claude desktop app can show the reading on each of my messages with the scriptt plugin (not yet tested in the desktop app), installed in a terminal session of Claude Code with: /plugin marketplace add maxtheman/scriptt, then /plugin install scriptt@scriptt</template>
 
 <script src="/copy.js"></script>
 </body>

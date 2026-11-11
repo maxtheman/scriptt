@@ -28,7 +28,7 @@ If the harness or d1 does not run, the row stays as the app draws it and the sta
 - Moving a function onto or off a phrase is refused with a status line: it is not a correction the engine takes yet (the engine's new-operation edit needs a value for a parameter).
 - The mod runs no check at the end of a turn: it reads the outcomes that the Stop hook of the harness saved (that hook reads the transcript, which the mod does not have). With no Stop hook installed in the folder, no outcomes are drawn.
 - With the hooks installed by `harness.py install` too, a message typed in the app is read twice: once by the mod, once by the hook.
-- The board link needs `harness.py serve` running; the page it serves is the old one until the new board replaces it.
+- The board link needs `harness.py serve` running.
 - Until the row gets its first pointer event, drag mode draws its things as buttons: press a thing, then press where it goes.
 - The mod reads the length of a text as its width in cells. Wide characters (emoji, Chinese) put the pointer off from the thing under it.
 - VS Code and the mobile app have no `Client`: they draw the message as the app does, with no reading.
@@ -38,7 +38,8 @@ If the harness or d1 does not run, the row stays as the app draws it and the sta
 In a terminal session of Claude Code:
 
 ```
-/plugin install scriptt --marketplace maxtheman/scriptt
+/plugin marketplace add maxtheman/scriptt
+/plugin install scriptt@scriptt
 ```
 
 In the desktop app: click + next to the prompt box, then Plugins, Add marketplace with `maxtheman/scriptt`, then Add plugin.

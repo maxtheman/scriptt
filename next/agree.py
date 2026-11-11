@@ -11,9 +11,8 @@ A world.py file defines every type that the search can use:
 * A product type is several values at once: a dataclass, a ``NamedTuple`` or a
   ``TypedDict``.
 * A type constructor takes a type and gives a type: ``Many``, ``Maybe`` and
-  ``Later`` (their meanings in this repair are in ``MANY``, ``MAYBE`` and
-  ``LATER``; they differ from the research notebook's hypothesis branching
-  and not-yet-computed values, and Later is no runtime future).
+  ``Later`` (their meanings are in ``MANY``, ``MAYBE`` and ``LATER``;
+  ``Later`` is no runtime future).
 * A function has typed parameters and a typed result.
 
 This module builds those types from the annotations of world.py, checks the

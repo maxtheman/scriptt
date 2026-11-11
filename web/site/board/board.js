@@ -1,5 +1,5 @@
 "use strict";
-// Board 5. The message is one wiki page over the world: every piece of `pieces` is a piped link to its kind, every operation is a
+// The board. The message is one wiki page over the world: every piece of `pieces` is a piped link to its kind, every operation is a
 // function span over its phrase with its places inside it. Every drag is a Dragology drag spec over candidate states; each
 // candidate state is an engine request (/edit), and the state drawn under the pointer is the engine's draft for it (the `drafted`
 // modifier below). Nothing here decides what fits: the engine's diagnostics do.

@@ -23,7 +23,6 @@ with tempfile.TemporaryDirectory() as temporary:
         shutil.copyfile(source, home / source.name)
     shutil.copyfile(sys.argv[1], home / "config.json")
     sys.path.insert(0, str(home))
-    sys.argv = ["harness.py", "world"]
     import harness  # noqa: E402
     text = (DEMO / "message.txt").read_text().strip()
     answer = harness.prompt({"session_id": "demo", "prompt": text}, harness.d1)
