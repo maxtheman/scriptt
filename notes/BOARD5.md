@@ -19,9 +19,10 @@ node web/audit-run.mjs --accept --shots web/site/audits/board5/shots 8c7eae08 ff
 - Each operation: a bracket under its phrase and, after the phrase, `fn(place: slot, …) → Result`. Slots: `⇠` (the words in
   the text), member words (a world member), `↩ fn` (a reference to an earlier operation's result), `▢ T · reason` (a hole),
   `∅ T` (empty). `ƒ ▢ reason` = an unresolved request. A red dot = not complete; `⧗` pending; `⏲` deferred.
-- The right column is the page of what is open (a link, a type, a function, an operation, a place), or the world graph when
-  nothing is: types (brands under what they wrap, sums over their alternatives, `·n` members), functions with an edge from each
-  parameter's type, constructors, and `＋ ⊘` where world editing would go (not built in the engine).
+- The right column is the page of what is open (a link, a type, a function, an operation, a place) and is empty otherwise:
+  no permanent world panel (NEVER-AGAIN C10). A type's page: `T : kind`, its docstring (world_record `describes`), brand
+  chain (`⊂`), alternatives (`|`), members (`∋ n`), `Many/Maybe/Later[T]`, the functions that take it (`→ ƒ`) and return it
+  (`ƒ →`), and `＋ ⊘` where world editing would go (not built in the engine). Every chip there can be dragged.
 - Pasted text (`<pasted_content>` blocks, `>` lines, written replies) is italic on a tint; code fences are monospace.
 
 ## Every drag is a Dragology spec
@@ -38,14 +39,16 @@ node web/audit-run.mjs --accept --shots web/site/audits/board5/shots 8c7eae08 ff
 - The scroll bar is `d.vary` on the scroll position.
 - A custom modifier, `drafted`, draws the engine's `/edit` draft for whatever state the spec chose, and redraws when the answer
   arrives; a refused state drops as no change and shows the engine's codes. While a thing is held the rail (bottom of the view)
-  lists the places of the whole reading, frozen for the hold, each with the engine's verdict: `✓`, `✕`, `…`.
+  lists the places of the whole reading, frozen for the hold, each with the engine's verdict from one `POST /edits`
+  (`drafts: false`): `✓`, `✕`, `…`. A refusal in the dock names the rule, the place with its declared type, and what was offered.
 - Keyboard: arrows move between links; Enter opens; Space picks up; arrows cycle the same options (each previewed); Enter drops;
   Escape cancels; `]` `[` `{` `}` widen/narrow; Tab switches to the right column; `a` accepts, `z` undoes.
 
 ## Known limits
 
-- `/edit` takes 0.22 s (short readings) to 0.85 s (13,727 characters) because the server rescans the store per request and is
-  single-threaded, so the rail's verdicts trickle in on long prompts. Asked the lead for a batch endpoint (`POST /edits`).
-- Type docstrings come from d1's kind options (the same docstrings), so a reading with no kind decision shows none.
+- A single `/edit` (the draft under the pointer) takes 0.22–0.85 s; place verdicts come in one `/edits` request (lead's
+  engine 8266fec).
 - Nesting of two function spans inside one phrase and world editing: not in the engine; not drawn, not faked.
-- A press during a state change can land on the fading previous drawing; page changes remount the renderer to avoid it.
+- A press during a page change (~300 ms spring) can land on the fading previous drawing. The renderer is not remounted to hide
+  this (NEVER-AGAIN A6); the audit waits 450 ms after a page change, a person's pace.
+- Not tested: the reading picker (the audit picks the reading through the page API), dark mode, narrow widths, rerun.

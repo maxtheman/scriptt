@@ -157,7 +157,7 @@
       await key("Escape");
       // B3: a type onto words (pointer), picked up from a link's page (no permanent world panel)
       await key("Escape"); await pause();
-      const typedLink = await openTypedLink(() => typeChips().length > 0 && document.querySelector("#board [id^=pg-c-Later_]"));
+      const typedLink = await openTypedLink(() => typeChips().length > 0);
       if (ok(typedLink, "B3 a link whose page offers types")) {
         const chip = typeChips()[0], tname = chip.dataset.label;
         const w2 = [...document.querySelectorAll("#board [id^=pc-]")].filter((g) => g.dataset.kind !== tname && g.id !== typedLink.id)[3];
@@ -265,7 +265,7 @@
           await until(() => !/…/.test(dock()) && dock().trim(), 15000);
           await key("Enter"); await sleep(150);
           const b = (S.staged && S.staged.body) || (S.note && S.note.refused && S.note.refused.body);
-          ok(b && b.number === o.body.number && b.value.constant !== undefined && window.__net.some((n) => n.path === "/edit" && JSON.stringify({ reading: S.id, ...b }) === JSON.stringify(n.body)), "C1k Enter drops the words (the same /edit body as the pointer)");
+          ok(b && b.number === o.body.number && b.value.constant !== undefined && sent(b), "C1k Enter drops the words (the same /edit body as the pointer)");
           ok(S.staged || S.note, "C1k answered");
           if (S.staged) await key("Escape");
         }
@@ -273,6 +273,7 @@
       // D: while words are held, the rail's ✓/✕ equal the engine's own answer: each rail place's request, taken from what the page
       // sent, is asked again here with /edit (one by one, by the audit) and compared with the glyph drawn
       {
+        await key("Escape"); await key("Escape"); await pause(); // no open link, so no handles over the words
         const src = document.querySelectorAll("#board [id^=pc-]")[4];
         const [sx, sy] = center(src.querySelector("rect"));
         const n0 = window.__net.length;
