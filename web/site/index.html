@@ -59,6 +59,10 @@
   .tab { background: none; border: 0; border-bottom: var(--border) solid transparent; border-radius: 0; padding: var(--space-1) 0; color: var(--text-2); font: var(--weight-normal) var(--size-body)/var(--leading-body) var(--font-text); cursor: pointer; }
   .tab:hover { color: var(--text-1); }
   .tab[aria-pressed="true"] { color: var(--text-1); border-bottom-color: var(--text-1); font-weight: var(--weight-strong); }
+  #ask { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+  #ask input { flex: 1; max-width: 32em; font: var(--weight-normal) var(--size-chip)/var(--leading-chip) var(--font-code); color: var(--text-1); background: var(--bg); border: var(--border) solid var(--text-1); border-radius: var(--radius-box); padding: var(--space-2) var(--space-3); }
+  #ask input.bad { border-color: var(--class-1); }
+  #ask-why { font: var(--weight-normal) var(--size-chip)/var(--leading-chip) var(--font-code); color: var(--text-2); }
   #where { font-family: var(--font-code); font-size: var(--size-chip); color: var(--text-2); }
   #nav .link { font-size: var(--size-title); line-height: var(--leading-body); text-decoration: none; padding: 0 var(--space-2); }
   #paste { margin-bottom: var(--space-4); }
@@ -118,6 +122,7 @@
       <button type="button" class="second" id="redo" aria-label="Redo" title="Redo (Shift Ctrl or Cmd Z)">↷</button>
       <button type="button" class="first" id="save">Save</button>
     </div>
+    <form id="ask" hidden><input id="ask-in" autocomplete="off" spellcheck="false" aria-label="Name"><button type="submit" class="first" aria-label="Enter">↵</button><span id="ask-why"></span></form>
   </div>
 
   <section id="inspect" data-tabpane="d1" hidden aria-label="d1">
@@ -186,6 +191,59 @@ const ids = new Map(), sid = (s) => ids.get(s) ?? (ids.set(s, ids.size), ids.siz
 const pen = document.createElement("canvas").getContext("2d");
 const tw = (s, font) => { pen.font = font; return Math.ceil(pen.measureText(s).width); };
 const edit = (st, f) => { const next = structuredClone(st); f(next); return next; };
+// The world is the base that the log came with, and a draft of changes to it (WDELTA). Every state may carry its own draft, so that a drag can show the world as it would be.
+let WORLD0 = { types: {}, functions: {} }, WDELTA = null, SAVED_W = "null";
+const worldCache = new Map();
+function worldAt(dw) {
+  const key = JSON.stringify(dw ?? null);
+  if (worldCache.has(key)) return worldCache.get(key);
+  const w = structuredClone(WORLD0);
+  if (dw) {
+    for (const [T, d] of Object.entries(dw.types ?? {})) w.types[T] = { sum: [...(d.sum ?? [])], doc: "" };
+    for (const [T, list] of Object.entries(dw.add ?? {})) if (w.types[T]) for (const m of list) if (!(w.types[T].sum ??= []).includes(m)) w.types[T].sum.push(m);
+    for (const [T, list] of Object.entries(dw.del ?? {})) if (w.types[T]?.sum) w.types[T].sum = w.types[T].sum.filter((m) => !list.includes(m));
+    for (const [T, map] of Object.entries(dw.ren ?? {})) if (w.types[T]?.sum) w.types[T].sum = w.types[T].sum.map((m) => map[m] ?? m);
+    for (const [fn, d] of Object.entries(dw.fns ?? {})) w.functions[fn] = { asks: d.asks ?? "", returns: d.returns ?? "str", holes: { ...(d.holes ?? {}) } };
+    for (const [fn, t] of Object.entries(dw.asks ?? {})) if (w.functions[fn]) w.functions[fn].asks = t;
+    for (const [fn, t] of Object.entries(dw.returns ?? {})) if (w.functions[fn]) w.functions[fn].returns = t;
+    for (const [fn, hs] of Object.entries(dw.holes ?? {})) if (w.functions[fn]) for (const [path, t] of Object.entries(hs)) { if (t == null) delete w.functions[fn].holes[path]; else w.functions[fn].holes[path] = t; }
+    for (const fn of dw.gone ?? []) delete w.functions[fn];
+  }
+  worldCache.set(key, w);
+  return w;
+}
+const inWorld = (st, f) => { const prev = [WORLD, FNS]; WORLD = worldAt(st?.dw ?? WDELTA); FNS = Object.keys(WORLD.functions); try { return f(); } finally { [WORLD, FNS] = prev; } };  // run f in the world of a state
+// the changes of the draft, 1 at a time: each returns a new draft
+const dd = (dw, f) => { const x = structuredClone(dw ?? {}); f(x); return x; };
+const dAdd = (dw, T, m) => dd(dw, (x) => { if ((x.del?.[T] ?? []).includes(m)) x.del[T] = x.del[T].filter((q) => q !== m); else ((x.add ??= {})[T] ??= []).push(m); });
+const dDel = (dw, T, m) => dd(dw, (x) => { if ((x.add?.[T] ?? []).includes(m)) x.add[T] = x.add[T].filter((q) => q !== m); else ((x.del ??= {})[T] ??= []).push(m); });
+const dRen = (dw, T, a, b) => dd(dw, (x) => { if ((x.add?.[T] ?? []).includes(a)) x.add[T] = x.add[T].map((q) => (q === a ? b : q)); else { const r = ((x.ren ??= {})[T] ??= {}), k = Object.keys(r).find((q) => r[q] === a) ?? a; r[k] = b; } });
+// A state after a change of the world: places that held a removed member are open, a renamed one is renamed, and a removed operation is gone.
+function worldState(st, dw, wop) {
+  const out = structuredClone(st);
+  out.dw = dw; out.wop = wop;
+  return normalizeState(out, wop);
+}
+function normalizeState(st, wop) {
+  if (!wop) return st;
+  const w = worldAt(st.dw ?? WDELTA), isT = (key, T) => { const fn = key.slice(0, key.indexOf(".")), path = key.slice(key.indexOf(".") + 1), t = w.functions[fn]?.holes?.[path] ?? WORLD0.functions[fn]?.holes?.[path]; return t != null && takes(t).includes(T); };
+  for (const p of st.parts) {
+    for (const f of p.fns.filter((q) => (wop.gone ?? []).includes(q.fn))) { p.fns = p.fns.filter((q) => q.id !== f.id); for (const k of Object.keys(p.things)) if (k.startsWith(f.fn + ".")) { delete p.things[k]; delete p.by[k]; delete p.refs?.[k]; } }
+    for (const f of p.fns) {
+      const holes = w.functions[f.fn]?.holes ?? {};
+      for (const k of Object.keys(p.things)) if (k.startsWith(f.fn + ".") && !((k.slice(f.fn.length + 1)) in holes)) { delete p.things[k]; delete p.by[k]; delete p.refs?.[k]; }
+      for (const [path, t] of Object.entries(holes)) if (!optional(t) && !(`${f.fn}.${path}` in p.things)) p.things[`${f.fn}.${path}`] = null;
+    }
+    for (const k of Object.keys(p.things)) for (const [T, list] of Object.entries(wop.del ?? {})) if (isT(k, T)) {
+      const v = p.things[k];
+      if (Array.isArray(v)) { const keep = v.map((x, j) => (list.includes(x) ? -1 : j)).filter((j) => j >= 0); p.things[k] = keep.map((j) => v[j]); if (Array.isArray(p.by[k])) p.by[k] = keep.map((j) => p.by[k][j]); }
+      else if (list.includes(v)) { p.things[k] = null; delete p.by[k]; }
+    }
+    for (const k of Object.keys(p.things)) for (const [T, map] of Object.entries(wop.ren ?? {})) if (isT(k, T)) { const v = p.things[k]; if (Array.isArray(v)) p.things[k] = v.map((x) => map[x] ?? x); else if (map[v] != null) p.things[k] = map[v]; }
+  }
+  if (st.lits) { st.lits = st.lits.filter((l) => !(wop.del?.[l.type] ?? []).includes(l.value)).map((l) => ({ ...l, value: wop.ren?.[l.type]?.[l.value] ?? l.value })); }
+  return st;
+}
 const EXTRA = [], EMPTY = "∅";  // EXTRA: types that the board meets in a line but the world does not list; EMPTY: the value of an Empty (a deliberate absence)
 const typeIndex = (type) => { const t = takes(type)[0] ?? "?", k = TYPES.indexOf(t); if (k >= 0) return k; if (!EXTRA.includes(t)) EXTRA.push(t); return TYPES.length + EXTRA.indexOf(t); };
 const color = (type) => css(`--class-${typeIndex(type) % 12 + 1}`);
@@ -446,6 +504,7 @@ function layoutWorld(ev, st, y0, add, L) {
   for (const [T, def] of Object.entries(WORLD.types)) row([{ kind: "wtype", id: `wt-${T}`, ask: `t:${T}`, text: T, type: T, bold: true, count: count[T] }, ...(def.sum ?? []).map((m) => ({ kind: "wmem", id: `wm-${T}-${sid(m)}`, ask: `m:${T}:${m}`, text: short(m, 34), full: m, type: T, held: held.has(m) })), ...Object.entries(def.fields ?? {}).map(([f, t]) => ({ kind: "wfld", id: `wd-${T}-${f}`, ask: `t:${takes(t)[0] ?? t}`, text: f, type: t }))]);
   const plain = ["str", "int", "Path", "bool"].filter((t) => TYPES.includes(t));
   if (plain.length) row(plain.map((T) => ({ kind: "wtype", id: `wt-${T}`, ask: `t:${T}`, text: T, type: T, bold: true, count: count[T] })));
+  row([{ kind: "wnew", id: "wn-new", ask: "n:new", text: "+", bold: true }]);
   y += 8;
   for (const fn of FNS) { const def = WORLD.functions[fn]; row([{ kind: "wfn", id: `wf-${fn}`, ask: `w:${fn}`, fn, text: fn, bold: true, keep: true, used: used[fn] }, ...Object.entries(def.holes ?? {}).map(([path, t]) => ({ kind: "wplace", id: `wh-${fn}-${path}`, ask: `w:${fn}`, fn, text: path, type: t })), ...(def.returns ? [{ kind: "wret", id: `wr-${fn}`, ask: `t:${takes(def.returns)[0] ?? def.returns}`, fn, text: "➔", type: def.returns }] : [])]); }
   return y;
@@ -514,6 +573,7 @@ function facts(ev, st, ref) {
     const take = layoutOf(ev, st).els.filter((e) => (e.kind === "hole" || e.kind === "link") && litType(e, words)).slice(0, 8).map((e) => ({ text: `${clause(e.n)} ${e.path}`, follow: e.ask }));
     return { role: "text", name: short(words, 30), type: null, rows: [row("source", [{ text: `${s0}–${e0}` }, quote(partAt(ev, s0))]), row("fits", take)], options: [] };
   }
+  if (k === "n") return { role: "world", name: "+", type: null, rows: [], options: [] };
   if (k === "w") {
     const def = WORLD.functions[a];
     if (!def) return null;
@@ -526,7 +586,8 @@ function facts(ev, st, ref) {
   if (k === "m") {
     const mem = ref.split(":").slice(2).join(":");
     if (!(WORLD.types[a]?.sum ?? []).includes(mem)) return null;
-    return { role: "member", name: short(mem, 30), type: a, rows: [row("type", [typeChip(a)])], options: [] };
+    const uses = MSGS.reduce((n, k) => n + (store[k] ?? decided(EVENTS[k])).parts.reduce((m, p) => m + Object.values(p.things).flat().filter((v) => v === mem).length, 0), 0);
+    return { role: "member", name: short(mem, 30), type: a, rows: [row("type", [typeChip(a)]), row("used", [{ text: `${uses}×` }])], options: [] };
   }
   return null;
 }
@@ -565,16 +626,34 @@ function transitions(ev, st, ref) {
     push({ label: "remove", kind: "clear", state: dropFn(st, n, f) });
     for (const fn2 of FNS) if (fn2 !== b && !st.parts[n].fns.some((g) => g.fn === fn2)) push({ label: `⇄ ${fn2}`, kind: "move", target: `wf-${fn2}`, state: replaceFn(ev, st, n, f, fn2) });
   } else if (k === "w") {  // a function of the world: drop it on a phrase to add it
+    const dw0 = st.dw ?? WDELTA, def = WORLD.functions[a];
+    if (def) {
+      push({ label: "asks…", kind: "ask", prompt: "asks", value: def.asks, make: (t) => worldState(st, dd(dw0, (x) => { (x.asks ??= {})[a] = t.trim(); }), {}) });
+      push({ label: "returns…", kind: "ask", prompt: "type", value: def.returns, make: (t) => { const T = t.trim(); if (!WORLD.types[T] && !["str", "int", "Path", "bool"].includes(T)) return "no such type"; return worldState(st, dd(dw0, (x) => { (x.returns ??= {})[a] = T; }), {}); } });
+      push({ label: "+ takes…", kind: "ask", prompt: "name : Type", make: (t) => { const [path, ty] = t.split(":").map((q) => q.trim()); if (!/^[A-Za-z_][\w.]*$/.test(path ?? "")) return "name : Type"; if (!ty || (!WORLD.types[ty.replace(/ *\| *None$/, "")] && !["str", "int", "Path", "bool"].includes(ty.replace(/ *\| *None$/, "")))) return "no such type"; if (def.holes?.[path]) return "taken"; return worldState(st, dd(dw0, (x) => { ((x.holes ??= {})[a] ??= {})[path] = ty; }), {}); } });
+      for (const path of Object.keys(def.holes ?? {})) push({ label: `− ${path}`, kind: "world", state: worldState(st, dd(dw0, (x) => { ((x.holes ??= {})[a] ??= {})[path] = null; }), {}) });
+      push({ label: "remove function", kind: "world", state: worldState(st, dd(dw0, (x) => { x.gone = [...(x.gone ?? []), a]; }), { gone: [a] }) });
+    }
     for (let m = 0; m < st.parts.length; m++) if (!st.parts[m].fns.some((g) => g.fn === a)) push({ label: `→ ${clause(m)}`, kind: "move", target: "p-" + m, state: addFn(ev, st, m, a) });
   } else if (k === "t") {  // a type of the world: drop it on words to tag them with it
+    const dw0 = st.dw ?? WDELTA;
+    if (WORLD.types[a]?.sum) push({ label: "+ member…", kind: "ask", prompt: `${a}`, make: (t) => { const m = t.trim(); if (!m) return "a name"; if (WORLD.types[a].sum.some((q) => q.toLowerCase() === m.toLowerCase())) return "taken"; return worldState(st, dAdd(dw0, a, m), {}); } });
     for (const e of L.els) if (e.kind === "run") for (const w of e.bw) { const [s0, e0] = trimSpan(ev.text, w.s, w.e), words = ev.text.slice(s0, e0); if (e0 > s0 && litTypeFor(a, words) && !(st.lits ?? []).some((l) => l.id === `s${s0}-${e0}`)) push({ label: `⇢ ${short(words, 16)}`, kind: "move", quiet: true, target: `w-${w.s}`, state: tagState(st, `s${s0}-${e0}`, s0, e0, partAt(ev, s0), a, words) }); }
   } else if (k === "s") {  // words become a value: the span turns into a value of the place that takes it
     const [s0, e0] = a.split("-").map(Number), words = ev.text.slice(s0, e0), id = `s${s0}-${e0}`;
     for (const e of places) { const t = litType(e, words); if (t) push({ label: `→ ${where(e)}`, kind: "move", target: e.id, state: edit(fill(st, e.n, e.key, words, id, e.many), (x) => { x.lits = [...(x.lits ?? []).filter((l) => l.id !== id), { id, start: s0, end: e0, part: partAt(ev, s0), type: t, value: words }]; }) }); }
-    for (const T of [...Object.keys(WORLD.types), ...["str", "int", "Path", "bool"].filter((t) => TYPES.includes(t))]) if (litTypeFor(T, words)) push({ label: `⇢ ${T}`, kind: "move", quiet: true, target: `wt-${T}`, state: tagState(st, id, s0, e0, partAt(ev, s0), T, words) });
+    for (const T of [...Object.keys(WORLD.types), ...["str", "int", "Path", "bool"].filter((t) => TYPES.includes(t))]) {
+      if (litTypeFor(T, words)) push({ label: `⇢ ${T}`, kind: "move", quiet: true, target: `wt-${T}`, state: tagState(st, id, s0, e0, partAt(ev, s0), T, words) });
+      else if (WORLD.types[T]?.sum) push({ label: `⇢ ${T} +`, kind: "move", quiet: true, target: `wt-${T}`, state: tagState(worldState(st, dAdd(st.dw ?? WDELTA, T, words), {}), id, s0, e0, partAt(ev, s0), T, words) });  // not a member yet: dropped on the type, the words are proposed as one
+    }
     for (const [T, def] of Object.entries(WORLD.types)) for (const m of def.sum ?? []) if (m.toLowerCase() === words.toLowerCase()) push({ label: `⇢ ${short(m, 18)}`, kind: "move", quiet: true, target: `wm-${T}-${sid(m)}`, state: tagState(st, id, s0, e0, partAt(ev, s0), T, m) });
+  } else if (k === "n") {  // the world itself: a new type, a new function
+    push({ label: "+ type…", kind: "ask", prompt: "type", make: (t) => { const T = t.trim(); if (!/^[A-Za-z_]\w*$/.test(T)) return "a name"; if (WORLD.types[T] || ["str", "int", "Path", "bool"].includes(T)) return "taken"; return worldState(st, dd(st.dw ?? WDELTA, (x) => { (x.types ??= {})[T] = { sum: [] }; }), {}); } });
+    push({ label: "+ function…", kind: "ask", prompt: "function", make: (t) => { const f = t.trim(); if (!/^[A-Za-z_]\w*$/.test(f)) return "a name"; if (WORLD.functions[f]) return "taken"; return worldState(st, dd(st.dw ?? WDELTA, (x) => { (x.fns ??= {})[f] = { asks: "", returns: "str", holes: {} }; }), {}); } });
   } else if (k === "m") {
-    const mem = ref.split(":").slice(2).join(":");
+    const mem = ref.split(":").slice(2).join(":"), dw0 = st.dw ?? WDELTA;
+    push({ label: "rename…", kind: "ask", prompt: `${a}`, value: mem, make: (t) => { const m = t.trim(); if (!m) return "a name"; if (m !== mem && (WORLD.types[a]?.sum ?? []).some((q) => q.toLowerCase() === m.toLowerCase())) return "taken"; return worldState(st, dRen(dw0, a, mem, m), { ren: { [a]: { [mem]: m } } }); } });
+    push({ label: "remove", kind: "clear", state: worldState(st, dDel(dw0, a, mem), { del: { [a]: [mem] } }) });
     for (const e of places) if (fits(e, [a])) push({ label: `→ ${where(e)}`, kind: "move", target: e.id, state: fill(st, e.n, e.key, mem, null, e.many) });
   } else if (k === "c") {
     for (const fn of FNS) if (!st.parts[+a]?.fns.some((g) => g.fn === fn)) { push({ label: `+ ${fn}`, kind: "add", state: addFn(ev, st, +a, fn) }); push({ label: `→ ${fn}`, kind: "move", quiet: true, target: `wf-${fn}`, state: addFn(ev, st, +a, fn) }); }
@@ -685,6 +764,7 @@ function draggable({ state: st, d, draggedId }) {
     wfn: (e) => wnode(e, { label: `function ${e.fn}`, round: true, fill: C.surface, src: () => moves(ev, st, e.ask) }),
     wplace: (e) => wnode(e, { label: `${e.fn}.${e.text} : ${e.type}`, glyph: e.type, dash: "5 3" }),
     wret: (e) => wnode(e, { label: `returns ${e.type}`, glyph: e.type }),
+    wnew: (e) => wnode(e, { label: "new type or function", round: true, fill: C.surface }),
     piece: (e) => {
       const p = e.p, k = numOf(st, P, p.id), label = `value ${p.words} : ${takes(p.type)[0]}`, options = () => moves(ev, st, "p:" + p.id);
       return box(e, { "data-role": "value", "data-type": takes(p.type)[0], "data-start": p.start, "data-ref": "p:" + p.id, "data-link": "p" + p.id, "data-label": label, "aria-label": `value ${p.words}`, ...grab(e.id, `value ${p.words}`, options, pulled(ev, st, "p:" + p.id), "p:" + p.id) },
@@ -735,6 +815,11 @@ function draggable({ state: st, d, draggedId }) {
   return h("g", null, ...L.els.map((e) => draw[e.kind](e)), h("g", { id: "rel" }, ...rel), h("g", { id: "here" }, ...here), h("g", { id: "next" }, ...next), h("g", { id: "held" }, ...held));
 }
 
+{
+  const wrap = (fn) => function (...a) { return inWorld(a[1], () => fn.apply(this, a)); };
+  layoutBase = wrap(layoutBase); transitions = wrap(transitions); facts = wrap(facts); relIds = wrap(relIds); panelOf = wrap(panelOf);
+  const draw0 = draggable; draggable = (a) => inWorld(a.state, () => draw0(a));
+}
 // ---------- the page ----------
 const say = () => {};  // nothing is said under the board: the page keeps its words to the message and the marks
 function draw() {
@@ -750,7 +835,7 @@ function draw() {
   if (SEL && !facts(EVENTS[i], reading(i), SEL)) { SEL = null; NAV = []; }
   paint();
   const todo = unsaved(i);
-  $("save").disabled = !todo.length;
+  $("save").disabled = !todo.length && JSON.stringify(WDELTA) === SAVED_W;
   $("undo").disabled = !undos[i]?.length;
   $("redo").disabled = !redos[i]?.length;
   if (TAB() === "d1") inspect();
@@ -770,7 +855,7 @@ function select(ref) {  // click: the thing opens in the panel. A click on nothi
   draw(); say(LINE);
 }
 function hoverAct(label) {  // the pointer is on an action: the places that it changes, and the line that Claude would receive
-  const i = MSGS[at], ev = EVENTS[i], t = label && SEL ? transitions(ev, reading(i), SEL).find((x) => x.label === label) : null;
+  const i = MSGS[at], ev = EVENTS[i], t = label && SEL ? transitions(ev, reading(i), SEL).find((x) => x.label === label && x.state) : null;
   HOVER = t ? { label, state: t.state } : null;
   const ch = t ? differ(ev, reading(i), t.state) : [];
   say(t ? (ch.length ? lineOf(ev, t.state, ch[0]) : "") : LINE);
@@ -779,8 +864,15 @@ function hoverAct(label) {  // the pointer is on an action: the places that it c
 function applyAct(label) {
   const i = MSGS[at], ev = EVENTS[i], t = SEL ? transitions(ev, reading(i), SEL).find((x) => x.label === label) : null;
   HOVER = null;
+  if (t?.kind === "ask") return ask(t);
   if (t) dropped(t.state);
 }
+// An action that needs a name or a text opens the line under the board. A refused text says why and keeps the line open.
+let ASK = null;
+function ask(t) { ASK = t; const f = $("ask"), inp = $("ask-in"); f.hidden = false; inp.placeholder = t.prompt; inp.value = t.value ?? ""; inp.classList.remove("bad"); $("ask-why").textContent = ""; inp.focus(); inp.select(); }
+const closeAsk = () => { ASK = null; $("ask").hidden = true; };
+$("ask").addEventListener("submit", (e) => { e.preventDefault(); if (!ASK) return; const r = ASK.make($("ask-in").value); if (typeof r === "string") { $("ask-in").classList.add("bad"); $("ask-why").textContent = r; return; } closeAsk(); dropped(r); });
+$("ask-in").addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); closeAsk(); } });
 // while the pointer moves: the line that a drop here records
 function previewed(next) {
   if (!DRAGGING) return;
@@ -791,7 +883,14 @@ function previewed(next) {
 function dropped(next) {
   const i = MSGS[at], ev = EVENTS[i], ch = differ(ev, reading(i), next);
   DRAGGING = false; HOLDING = null;
-  if (ch.length) { (undos[i] ??= []).push(reading(i)); redos[i] = []; store[i] = next; LINE = lineOf(ev, next, ch[0]); }
+  if (next.wop) {  // a change of the world: every message is read in the new world, and 1 undo puts the world and every message back
+    const snap = { dw: WDELTA, stores: structuredClone(store) }, wop = next.wop, dw = next.dw;
+    (undos[i] ??= []).push(Object.assign(structuredClone(reading(i)), { __snap: snap })); redos[i] = [];
+    WDELTA = dw; WORLD = worldAt(dw); FNS = Object.keys(WORLD.functions);
+    for (const k of MSGS) store[k] = k === i ? next : normalizeState(Object.assign(structuredClone(store[k] ?? decided(EVENTS[k])), { dw }), wop);
+    delete next.wop;
+    for (const k of MSGS) if (store[k]) { store[k].dw = dw; delete store[k].wop; }
+  } else if (ch.length) { (undos[i] ??= []).push(reading(i)); redos[i] = []; store[i] = next; LINE = lineOf(ev, next, ch[0]); }
   draw(); say(LINE);
 }
 addEventListener("pointerup", () => setTimeout(() => { if (DRAGGING) { DRAGGING = false; HOLDING = null; $("board").style.minHeight = ""; say(LINE); } }, 50), true);
@@ -833,14 +932,17 @@ function restore(r) {  // a reading that you saved before (a Disagree line of th
   st.parts[r.part] = p; store[i] = st; (saved[i] ??= {})[r.part] = sig(st, r.part);
 }
 function load(data) {
-  WORLD = { types: data.world?.types || {}, functions: data.world?.functions || {} };
+  WORLD0 = { types: data.world?.types || {}, functions: data.world?.functions || {} };
+  try { WDELTA = JSON.parse(localStorage.getItem("scriptt.world") ?? "null"); } catch { WDELTA = null; }
+  SAVED_W = JSON.stringify(WDELTA);
+  WORLD = worldAt(WDELTA);
   EVENTS = data.events.filter((e) => e.event === "UserPromptSubmit");
   LEGACY = EVENTS.length;
   if (typeof READINGS !== "undefined") EVENTS.push(...READINGS.map(fromReading));  // saved readings in the planned shape of UI-HANDOFF.md, after the recorded messages
   MSGS = EVENTS.map((_, i) => i);
   FNS = Object.keys(WORLD.functions);
   const holeTypes = FNS.flatMap((fn) => Object.values(WORLD.functions[fn].holes || {}).flatMap(names));
-  TYPES = [...Object.keys(WORLD.types).filter((t) => WORLD.types[t].sum), ...["str", "int", "Path", "bool"].filter((t) => holeTypes.includes(t))];
+  TYPES = [...Object.keys(WORLD0.types).filter((t) => WORLD.types[t].sum), ...["str", "int", "Path", "bool"].filter((t) => holeTypes.includes(t))];
   for (const k of Object.keys(store)) { delete store[k]; delete saved[k]; }
   for (const k of Object.keys(undos)) delete undos[k];
   for (const k of Object.keys(redos)) delete redos[k];
@@ -861,12 +963,24 @@ $("save").addEventListener("click", async () => {  // the local page adds 1 Disa
       if (!answer.ok) throw new Error(answer.status);
     }
     for (const n of todo) (saved[i] ??= {})[n] = sig(st, n);
+    localStorage.setItem("scriptt.world", JSON.stringify(WDELTA)); SAVED_W = JSON.stringify(WDELTA);
     delete b.dataset.error; b.title = ""; b.textContent = "Save";
   } catch (error) { b.dataset.error = String(error.message); b.title = String(error.message); b.textContent = "Save ⚠"; }
   draw();
 });
-const undo = () => { const i = MSGS[at], before = undos[i]?.pop(); if (!before) return; (redos[i] ??= []).push(reading(i)); store[i] = before; HELD = null; draw(); };
-const redo = () => { const i = MSGS[at], next = redos[i]?.pop(); if (!next) return; (undos[i] ??= []).push(reading(i)); store[i] = next; HELD = null; draw(); };
+// undo and redo swap the state of this message, and, for a change of the world, the world and every message with it
+const restoreAll = (snap) => { WDELTA = snap.dw; WORLD = worldAt(WDELTA); FNS = Object.keys(WORLD.functions); for (const k of Object.keys(store)) delete store[k]; Object.assign(store, structuredClone(snap.stores)); };
+const swap = (from, to) => {
+  const i = MSGS[at], was = from[i]?.pop();
+  if (!was) return;
+  const now = structuredClone(reading(i)), snap = was.__snap ? { dw: WDELTA, stores: structuredClone(store) } : null;
+  if (snap) now.__snap = snap;
+  (to[i] ??= []).push(now);
+  if (was.__snap) restoreAll(was.__snap);
+  delete was.__snap; store[i] = was; HELD = null; draw();
+};
+const undo = () => swap(undos, redos);
+const redo = () => swap(redos, undos);
 $("undo").addEventListener("click", undo);
 $("redo").addEventListener("click", redo);
 document.addEventListener("keydown", (k) => { if ((k.metaKey || k.ctrlKey) && k.key.toLowerCase() === "z" && !k.target.closest?.("textarea,input,select")) { k.preventDefault(); if (k.shiftKey) redo(); else undo(); } });
