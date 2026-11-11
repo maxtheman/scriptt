@@ -41,6 +41,7 @@ const evaluate = async (expr) => { const r = await send("Runtime.evaluate", { ex
 const KEYS = { Enter: [13, "\r"], Escape: [27], Tab: [9], ArrowRight: [39], ArrowLeft: [37], ArrowUp: [38], ArrowDown: [40], PageDown: [34], PageUp: [33], " ": [32, " "] };
 let buttons = 0;
 async function gesture(g) {
+  if (g.type === "noop") return;
   if (g.type === "key") {
     const [code, text] = KEYS[g.key] || [g.key.toUpperCase().charCodeAt(0), g.key];
     const mods = g.shiftKey ? 8 : 0;
@@ -59,12 +60,15 @@ await send("Runtime.enable");
 await send("Page.enable");
 await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 await send("Runtime.addBinding", { name: "cdpInput" });
+await send("Network.enable");
+const net = []; // what the browser really sent to the engine, seen by Chrome (not the page's own log)
+handlers.push((j) => { if (j.method === "Network.requestWillBeSent" && j.params.request.method === "POST") { const u = new URL(j.params.request.url); net.push({ path: u.pathname, body: j.params.request.postData ? JSON.parse(j.params.request.postData) : null }); } });
 const logs = [];
 handlers.push(async (j) => {
   if (j.method === "Runtime.bindingCalled" && j.params.name === "cdpInput") {
     const g = JSON.parse(j.params.payload);
     try { await gesture(g); } catch (e) { logs.push("gesture " + e); }
-    await send("Runtime.evaluate", { expression: `window.__cdpDone(${JSON.stringify(g.id)})` });
+    await send("Runtime.evaluate", { expression: `window.__cdpNet = ${JSON.stringify(net)}; window.__cdpDone(${JSON.stringify(g.id)})` });
   }
   if (j.method === "Runtime.exceptionThrown") logs.push("exception " + JSON.stringify(j.params.exceptionDetails.exception && j.params.exceptionDetails.exception.description || j.params.exceptionDetails.text).slice(0, 400));
   if (j.method === "Runtime.consoleAPICalled" && j.params.type === "error") logs.push("console.error " + JSON.stringify(j.params.args.map((a) => a.value || a.description)).slice(0, 400));
