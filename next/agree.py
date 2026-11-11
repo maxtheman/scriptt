@@ -11,7 +11,9 @@ A world.py file defines every type that the search can use:
 * A product type is several values at once: a dataclass, a ``NamedTuple`` or a
   ``TypedDict``.
 * A type constructor takes a type and gives a type: ``Many``, ``Maybe`` and
-  ``Later``.
+  ``Later`` (their meanings in this repair are in ``MANY``, ``MAYBE`` and
+  ``LATER``; they differ from the research notebook's hypothesis branching
+  and not-yet-computed values, and Later is no runtime future).
 * A function has typed parameters and a typed result.
 
 This module builds those types from the annotations of world.py, checks the
@@ -23,8 +25,11 @@ import annotationlib
 import ast
 import dataclasses
 import enum
+import hashlib
 import inspect
+import json
 import pathlib
+import types as python_types
 import typing
 
 
@@ -158,9 +163,9 @@ class Applied:
 
 type Type = Base | Brand | Sum | Product | Applied
 
-MANY = Constructor("Many", Arrow(Star(), Star()), "every value of the type that is given")
-MAYBE = Constructor("Maybe", Arrow(Star(), Star()), "one value of the type, or no value")
-LATER = Constructor("Later", Arrow(Star(), Star()), "one value of the type, after more work")
+MANY = Constructor("Many", Arrow(Star(), Star()), "a collection of values in one reading; zero values is an explicit empty collection, not a hole")
+MAYBE = Constructor("Maybe", Arrow(Star(), Star()), "deliberate optionality: one value, or a deliberate absence that d1 answered")
+LATER = Constructor("Later", Arrow(Star(), Star()), "a value that depends on work not yet done: an unavailable dependency, not a scheduled computation")
 CONSTRUCTORS: dict[str, Constructor] = {constructor.name: constructor for constructor in (MANY, MAYBE, LATER)}
 
 MAXIMUM_OPTIONS = 32
@@ -193,14 +198,15 @@ class World:
     Attributes:
         types: Every type of the world, by name.
         functions: The functions that loaded with no fault, by name.
-        faults: Each fault of world.py, with its place. A world with a fault is
+        faults: Each fault of world.py, as (declaration, rule, text with its place).
+            The rule is "kind", "type", "missing" or "name". A world with a fault is
             rejected: the search runs only on a world with no fault.
         folder: The folder that holds the paths that a message names.
     """
 
     types: dict[str, Type]
     functions: dict[str, Function]
-    faults: list[str]
+    faults: list[tuple[str, str, str]]
     folder: pathlib.Path
 
 
@@ -309,8 +315,8 @@ def load(module: object, folder: pathlib.Path | None = None) -> World:
     file_name = pathlib.Path(module.__file__).name
     types: dict[str, Type] = {}
     functions: dict[str, Function] = {}
-    faults: list[str] = []
-    build_errors = (TypeError, SyntaxError, NameError, KeyError)
+    faults: list[tuple[str, str, str]] = []
+    rules = {TypeError: "kind", NameError: "name", KeyError: "name", SyntaxError: "type", ValueError: "type"}
     text_format = annotationlib.Format.STRING
 
     def named(python_type: object) -> Type:
@@ -333,6 +339,8 @@ def load(module: object, folder: pathlib.Path | None = None) -> World:
                 alternatives: list[Type] = []
                 for side in (node.left, node.right):
                     part = built(side)
+                    if kind_of(part) != Star():
+                        raise TypeError(f"{show(part)} has kind {show(kind_of(part))}, and an alternative of a union needs kind *")
                     alternatives += part.alternatives if isinstance(part, Sum) and not part.name else [part]
                 return Sum("", tuple(alternatives))
             case ast.Subscript(value=head, slice=argument):
@@ -369,7 +377,7 @@ def load(module: object, folder: pathlib.Path | None = None) -> World:
         if not (is_own_class or is_brand or is_alias or is_function):
             continue
         if name in CONSTRUCTORS:
-            faults.append(f"{place}: the type system already has a constructor with this name")
+            faults.append((name, "name", f"{place}: the type system already has a constructor with this name"))
             continue
         try:
             if is_brand:
@@ -382,34 +390,50 @@ def load(module: object, folder: pathlib.Path | None = None) -> World:
                 annotations = annotationlib.get_annotations(value, format=text_format)
                 untyped = [member for member in value if member.name not in annotations]
                 if untyped:
-                    faults += [f"{place}.{member.name}: no type for the text {member.value!r}" for member in untyped]
-                    continue
-                if len(value) + 1 > MAXIMUM_OPTIONS:
-                    faults.append(f"{place}: {len(value)} members, and d1 chooses among at most {MAXIMUM_OPTIONS - 1} and none")
+                    faults += [(name, "missing", f"{place}.{member.name}: no type for the text {member.value!r}") for member in untyped]
                     continue
                 members = tuple(Member(member.name, member.value, type_of(annotations[member.name]), member) for member in value)
                 types[name] = Sum(name, members, value.__doc__ or "")
             elif is_own_class:
                 annotations = annotationlib.get_annotations(value, format=text_format)
                 if name in annotations.values():
-                    raise TypeError("this type contains itself")
+                    raise ValueError("this type contains itself")
                 types[name] = Product(name, tuple((field, type_of(annotation)) for field, annotation in annotations.items()), value.__doc__ or "")
             else:
                 place = f"{file_name}:{value.__code__.co_firstlineno} {name}"
                 annotations = annotationlib.get_annotations(value, format=text_format)
                 parameters = inspect.signature(value, annotation_format=text_format).parameters
                 untyped = [parameter for parameter in [*parameters, "return"] if parameter not in annotations]
-                faults += [f"{place}: no type for {parameter}" for parameter in untyped]
+                faults += [(name, "missing", f"{place}: no type for {parameter}") for parameter in untyped]
                 if not value.__doc__:
-                    faults.append(f"{place}: no docstring")
+                    faults.append((name, "missing", f"{place}: no docstring"))
                 if untyped or not value.__doc__:
                     continue
                 typed = tuple((parameter, type_of(annotations[parameter])) for parameter in parameters)
                 functions[name] = Function(name, value.__doc__, typed, type_of(annotations["return"]), value.__code__.co_firstlineno)
-        except build_errors as fault:
-            faults.append(f"{place}: {fault}")
-    faults += duplicates(types, functions, file_name) + single_use(types, functions, file_name)
+        except tuple(rules) as fault:
+            faults.append((name, next(rule for kind, rule in rules.items() if isinstance(fault, kind)), f"{place}: {fault}"))
+    if len(functions) + 2 > MAXIMUM_OPTIONS:
+        faults.append((file_name, "name", f"{file_name}: {len(functions)} functions, and d1 chooses among at most {MAXIMUM_OPTIONS - 2} and its 2 answers that are no function"))
     return World(types, functions, faults, folder or pathlib.Path(module.__file__).resolve().parent.parent)
+
+
+def loads(source: str, folder: pathlib.Path) -> World:
+    """Loads a world from the text of a world.py file, with ``folder`` as the folder of its paths."""
+    module = python_types.ModuleType("world")
+    module.__file__ = str(folder / "world.py")
+    exec(compile(source, "world.py", "exec"), vars(module))
+    return load(module, folder)
+
+
+def identity(world: World) -> str:
+    """Returns a hash of the declarations of a world: its types and its functions, with their docstrings.
+
+    A saved reading names the world it was read against by this hash.
+    """
+    declared = [[name, tree(one)] for name, one in world.types.items()]
+    declared += [[f.name, f.asks, [[name, tree(one)] for name, one in f.parameters], tree(f.result)] for f in world.functions.values()]
+    return hashlib.sha256(json.dumps(declared).encode()).hexdigest()[:16]
 
 
 def mentions(expression: Type, target: Type) -> bool:
@@ -429,12 +453,12 @@ def mentions(expression: Type, target: Type) -> bool:
 
 
 def duplicates(types: dict[str, Type], functions: dict[str, Function], file_name: str) -> list[str]:
-    """Lists each function and each type that has the same structure as an earlier one.
+    """Lists each function and each type that has the same structure as an earlier one: advice, never a fault.
 
-    Two functions with the same parameter types and the same result type fit the
-    same holes, so the types cannot separate them. Two product types with the
-    same fields, or two sum types with the same alternatives, are one type
-    under two names.
+    Two distinct operations may share a signature (archive and redesign both
+    take a Surface), so this is a design note for a person, not a type law.
+    Two product types with the same fields, or two sum types with the same
+    alternatives, may be one type under two names.
 
     Args:
         types: The types of the world, by name.
@@ -464,7 +488,9 @@ def duplicates(types: dict[str, Type], functions: dict[str, Function], file_name
 
 
 def single_use(types: dict[str, Type], functions: dict[str, Function], file_name: str) -> list[str]:
-    """Lists each Enum and each product type that fewer than two functions use.
+    """Lists each Enum and each product type that fewer than two functions use: advice, never a fault.
+
+    A meaningful type may have one use; this list only points a person at types to review.
 
     Args:
         types: The types of the world, by name.
@@ -482,5 +508,5 @@ def single_use(types: dict[str, Type], functions: dict[str, Function], file_name
             continue
         users = [function.name for function in functions.values() if any(mentions(used, expression) for used in (*(parameter for _, parameter in function.parameters), function.result))]
         if len(users) < 2:
-            faults.append(f"{file_name} {name}: {len(users)} function uses this type ({', '.join(users) or 'none'}), and a custom type needs 2. Use Words, Path or int.")
+            faults.append(f"{file_name} {name}: {len(users)} function uses this type ({', '.join(users) or 'none'})")
     return faults
