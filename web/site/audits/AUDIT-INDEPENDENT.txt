@@ -1,0 +1,102 @@
+INDEPENDENT AUDIT, board 3 (web/site/index.html + board.js), engine on :2781, branch ui/board-3
+Method: built-in browser (tab-4, 1024x768 viewport), real left_click_drag / double_click / key (Tab, Space, Enter, Escape) events;
+JS only to read state, to bulk-click cards for measuring (marked "JS click"), and to synthesize a mid-drag Escape (marked "synthetic").
+Side effects on the disposable store (reading 2ed6b3): 1 /accept (through the page), 1 /rerun, 3 /restore through the page
+(#2, #108, ...), 1 curl /restore {1} (to make the store stale for L8). No file under web/ or lab/ was edited. Ports 8765/2746 untouched by me
+(note: the engine's /rerun itself called d1 on 8765; that is the engine, not me). Console: no errors/warnings in any run.
+
+== Builder claims
+(a) CONFIRMED with one correction. In 2ed6b3 "the mod" is ALREADY bound at show.subject (and redesign.surface), so dragging it
+  onto show.subject sends ONE /edit at pickup (for test.subject only; the two held places are "here" and are not asked) and none at
+  drop; the drop reports "That is where it already is. Nothing changed." (honest). The real preview was tested at test.subject:
+  pointer drag -> exactly 1 /edit {number:2,path:subject,value:{constant:"the mod",type:Surface,at:[9,16]}}, 0 at drop.
+  Keyboard (Tab to the word, Space, Tab x6 to p:2:subject, Enter) -> 1 /edit, body byte-identical to the pointer body (checked ===).
+  Preview: "test.subject: 'the search' -> 'the mod'" (+ "the earlier Stop check no longer applies" when a check existed).
+  Cancel by Escape and by button: #text innerText identical to the original, no /accept, GET /readings length unchanged (106).
+  Accept (click): exactly 1 /accept with the same body; snapshot 6->7, corrections 0->1; reload shows the same text with the mark.
+  Rerun: 1 /rerun; card "test.subject: retained" (reason empty in the engine's reply, so none shown); new snapshot saved.
+  "invalidated" was NOT TESTED (no store case produces one; the lab d1 kept the correction).
+(b) CONFIRMED. For 2ed6b3, 43abe9, 5b81f8, c6e375, ffe36f (13727 chars), 2086c1, adf412: #text with .op/.sock/.pls/.mark removed has
+  textContent === the source text exactly (true in all 7). No table, one SVG (arcs, aria-hidden), no graph. Caveat: the operation
+  name (redesign/show/test) is printed beside the same verb in the sentence; that is the allowed "property tag", but it is a visible
+  second occurrence of the word. Words are not Tab stops (see D4).
+(c) No compatibility/validity function exists in board.js (grep: none). Fit marks come only from /edit (okay(res) = draft && no
+  diagnostics). Places where the page says more than the record:
+  - ready() maps engine booleans to a word with its own precedence; "waits" is the page's word for pending&&!ready.
+  - scoreRows() INFERS "stand-in d1 fixture score" from the shape of the numbers (0.9 + equal rest, >2 options). The record does not
+    say this. Where the shape does not match it says "source not written in the record" (honest). The two labels in one card
+    set disagree in kind (see D2).
+  - Startup banner (unconditional): "Scores below are recorded inputs of a stand-in d1, not live-model evidence." FALSE for snapshots made
+    by the live rerun: snapshot #108 (made by my /rerun) has scores 0.716/0.862/0.339, plainly not the fixture.
+  - Stop card: "the reply's claim was judged at 20% by d1": the Stop line has judgments:[] and "by":"execution" for that outcome; the
+    record gives a claim number but not its source. "...so the ceiling was not what let it go; sending back was off": the log line has only
+    blocked:false, blocks:0; "sending back was off" comes from lab config.json (block:false), which the page never reads. True here, but an
+    inference stated as the record's content ("the record says ...").
+  - Card text "stays visible as owed work" (unresolved): not in the record. Phrase brand "Asked" is rendered "the user's words" even for
+    "> " pasted lines the page itself styles as "pasted" (c6e375: contradictory).
+  The "decisions" wording otherwise is honest: "Not a confidence", "recorded d1 score", fixture label only on the fixture shape.
+(d) F5: opening any relationship opens exactly one (aria count 1 after each of 5 opens, all card kinds, JS click). Max card height 307.2 px
+  of 768 = 39.999% (CSS min(40vh,380px)). But the CLOSED op card is already 279 px (36%), and every opened body in an op/place card
+  overflows and scrolls inside the card (scrollHeight>clientHeight in 17 of 22 measured states, e.g. Stop check evidence is below the
+  fold). Identity is 2 lines (h2 + wrapped sub), not 1.
+(e) F6 (restored #2 as snapshot): badges UNVERIFIED/UNVERIFIED/FAIL sit on redesign/show/test. test -> Stop check text: "FAIL, claim judged
+  at 20% by d1; evidence (execution): ran pytest -q tests/search -> exit 1; ... Stop check at 2026-11-11T02:44:04+00:00". GET /log Stop line
+  (session lab-stop-1): evidence [{ran:"pytest -q tests/search",exit:1}], outcome obligation 2 FAIL evidence 0 claim 0.2 by "execution",
+  blocked false, blocks 0. PASS/FAIL/UNVERIFIED and evidence MATCH the log. UNVERIFIED cards say "no evidence matched this operation" and
+  give the blocked/send-back line as the release reason (see (c) for the over-reach). PASS and the "d1 judged" prose-evidence branches are
+  NOT TESTED (the store has no Stop line with judgments or a PASS). Snapshot #5 also carries a fulfillment but the only Stop line names
+  snapshot 8cda8b (#2); the page matches the log by reading id, not by snapshot, so #5 shows a "Stop check at ..." from a different snapshot (D9).
+(f) F7: see D3, D4, D5, D6. Tab order (2ed6b3): pick, Earlier, Rerun, o:0, value, place, o:1, place, o:2, value, place, then (only then)
+  the card. Escape levels work (relationship -> card; focus returns to the relationship button, then to the op). Preview focus goes to Accept.
+(g) Break tests: drop outside = "Dropped outside any place: nothing changed.", no ghost/hot/fit left. Double-click selects, no stuck state.
+  Mid-drag Escape (synthetic pointer events) cancels, clears ghost, later pointerup is ignored. Pressing a card that covers text and dragging
+  from under it drags nothing (card is on top; not a bug). Open card then drag from visible text works. Stale accept: see L8. Long readings:
+  ffe36f 61 ops, 24244 px tall, no overlapping pieces; 43abe9/5b81f8/c6e375/adf412/2086c1 no overlaps, no console errors.
+
+== Criteria
+L1 Select by click and keyboard ........ PARTIAL: ops, places, values yes; words/phrases click only (D4).
+L2 One /edit per place, nothing saved .. PASS (pointer and keyboard; "Move to" = Use it at / Fill with: same /edit, tested via list render only).
+L3 Whole consequence, refusal leaves base PASS (diff lines, refusal "engine rule 'missing'" for Clear, base text unchanged).
+L4 Cancel restores exactly ............... PASS (Escape and button; DOM text identical; no /accept).
+L5 Accept once, reload shows correction . PASS.
+L6 Rerun retained/invalidated ............ PASS for retained; invalidated NOT TESTED; card is under the message line, the place carries only the mark.
+L7 Restore available and shown ........... PASS, with D7 (history list clips the newest rows; numbering global vs header per-reading).
+L8 Stale save keeps draft + error ........ PASS but caught by the page's own pre-check (no /accept sent); engine-side failure path NOT TESTED.
+F1 No edit computed in page .............. PASS (no storage use; every change from /edit /accept /restore /rerun).
+F2 One representation .................... PASS (exact textContent equality, 7 readings); caveat on op-name tags.
+F3 Labels exact .......................... PARTIAL: word and "then" wording good; D1, D2 and pasted/"Asked" contradiction.
+F4 One compatibility rule ................ PASS (no function; fit from /edit). Minor: "fill with" shows the current binding as "fits" (not "already here").
+F5 Progressive disclosure ................ PARTIAL: one-at-a-time and <=40% PASS; closed card 36%, bodies scroll inside the card.
+F6 Evidence at the text .................. PARTIAL: FAIL/UNVERIFIED verified against /log; PASS/"d1 judged" NOT TESTED; over-reach D2; decisions reachable by click only.
+F7 Keyboard/names/Escape/focus ........... FAIL (D3, D4, D5, D6).
+P1 Fixture labelling ..................... FAIL as stated (banner wrong for live-d1 snapshots; inference presented as record).
+P2 Unimplemented stated .................. PARTIAL: no statement in the page of what is missing (e.g. invalidated, PASS paths untested here).
+
+== Defects, by severity
+D1 (high, honesty) Unconditional banner "Scores below are ... a stand-in d1, not live-model evidence" (board.js last line) is false for snapshots
+   from /rerun. Repro: Rerun on 2ed6b3 -> "Earlier snapshots" -> Restore the snapshot made by the rerun (#108) -> open redesign -> "d1 recorded":
+   scores 72% / 11% / 9% (live); reload the page and the banner again says stand-in. Also: the page decides "fixture" from number shape only.
+D2 (high, honesty) Stop card states things the log line does not contain: "judged at N% by d1" (judgments:[] in the line), "the record says ...
+   sending back was off" (record has blocked:false only), "ceiling" (undefined jargon). Repro: restore #2 of 2ed6b3, click test -> Stop check.
+D3 (high, keyboard) The card is the LAST focusable group in the DOM. After Enter on an object, Tab walks the rest of the text first.
+   Repro: 2ed6b3, Tab x4, Enter on "redesign", Tab: goes to the value, place, o:1 ... card controls arrive after every object (133 stops in ffe36f).
+   Relationship buttons are effectively unreachable by keyboard on real readings. Focus should move into the card (or card placed after its anchor).
+D4 (medium, keyboard) Words have no tabindex: the word card (what "Then" belongs to) and the phrase-level decisions are click-only.
+D5 (medium, focus) After Escape of a carry (keyboard pick-up), "dropped outside", and "already here", focus is BODY (render() rebuilds the DOM, no
+   refocus). Repro: adf412, click a value, Space, Escape: document.activeElement.tagName === "BODY".
+D6 (medium, a11y) .rel buttons use el(): aria-expanded=true is written as aria-expanded="" and false is omitted (never "false"). Measured:
+   open -> getAttribute("aria-expanded")==="" ; closed -> attribute absent. Also role=button .val contains focusable .pl (nested interactives).
+D7 (medium, UI) "Earlier snapshots": card is capped at 40vh (307 px) and clips the newest rows (2ed6b3 showed #1..#107; #108/#109 below the fold,
+   "latest" row hidden). Rows number the store globally (#106, #107) while the header says "snapshot 8 of 8": two numbering schemes.
+D8 (medium, UI) Long unbreakable text (box-drawing lines in ffe36f) overflows: scrollWidth 1688 vs 1024 viewport (no overflow-wrap).
+D9 (low-medium, honesty) Stop line is chosen by reading id (stopLine()), not by snapshot; snapshot #5 shows the check recorded for #2.
+D10 (low, bug) Decision "offered:" lists refs as "undefined": show.subject in a snapshot where it holds a result: 'offered: “undefined”,
+   “the mod”, “undefined”' (scoreRows uses o.constant only). Repro: 2ed6b3 snapshot with show.subject <- redesign, click the place,
+   "d1 recorded".
+D11 (low, UI) A brick splits across lines: op tag at the end of line 1, its words on line 2 (2ed6b3 at ~800 px: "show" tag then "Then show it." wraps);
+   in 5b81f8 the "test" tag sits at "Fix this:" far from "the tests" (engine phrase range starts at 0; faithful but easy to misread).
+D12 (low) Unresolved chips show raw reason ("rejected", "bounded") although the harness has readable reasons; 43abe9 shows three anonymous
+   "? rejected/bounded" chips inside the "Explain the world to me." brick (engine puts them there, `place` 1-3 not shown).
+D13 (low, robustness) accept() has no in-flight guard and no try/catch: a double click sends two /accept (NOT TESTED), a network error shows nothing.
+D14 (info) Previews fan out one /edit per place per pick-up (2 at a time): 3-4 requests on small readings, would be ~80 on the 44-op readings (NOT TESTED).
+NOT TESTED: invalidated rerun, PASS / "d1 judged" Stop branches, double Accept, narrow/mobile and dark-mode layout, carry on the largest readings.

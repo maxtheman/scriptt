@@ -18,7 +18,7 @@ const api = async (path, body) => {
   const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   return r.json();
 };
-const FIXTURE = "stand-in d1 fixture score";
+const FIXTURE = "stand-in fixture score";
 
 const S = { lines: [], worlds: {}, log: [], id: null, base: null, pending: null, sel: null, open: null, typeView: null, carry: null, note: "", rerun: null, occ: new Map() };
 
@@ -40,7 +40,8 @@ const say = (v, r) => v.constant !== undefined ? `“${v.constant}”` : v.ref !
   : v.fields ? "{" + Object.entries(v.fields).map(([k, x]) => `${k}: ${say(x, r)}`).join(", ") + "}" : JSON.stringify(v);
 const ready = t => { const j = t.judgments || {}; return !j.valid ? "invalid" : !j.complete ? "incomplete" : j.ready ? "ready" : j.pending ? "waits" : ""; };
 const correctionAt = (r, id, path) => r.corrections.find(c => String(c.operation) === id && c.path === path);
-const stopLine = () => S.log.filter(l => l.event === "Stop" && l.reading === S.id && l.outcomes).at(-1);
+const sameCheck = (l, f) => f && l.outcomes.length === f.length && l.outcomes.every((o, i) => o.obligation === f[i].obligation && o.outcome === f[i].outcome && o.claim === f[i].claim);
+const stopLine = () => S.log.filter(l => l.event === "Stop" && l.reading === S.id && l.outcomes && sameCheck(l, S.base.fulfillment)).at(-1);
 const outcomeOf = (r, id) => (r.fulfillment || []).find(o => String(o.obligation) === id);
 
 async function load() {
@@ -61,7 +62,7 @@ function words(parent, from, to, text) {
   for (const piece of text.slice(from, to).split(/(\s+|[.,;:!?])/)) {
     if (!piece) continue;
     if (/^(\s+|[.,;:!?])$/.test(piece)) parent.append(piece);
-    else parent.append(el("span", { class: "w " + ((marks.find(m => pos >= m[0] && pos < m[1]) || [])[2] || ""), "data-key": key.word(pos), "data-w": pos, "data-kind": "word" }, piece));
+    else parent.append(el("span", { class: "w " + ((marks.find(m => pos >= m[0] && pos < m[1]) || [])[2] || ""), "data-key": key.word(pos), "data-w": pos, "data-kind": "word", tabindex: -1, role: "button", "aria-label": `word ${piece}. Enter to inspect.` }, piece));
     pos += piece.length;
   }
 }
@@ -120,6 +121,7 @@ function render() {
   t.append(tail);
   restoreMarks();
   drawCard();
+  if (S.focusKey) { find(S.focusKey)?.focus(); S.focusKey = null; }
   requestAnimationFrame(drawArcs);
   $("#snap").textContent = snapLabel();
   $("#older").disabled = $("#rerun").disabled = !!S.pending;
@@ -232,7 +234,7 @@ const fitWord = r => r.here ? "already here" : okay(r) ? "fits" : r.draft === nu
 const find = k => document.querySelector(`[data-key="${CSS.escape(k)}"]`);
 function select(k, kind, extra = {}) {
   S.sel = { key: k, kind, ...extra }; S.open = null; S.typeView = null; S.rerun = null;
-  render(); markSel(); find(k)?.focus();
+  render(); markSel(); ($("#card .rel") || $("#card .x") || find(k))?.focus();  // focus moves into the card; Escape returns it to the object
 }
 function markSel() { document.querySelectorAll(".sel").forEach(e => e.classList.remove("sel")); if (S.sel) find(S.sel.key)?.classList.add("sel"); drawArcs(); }
 function closeCard() { const k = S.sel && S.sel.key; S.sel = null; S.open = null; S.typeView = null; S.rerun = null; render(); if (k) find(k)?.focus(); }
@@ -246,7 +248,7 @@ function placeCard(c, anchor) {
 
 function rel(id, k, v, body) {
   const open = S.open === id;
-  const li = el("li", {}, el("button", { class: "rel", "aria-expanded": open, "data-rel": id, onclick: () => { S.open = open ? null : id; drawCard(); $(`[data-rel="${CSS.escape(id)}"]`)?.focus(); } },
+  const li = el("li", {}, el("button", { class: "rel", "aria-expanded": String(open), "data-rel": id, onclick: () => { S.open = open ? null : id; drawCard(); $(`[data-rel="${CSS.escape(id)}"]`)?.focus(); } },
     el("span", { class: "k" }, k), el("span", { class: "v" }, v), el("span", { class: "c" }, open ? "−" : "+")));
   if (open) { const b = el("div", { class: "body" }); body(b); li.append(b); }
   return li;
@@ -264,9 +266,9 @@ function scoreRows(d) {
     const optionLabel = id => (spec.options.find(o => o.id === id) || {}).description || id;
     for (const [id, v] of entries.slice(0, 3)) out.push(el("div", {}, el("span", { class: "bar", style: `width:${Math.max(2, Math.round(v * 80))}px` }), `${(v * 100).toFixed(v < .01 ? 1 : 0)}% `, el("span", { class: "t" }, id), " ", el("span", { class: "mute" }, id === "none" || id.startsWith("(") || /^\d+$/.test(id) ? optionLabel(id) : ""), String(d.chosen && (d.chosen.constant || d.chosen)) === id || (d.chosen && d.chosen.constant && /^\d+$/.test(id)) && v === entries[0][1] ? " ✓ chosen" : ""));
     if (entries.length > 3) out.push(el("div", { class: "mute" }, `+${entries.length - 3} more options, each ${(entries[3][1] * 100).toFixed(1)}%`));
-    out.push(el("div", { class: "prov" }, standIn ? `${FIXTURE}: 0.9 for the pick, the rest equal. Not live-model evidence.` : "recorded d1 score; its source (live or stand-in) is not written in the record. Not a confidence."));
+    out.push(el("div", { class: "prov" }, standIn ? `${FIXTURE}? This has the stand-in shape (0.9 for the pick, the rest equal); the record does not name its source. Not a confidence.` : "recorded d1 score; its source (live or stand-in) is not written in the record. Not a confidence."));
   }
-  if (d.offered.length) out.push(el("div", { class: "mute" }, "offered: " + d.offered.map(o => `“${o.constant}”`).join(", ") + (d.cut.length ? "; cut: " + d.cut.length : "")));
+  if (d.offered.length) out.push(el("div", { class: "mute" }, "offered: " + d.offered.map(o => o.constant !== undefined ? `“${o.constant}”` : o.ref !== undefined ? `the result of #${o.ref}` : JSON.stringify(o)).join(", ") + (d.cut.length ? "; cut: " + d.cut.length : "")));
   return out;
 }
 const decisionsFor = (r, pred) => r.decisions.filter(pred);
@@ -274,7 +276,7 @@ const decisionsFor = (r, pred) => r.decisions.filter(pred);
 function fulfillmentBody(b, op) {
   const o = outcomeOf(S.base, op.id), line = stopLine();
   if (!o) { b.append(el("p", { class: "mute" }, S.base.fulfillment ? "This operation has no outcome in the recorded check." : "No Stop check is recorded for this snapshot (an edit clears it; a hook run records one).")); return; }
-  b.append(el("p", {}, el("strong", { class: o.outcome }, o.outcome), o.claim != null ? ` · the reply's claim was judged at ${Math.round(o.claim * 100)}% by d1` : ""));
+  b.append(el("p", {}, el("strong", { class: o.outcome }, o.outcome), o.claim != null ? ` · claim value ${o.claim} recorded by the check` : ""));
   if (!line) return;
   const art = o.evidence == null ? null : line.artifacts[o.evidence], ev = art && (typeof art[2] === "number" ? line.evidence[art[2]] : art[2]);
   if (ev && ev.ran) b.append(el("p", {}, "evidence (execution): ran ", el("span", { class: "t" }, ev.ran), ` → exit ${ev.exit}`));
@@ -283,7 +285,7 @@ function fulfillmentBody(b, op) {
   else b.append(el("p", { class: "mute" }, "no evidence matched this operation."));
   const j = (line.judgments || []).find(x => String(x.obligation) === op.id);
   if (j) b.append(el("p", {}, el("strong", {}, "d1 judged"), `: “${j.instructions}” → ${j.share == null ? "invalid answer" : Math.round(j.share * 100) + "% yes"}; ${j.done ? "counted as done" : "not counted as done"}`));
-  if (o.outcome !== "PASS" && !line.blocked) b.append(el("p", { class: "warn" }, `The reply was released with this ${o.outcome}: the record says blocked=${line.blocked}, send-backs ${line.blocks} of 2, so the ceiling was not what let it go; sending back was off.`));
+  if (o.outcome !== "PASS" && !line.blocked) b.append(el("p", { class: "warn" }, `The reply was released with this ${o.outcome}: the record says blocked=${line.blocked}, send-backs ${line.blocks} of 2, and the record does not say why it was released.`));
   b.append(el("p", { class: "prov" }, `Stop check at ${line.at}; claims are prose judgments, executions are commands that ran.`));
 }
 
@@ -301,7 +303,7 @@ function drawCard() {
   const ul = el("ul");
   if (sel.kind === "history") {
     c.append(el("h2", {}, "Snapshots of this reading"), el("p", { class: "sub" }, "The store keeps every saved snapshot. Restore makes one the latest."));
-    for (const { l, n } of snapshotsOf(S.id)) ul.append(el("li", {}, el("div", { class: "row" }, el("span", {}, `#${n} · ${l.snapshot.slice(0, 6)} · ${l.corrections.length} corrections${l.fulfillment ? " · checked" : ""}`),
+    for (const { l, n } of snapshotsOf(S.id).reverse()) ul.append(el("li", {}, el("div", { class: "row" }, el("span", {}, `#${n} · ${l.snapshot.slice(0, 6)} · ${l.corrections.length} corrections${l.fulfillment ? " · checked" : ""}`),
       el("button", { class: "link", disabled: l === r, onclick: () => restore(n) }, l === r ? "latest" : "Restore"))));
     c.append(ul); return;
   }
@@ -437,7 +439,12 @@ function pendingCard(c) {
   c.append(el("div", { class: "actions" }, ok ? el("button", { class: "primary", "data-key": "accept", id: "accept", onclick: accept }, "Accept (saves as your correction)") : null, el("button", { "data-key": "cancel", onclick: cancel }, ok ? "Cancel" : "Dismiss")));
 }
 function cancel() { const a = S.pending && S.pending.anchor; S.pending = null; S.note = "Cancelled: the base reading is unchanged."; msg(); render(); find(a)?.focus(); }
+let accepting = false;
 async function accept() {
+  if (accepting) return; accepting = true;
+  try { await accept1(); } catch (e) { if (S.pending) { S.pending.failure = "Not saved: " + e.message; drawCard(); } } finally { accepting = false; }
+}
+async function accept1() {
   const P = S.pending, fresh = await fetch("/readings").then(r => r.json()), now = fresh.filter(l => l.id === S.id).at(-1);
   if (now.snapshot !== S.base.snapshot) { P.failure = "Not saved: the store has a newer snapshot than the one this preview was made from. Your draft is kept here; cancel, reload and redo it."; drawCard(); return; }
   const r = await api("/accept", P.body);
@@ -487,7 +494,7 @@ function markFit() {
   document.querySelectorAll("[data-place]").forEach(e => { const res = S.carry.pv.results.get(e.dataset.place); if (res) { e.dataset.fit = res.here ? "here" : okay(res) ? "ok" : "no"; e.title = fitWord(res); } });
 }
 const restoreMarks = () => { if (S.carry && S.carry.done) markFit(); };
-function endCarry(note) { S.carry = null; document.body.classList.remove("carrying"); document.querySelectorAll("[data-fit]").forEach(e => { delete e.dataset.fit; e.removeAttribute("title"); }); document.querySelectorAll(".ghost").forEach(g => g.remove()); document.querySelectorAll(".hot").forEach(h => h.classList.remove("hot")); if (note) { S.note = note; msg(); } }
+function endCarry(note) { const src = S.carry && S.carry.src.key; S.carry = null; document.body.classList.remove("carrying"); document.querySelectorAll("[data-fit]").forEach(e => { delete e.dataset.fit; e.removeAttribute("title"); }); document.querySelectorAll(".ghost").forEach(g => g.remove()); document.querySelectorAll(".hot").forEach(h => h.classList.remove("hot")); if (note) { S.note = note; msg(); } if (src) S.focusKey = src; }
 async function dropOn(placeEl) {
   if (!S.carry) return;
   const C = S.carry; await C.pv.job;
@@ -552,6 +559,11 @@ addEventListener("keydown", e => {
     if (S.sel) return closeCard();
     return;
   }
+  if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && e.target.closest && e.target.closest("#text [data-kind]") && !S.pending) {
+    const all = [...document.querySelectorAll("#text [data-kind]")], i = all.indexOf(e.target.closest("[data-kind]")), n = all[i + (e.key === "ArrowRight" ? 1 : -1)];
+    if (n) { e.preventDefault(); n.focus(); }
+    return;
+  }
   const o = e.target.closest && e.target.closest("#text [data-kind]");
   if (!o || e.composedPath().includes($("#card"))) return;
   if (e.key === "Enter") { e.preventDefault(); activate(o); }
@@ -565,4 +577,4 @@ $("#rerun").addEventListener("click", rerun);
 $("#older").addEventListener("click", () => { S.pending = null; S.sel = { key: "older", kind: "history" }; S.rerun = null; render(); const c = $("#card"); c.style.top = "0px"; c.style.left = "0px"; });
 $("#pick").addEventListener("change", async e => { S.id = e.target.value; S.sel = S.pending = null; await load(); render(); });
 
-load().then(() => { render(); S.note = "The engine's reading, from /readings. Scores below are recorded inputs of a stand-in d1, not live-model evidence."; msg(); });
+load().then(() => { render(); S.note = "The engine's reading, from /readings. Decision scores are recorded inputs; the record does not say whether a live or a stand-in d1 wrote them."; msg(); });
