@@ -162,11 +162,12 @@
 </main>
 
 <script src="data.js"></script>
+<script src="readings.js"></script>
 <script src="vendor/dragology-0.2.0.iife.js"></script>
 <script>
 // Every word drawn below comes from the record (events.jsonl), from the world (world.py) or from the message. Nothing names a type or a function of a world.
 const { React, createRoot, DraggableRenderer, translate } = window.Dragology, h = React.createElement;
-let WORLD = { types: {}, functions: {} }, EVENTS = [], MSGS = [], FNS = [], TYPES = [], LOCAL = false;
+let WORLD = { types: {}, functions: {} }, EVENTS = [], MSGS = [], FNS = [], TYPES = [], LOCAL = false, LEGACY = 0;
 let at = 0, OPEN = false, HELD = null, DRAGGING = false, LINE = "", UID = 0, W = 0, FONT = {}, C = {}, root = null;
 const store = {}, saved = {}, undos = {};  // by message: your reading, the reading of each part that the log already has, and each state before an edit
 const $ = (id) => document.getElementById(id);
@@ -188,8 +189,8 @@ const color = (type) => { const k = TYPES.indexOf(takes(type)[0]); return k >= 0
 const partsOf = (ev) => (ev.parts?.length ? ev.parts : [{ start: 0, end: ev.text.length, demands: ev.demands.map((d) => d.function), hole: null }]);
 const partOf = (ev, d) => d.part ?? (ev.parts?.length ? null : 0);  // a demand of the message as a whole has no part, except in a line of form 1
 const wordsOf = (ev, n) => ev.text.slice(partsOf(ev)[n].start, partsOf(ev)[n].end);
-const choiceOf = (part) => part.choice ?? (part.hole != null ? "none" : part.demands.length ? part.demands.reduce((a, b) => ((part.scores?.[b] ?? 0) > (part.scores?.[a] ?? 0) ? b : a)) : "nothing");
-const holesOf = (ev, fn) => Object.entries(WORLD.functions[fn]?.holes ?? Object.fromEntries(Object.entries(ev.demands.find((d) => d.function === fn)?.parameters ?? {}).map(([path, x]) => [path, x.type])));
+const choiceOf = (part) => part.unresolved ? `unresolved ${part.unresolved.brand ?? ""}`.trim() : part.choice ?? (part.hole != null ? "none" : part.demands.length ? part.demands.reduce((a, b) => ((part.scores?.[b] ?? 0) > (part.scores?.[a] ?? 0) ? b : a)) : "nothing");
+const holesOf = (ev, fn) => Object.entries(ev.holes?.[fn] ?? WORLD.functions[fn]?.holes ?? Object.fromEntries(Object.entries(ev.demands.find((d) => d.function === fn)?.parameters ?? {}).map(([path, x]) => [path, x.type])));
 const derived = new Map();
 function piecesOf(ev) {  // form 2: a piece for each filled hole whose value is in the words of its part
   if (ev.pieces?.length) return ev.pieces;
@@ -217,11 +218,13 @@ function decided(ev) {
       if (partOf(ev, d) !== n || s.fns.some((f) => f.fn === d.function)) return;
       s.fns.push({ id: "d" + k, fn: d.function });
       for (const [path, x] of Object.entries(d.parameters)) {
+        if (x.empty) { s.things[`${d.function}.${path}`] = "∅"; continue; }  // a deliberate absence (Empty): not a hole, not a value
         if (x.value == null && optional(x.type)) continue;  // a hole that may stay empty is drawn faint, and is no key
         const key = `${d.function}.${path}`, mine = P.filter((p) => p.to?.demand === k && p.to.path === path);
         if (isMany(x.type)) {
-          s.things[key] = x.value == null ? null : mine.length ? mine.map((p) => p.value) : [String(x.value)];
-          if (x.value != null) s.by[key] = mine.length ? mine.map((p) => p.id) : [null];
+          const list = Array.isArray(x.value);  // form 4: Several, an explicit list that may be empty ([] is not a hole)
+          s.things[key] = x.value == null ? null : mine.length ? mine.map((p) => p.value) : list ? x.value.map(String) : [String(x.value)];
+          if (x.value != null) s.by[key] = mine.length ? mine.map((p) => p.id) : list ? x.value.map(() => null) : [null];
           continue;
         }
         s.things[key] = x.value == null ? null : x.by === "the result of" ? `${x.value}()` : String(x.value);
@@ -230,6 +233,55 @@ function decided(ev) {
     });
     return s;
   }) };
+}
+// ---------- the adapter: a saved reading in the planned shape (UI-HANDOFF.md) in, an event of the board out ----------
+// This is the only place that knows the planned shape. It returns an event that the board already draws (parts, demands, pieces), with these additions:
+//   part.unresolved {reason, brand}   a phrase whose operation is unknown: it stays, typed by its brand
+//   demand.parameters[path] {type, value, by, piece, reason, empty}   value null = Hole (reason says why); empty = a deliberate Empty; value [] = a Several with no member
+//   ev.holes {fn: {path: type}}       the types as the line gives them (so Many[T] works without a world that says so)
+//   ev.requests                       each decision as a flat request: {phrase, path, state, instructions, options, answer, automatic}
+//   ev.corrections, ev.fulfillment    carried, not drawn yet
+// Planned shape of a line: {form: 4, text, world, phrases: [{start, end, brand, choice: {pick, scores}, term | unresolved: {reason}}], constants: [{start, end, type, value}],
+//   decisions: [{id, state, instructions, options: [{id, description}], answers: {option: p}, phrase, path, automatic?}], corrections, fulfillment}.
+// A term is {kind: "Constant", type, value, span: [start, end]} | {kind: "Application", id, fn, args: {name: term}} | {kind: "Record", fields: {name: term}}
+//   | {kind: "Several", type, items: [term]} | {kind: "Empty", type} | {kind: "Hole", type, reason} | {ref: id}. A type is a string or a tree {name, args}.
+const typeStr = (t) => (typeof t === "string" ? t : t == null ? "?" : t.name === "Maybe" ? `${typeStr(t.args[0])} | None` : t.args?.length ? `${t.name}[${t.args.map(typeStr).join(", ")}]` : t.name);
+function fromReading(line, k0) {
+  const ev = { form: 4, event: "UserPromptSubmit", session: "sample-" + k0, world: line.world, text: line.text, parts: [], demands: [], pieces: [], holes: {}, requests: [], corrections: line.corrections ?? [], fulfillment: line.fulfillment ?? [] };
+  const spot = new Map(), apps = new Map();
+  [...line.constants].sort((a, b) => a.start - b.start).forEach((c, id) => {
+    if (ev.pieces.some((p) => p.start < c.end && c.start < p.end)) return;  // a piece never overlaps another
+    const n = line.phrases.findIndex((p) => p.start <= c.start && c.end <= p.end);
+    ev.pieces.push({ id, part: Math.max(0, n), start: c.start, end: c.end, words: line.text.slice(c.start, c.end), type: names(typeStr(c.type))[0], value: String(c.value), to: null, of: null });
+    spot.set(`${c.start}-${c.end}`, ev.pieces.at(-1));
+  });
+  const find = (t) => { if (t?.kind === "Application") apps.set(t.id, t); for (const v of [...Object.values(t?.args ?? {}), ...Object.values(t?.fields ?? {}), ...(t?.items ?? [])]) find(v); };
+  line.phrases.forEach((p) => find(p.term));
+  const app = (a, k) => {  // 1 demand for an Application, and 1 for each Application nested in its arguments
+    const d = { function: a.fn, id: a.id, p: line.phrases[k].choice?.scores?.[a.fn] ?? 0, by: "the part", part: k, returns: WORLD.functions[a.fn]?.returns ?? "", words: line.text.slice(line.phrases[k].start, line.phrases[k].end), parameters: {} };
+    const at = ev.demands.push(d) - 1;
+    ev.holes[a.fn] ??= {};
+    const give = (path, t) => {
+      if (t.kind === "Record") { for (const [f, v] of Object.entries(t.fields)) give(`${path}.${f}`, v); return; }
+      const type = typeStr(t.kind === "Application" || t.ref != null ? (WORLD.functions[(t.ref != null ? apps.get(t.ref) : t)?.fn]?.returns ?? "?") : t.type);
+      const bind = (c, to) => { const piece = spot.get(`${c.span[0]}-${c.span[1]}`); if (piece) piece.to = to ?? { demand: at, path }; return piece; };
+      ev.holes[a.fn][path] = type;
+      if (t.kind === "Constant") { d.parameters[path] = { type, value: t.value, by: "the words", piece: bind(t)?.id }; }
+      else if (t.kind === "Several") { for (const m of t.items) bind(m); d.parameters[path] = { type, value: t.items.map((m) => m.value) }; }
+      else if (t.kind === "Empty") d.parameters[path] = { type, value: null, empty: true };
+      else if (t.kind === "Hole") d.parameters[path] = { type, value: null, reason: t.reason };
+      else if (t.ref != null) d.parameters[path] = { type, value: apps.get(t.ref)?.fn ?? "?", by: "the result of", ref: t.ref };  // the same result as the application with that id
+      else if (t.kind === "Application") { app(t, k); d.parameters[path] = { type, value: t.fn, by: "the result of", ref: t.id }; }
+    };
+    for (const [path, t] of Object.entries(a.args ?? {})) give(path, t);
+  };
+  line.phrases.forEach((p, k) => {
+    ev.parts.push({ start: p.start, end: p.end, brand: p.brand, choice: p.choice?.pick, scores: p.choice?.scores, demands: [], hole: null, ...(p.unresolved ? { unresolved: { ...p.unresolved, brand: p.brand } } : {}) });
+    if (p.term?.kind === "Application") app(p.term, k);
+  });
+  for (const d of ev.demands) ev.parts[d.part].demands.push(d.function);
+  for (const q of line.decisions ?? []) ev.requests.push({ key: q.id, phrase: q.phrase, path: q.path ?? null, state: q.state, instructions: q.instructions ?? "", options: q.options ?? [], answer: { probabilities: q.answers ?? {} }, automatic: q.automatic });
+  return ev;
 }
 const readingOf = (st, n) => ({ demands: st.parts[n].fns.map((f) => f.fn), things: st.parts[n].things });
 const sig = (st, n) => JSON.stringify([st.parts[n].fns.map((f) => f.fn), Object.entries(st.parts[n].things).sort()]);
@@ -307,7 +359,7 @@ function clauseItems(ev, st, n, P) {
   const part = partsOf(ev)[n], s = st.parts[n], out = [];
   if (!s.fns.length) {
     const c = choiceOf(part), text = c + (part.scores?.[c] != null ? " " + two(part.scores[c]) : "");
-    return [{ kind: c === "none" ? "abstain" : "tag", id: `c-${n}-${sid(text)}`, n, text, ask: `c:${n}`, w: tw(text, FONT.code) + (c === "none" ? 16 : 0), h: 28 }];
+    return [{ kind: c === "none" || part.unresolved ? "abstain" : "tag", reason: part.unresolved?.reason, id: `c-${n}-${sid(text)}`, n, text, ask: `c:${n}`, w: tw(text, FONT.code) + (c === "none" || part.unresolved ? 16 : 0), h: 28 }];
   }
   for (const f of s.fns) {
     const d = f.id[0] === "d" ? ev.demands[+f.id.slice(1)] : null, score = d ? two(d.p) : "", returns = WORLD.functions[f.fn]?.returns ?? d?.returns ?? "";
@@ -315,10 +367,10 @@ function clauseItems(ev, st, n, P) {
     out.push({ kind: "verb", id: "f-" + f.id, f, n, pre, post, ask: `v:${n}:${f.fn}`, w: tw(pre, FONT.code) + tw(f.fn, FONT.codeB) + tw(post, FONT.code) + 16, h: 28 });
     for (const [path, type] of holesOf(ev, f.fn)) {
       const key = `${f.fn}.${path}`, v = s.things[key], pids = piecesIn(s, key), faint = !(key in s.things), many = isMany(type);
-      const base = { f, n, key, path, type, v, pids, faint, many, id: `h-${f.id}-${key}`, ask: `h:${n}:${f.fn}:${path}`, h: 28 };
+      const base = { f, n, key, path, type, v, pids, faint, many, reason: d?.parameters?.[path]?.reason, id: `h-${f.id}-${key}`, ask: `h:${n}:${f.fn}:${path}`, h: 28 };
       if (many) {
         const refs = (Array.isArray(v) ? v : []).map((x, j) => { const pid = Array.isArray(s.by[key]) ? s.by[key][j] : null, k = pid != null ? P.findIndex((p) => p.id === pid) : -1; return k >= 0 ? `#${numOf(st, P, pid)}` : `"${short(x, 16)}"`; });
-        const text = `${refs.length ? "" : "◻ "}${path}: ${refs.length ? "[" + refs.join(", ") + "] + " : ""}${names(type).join(" | ")}`;
+        const text = `${v == null ? "◻ " : ""}${path}: ${v == null ? "" : "[" + refs.join(", ") + "] + "}${names(type).join(" | ")}`;
         out.push({ ...base, kind: "hole", text, w: chipW(text) });
         continue;
       }
@@ -414,7 +466,7 @@ function draggable({ state: st, d, draggedId }) {
     bubble: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, rx: 20, fill: C.surface }),
     run: (e) => txt(e.x, e.y + 19, e.text, { id: e.id }),
     tag: (e) => code(e.x, e.y + 19, e.text, { id: e.id, fill: C.t2, "data-ask": e.ask ?? `c:${e.n}` }),
-    abstain: (e) => chip(e, {}, h("rect", { width: e.w, height: 28, rx: 2, fill: "none", stroke: C.t2, strokeWidth: 2, strokeDasharray: "4 3" }), code(8, 19, e.text, { fill: C.t2 })),
+    abstain: (e) => chip(e, hint(e.reason ? "Unresolved: " + e.reason : ""), h("rect", { width: e.w, height: 28, rx: 2, fill: "none", stroke: C.t2, strokeWidth: 2, strokeDasharray: "4 3" }), code(8, 19, e.text, { fill: C.t2 })),
     piece: (e) => {
       const p = e.p, c = color(p.type), k = numOf(st, P, p.id);
       if (!OPEN) return h("g", { id: e.id, transform: translate(e.x, e.y), "data-link": "p" + p.id }, h("rect", { x: -2, y: 3, width: e.w + 4, height: 22, rx: 2, fill: c, fillOpacity: 0.2 }), h("rect", { x: -2, y: 23, width: e.w + 4, height: 2, fill: c }), txt(0, 19, p.words));
@@ -431,7 +483,7 @@ function draggable({ state: st, d, draggedId }) {
           h("text", { transform: translate(8, 19), fontFamily: C.code, fontSize: 14, fill: C.t1 }, e.pre, h("tspan", { fontWeight: 600 }, f.fn), h("tspan", { fill: C.t2 }, e.post))));
     },
     // a hole: dashed with the name of its type while it is open. A Many hole stays open for more, with the number of each piece that it has.
-    hole: (e) => chip(e, { opacity: e.faint ? 0.45 : 1, "data-link": e.pids.length ? "p" + e.pids[0] : "none" }, ...frame(e, e.many && e.pids.length),
+    hole: (e) => chip(e, { opacity: e.faint ? 0.45 : 1, "data-link": e.pids.length ? "p" + e.pids[0] : "none", ...hint(e.reason ? "Open: " + e.reason : "") }, ...frame(e, e.many && e.pids.length),
       h("g", { id: e.id + "-o" }, code(8, 19, e.text, { fill: C.t2 }))),
     // a hole that a thing fills from elsewhere: drag the thing to another hole of its type, or anywhere else to pull it out (the hole is then open)
     link: (e) => {
@@ -531,6 +583,8 @@ function restore(r) {  // a reading that you saved before (a Disagree line of th
 function load(data) {
   WORLD = { types: data.world?.types || {}, functions: data.world?.functions || {} };
   EVENTS = data.events.filter((e) => e.event === "UserPromptSubmit");
+  LEGACY = EVENTS.length;
+  if (typeof READINGS !== "undefined") EVENTS.push(...READINGS.map(fromReading));  // saved readings in the planned shape of UI-HANDOFF.md, after the recorded messages
   MSGS = EVENTS.map((_, i) => i);
   FNS = Object.keys(WORLD.functions);
   const holeTypes = FNS.flatMap((fn) => Object.values(WORLD.functions[fn].holes || {}).flatMap(names));
@@ -540,7 +594,7 @@ function load(data) {
   for (const r of data.events) if (r.event === "Disagree" && Number.isInteger(r.part)) restore(r);
   // Your own log opens on the newest message. The recorded one opens on the message of 5 parts or fewer with the most pieces in holes, then the most pieces.
   const rank = (ev) => (partsOf(ev).length <= 5) * 100 + piecesOf(ev).filter((p) => p.to).length * 10 + piecesOf(ev).length * 3 - ev.text.length / 1e4;
-  at = LOCAL ? Math.max(0, MSGS.length - 1) : MSGS.reduce((best, m) => (rank(EVENTS[m]) > rank(EVENTS[MSGS[best]]) ? m : best), 0);
+  at = LOCAL ? Math.max(0, LEGACY - 1) : MSGS.slice(0, LEGACY || undefined).reduce((best, m) => (rank(EVENTS[m]) > rank(EVENTS[MSGS[best]]) ? m : best), 0);
   LINE = "";
   draw(); say(LINE);
 }
@@ -629,7 +683,12 @@ function requestsFor(ev, pick, preview) {
     if (kind === "h" && !found.length) { found = here.filter((r) => r.hole); note += ` It sent d1 no request for the hole ${path}${found.length ? "; these are its requests for the holes of that phrase" : ""}.`; }
     return { found, note };
   }
-  const all = recorded(ev), same = (r) => { const s = String(r.state ?? "").trim(); return s === words || (s && words.includes(s)) || (s && s.includes(words)); };
+  const all = recorded(ev);
+  if (all.some((r) => r.phrase != null)) {  // form 4: a decision names its phrase and the argument path that it was about
+    const found = all.filter((r) => r.phrase === +n && (kind === "h" ? r.path === path : kind === "v" ? r.path == null || r.path === "" : r.path == null));
+    return { found, note: "" };
+  }
+  const same = (r) => { const s = String(r.state ?? "").trim(); return s === words || (s && words.includes(s)) || (s && s.includes(words)); };
   const role = (path ?? "").split(".").at(-1).replace(/_/g, " ");
   const found = all.filter((r) => same(r) && (kind === "h" ? r.instructions.includes(role) && !r.options.some((o) => FNS.includes(o.id)) : r.options.some((o) => FNS.includes(o.id))));
   return { found, note: "" };
@@ -668,8 +727,8 @@ function inspect() {
     const twins = (list) => list.filter((q) => q.state === r.state && q.key === r.key && q.hole === r.hole && q.wording === r.wording);
     return twins(preview.before.requests)[twins(preview.after.requests).indexOf(r)] ?? null;
   };
-  $("i-decision").innerHTML = (note ? `<p>${esc(note)}</p>` : "") + (found.length ? found.map((r) => `<h3>${esc(r.wording ?? r.key)} ${r.hole ? `(hole ${esc(r.hole)})` : ""}</h3>
-    <div>What d1 read (state):</div><pre>${esc(r.state)}</pre><div>The wording, with its slots filled (instructions):</div><pre>${esc(r.instructions)}</pre>${decisionTable(r, pair(r))}`).join("")
+  $("i-decision").innerHTML = (note ? `<p>${esc(note)}</p>` : "") + (found.length ? found.map((r) => `<h3>${esc(r.wording ?? r.key)} ${r.hole ? `(hole ${esc(r.hole)})` : r.path ? `(path ${esc(r.path)})` : ""}${r.automatic ? " (automatic)" : ""}</h3>
+    ${r.automatic ? `<p>Recorded without asking d1: ${esc(r.automatic)}</p>` : ""}<div>What d1 read (state):</div><pre>${esc(r.state)}</pre><div>The wording, with its slots filled (instructions):</div><pre>${esc(r.instructions)}</pre>${r.options?.length ? decisionTable(r, pair(r)) : ""}`).join("")
     : "<p>No request of d1 matches this one. A hole that code filled, or that no candidate could fill, has no request.</p>");
 }
 async function runPreview() {
