@@ -293,7 +293,6 @@ class Drafted extends DG.Modifier {
   constructor(ctx, innerSpec) { super(ctx, innerSpec); this.name = "drafted"; this.cache = new Map(); }
   frame(frame) {
     const r = this.inner.run(frame), st = r.dropState;
-    window.__frames = (window.__frames || 0) + 1;
     if (!st || !st.change) { // no request here: redraw only when a verdict arrived (the rail and the marks)
       LIVE = st; paintDock(st);
       if (this.dv0 == null) this.dv0 = DV;
@@ -318,8 +317,8 @@ let DRAWN = new Map(); // id -> box, from the last drawing of the current state
 const visible = (id) => DRAWN.has(id);
 function piecesVisible() { return [...DRAWN.keys()].filter((k) => k.startsWith("pc-")).map((k) => DRAWN.get(k).piece).filter(Boolean); }
 const retag = (a, b, kind) => ({ path: "kind", at: [a, b], value: kind });
-function wordsValue(p, pl) { // the words as the place's declared type (under Maybe/Many/Later, its argument); the engine checks them
-  const ty = inner(pl.declared);
+function wordsValue(p, pl) { // the words as their own kind when it is a type of the world, else as the place's declared type; the engine checks
+  const ty = p.kind && p.kind !== "(none)" && world().types[inner(p.kind)] ? p.kind : inner(pl.declared);
   return { constant: S.base.text.slice(p.start, p.end), type: ty, at: [p.start, p.end] };
 }
 function allPlaces(rec) { return allTerms(rec).flatMap(({ t }) => placesOf(t)); }
@@ -385,21 +384,26 @@ const RAILW = () => X0 + TW + 40;
 const known = (th) => !!th && !!th.places && th.places.every((o) => vOf(o.body) !== "wait");
 function railItems() {
   const held = HELD || (S.hold && S.hold.th);
-  if (!held || !held.places) return [];
+  if (!held || !held.places || !held.places.length) return [];
   if (held.rail) return held.rail.map((r) => (r.o ? { ...r, v: vOf(r.o.body) } : r));
   const out = [], y0 = BH - 44;
   if (!known(held)) return [{ id: "rl-wait", label: "… " + held.places.length, x: X0, y: y0, w: tw("… " + held.places.length, F.mono) + 16, v: "wait", info: true }];
   const okP = held.places.filter((o) => vOf(o.body) === "ok").sort((a, b) => b.open - a.open), noN = held.places.length - okP.length;
+  // every accepted place, each named by its operation (#id) and declared type; rows grow upward, up to half the view
+  const maxRows = Math.max(2, Math.floor((BH * 0.5) / 32));
   let x = X0, row = 0;
+  const tail = `✕ ${noN}`, tw0 = tw(tail, F.mono) + 16;
   for (const o of okP) {
-    const label = `${o.pl.t.function}.${o.pl.path}`, w = tw("✓ " + label, F.mono) + 16;
-    if (x + w > RAILW()) { if (row === 1) break; row = 1; x = X0; }
-    out.push({ id: "rl-" + pkey(o.pl.t, o.pl.path), o, label, x, y: y0 - row * 34, w, v: "ok" });
+    const label = `${o.pl.t.function} #${o.pl.t.id}.${o.pl.path} : ${o.pl.declared}`, w = tw("✓ " + label, F.mono) + 16;
+    if (x + w > RAILW()) { if (row + 1 >= maxRows) break; row++; x = X0; }
+    out.push({ id: "rl-" + pkey(o.pl.t, o.pl.path), o, label, x, row, w, v: "ok" });
     x += w + 6;
   }
   const more = okP.length - out.length;
-  const tail = (more ? `+${more}  ` : "") + `✕ ${noN}`;
-  out.push({ id: "rl-info", label: tail, x: Math.min(x, RAILW() - tw(tail, F.mono) - 16), y: y0 - row * 34, w: tw(tail, F.mono) + 16, v: "no", info: true });
+  const info = (more ? `+${more}  ` : "") + tail;
+  if (x + tw0 > RAILW() && row + 1 < maxRows) { row++; x = X0; }
+  out.push({ id: "rl-info", label: info, x: Math.min(x, RAILW() - tw(info, F.mono) - 16), row, w: tw(info, F.mono) + 16, v: "no", info: true });
+  for (const r of out) r.y = y0 - (row - r.row) * 32; // the first row on top, the last at the bottom of the view
   return out;
 }
 function spec(th, d) {
@@ -410,13 +414,16 @@ function spec1(th, d) {
   HELD = th; RAIL_IDS = new Set();
   const { out, places } = options(th);
   th.places = places; delete th.rail;
+  th.retags = out.filter((o) => o.body && o.body.path === "kind");
   const fb = far(th), farState = fb ? stateFor(fb, { pull: true }) : base();
   // the targets are built again once the engine has answered for every place (d.reactTo): refused places stop being targets
   const build = () => {
     delete th.rail; th.rail = railItems();
     RAIL_IDS = new Set(th.rail.filter((r) => !r.info).map((r) => r.id));
     const segs = (o) => (o.target.startsWith("pc-") ? [...DRAWN.entries()].filter(([, b]) => b.seg && "pc-" + b.start === o.target).map(([id]) => ({ ...o, target: id })) : [o]);
-    const opts = [...places.filter((o) => visible(o.target) && vOf(o.body) !== "no"), ...th.rail.filter((r) => !r.info).map((r) => ({ ...r.o, target: r.id })), ...out.filter((o) => visible(o.target)).flatMap(segs)];
+    const railTop = th.rail.length ? Math.min(...th.rail.map((r) => r.y)) - 8 : Infinity; // what lies under the rail is hidden, so not a target
+    const clear = (id) => { const b = DRAWN.get(id); return b && b.y + (b.h || 0) < railTop; };
+    const opts = [...th.rail.filter((r) => !r.info).map((r) => ({ ...r.o, target: r.id })), ...places.filter((o) => clear(o.target) && vOf(o.body) !== "no"), ...out.flatMap(segs).filter((o) => (o.target.startsWith("pt-") ? clear(o.target) : visible(o.target)))];
     const targets = opts.map((o) => d.dropTarget(o.target, o.body ? stateFor(o.body, { target: o.target }) : base(), { boundsState: start }));
     return targets.length ? d.closest(targets).whenFar(farState) : d.fixed(farState);
   };
@@ -502,7 +509,7 @@ function draggable({ state: st, d, draggedId }) {
   for (const [k, a] of segs) {
     const p = a.p, col = colorOf(p.kind), c = cat(p.kind), id = "pc-" + k, isOpen = openP && openP.start === p.start, ch = changed.has(p.start);
     const kids = [];
-    a.parts.forEach((s, i) => { kids.push(h("rect", { id: `pt-${k}-${i}`, transform: translate(s.x0 - 2, s.y + 2), width: s.x1 - s.x0 + 4, height: 38, fill: "transparent", pointerEvents: "none" })); drawn.set(`pt-${k}-${i}`, { seg: true, start: k }); });
+    a.parts.forEach((s, i) => { kids.push(h("rect", { id: `pt-${k}-${i}`, transform: translate(s.x0 - 2, s.y + 2), width: s.x1 - s.x0 + 4, height: 38, fill: "transparent", pointerEvents: "none" })); drawn.set(`pt-${k}-${i}`, { seg: true, start: k, x: s.x0, y: s.y, w: s.x1 - s.x0, h: 40 }); });
     for (const s of a.parts) {
       if (ch) bg.push(h("rect", { transform: translate(s.x0 - 3, s.y + 12), width: s.x1 - s.x0 + 6, height: 26, rx: 3, fill: C.accBg }));
       kids.push(h("rect", { transform: translate(s.x0 - 2, s.y + 2), width: s.x1 - s.x0 + 4, height: 38, fill: "transparent" }));
@@ -514,7 +521,9 @@ function draggable({ state: st, d, draggedId }) {
     const room = (labelEnd.get(s0.li) ?? -1e9) <= s0.x0 - 4;
     if (c !== "none" && room && (lw <= s0.x1 - s0.x0 + 14 || isOpen || ch || draggedId === id)) { labelEnd.set(s0.li, s0.x0 + lw); kids.push(txt(s0.x0, s0.y + 11, label, F.small, ch ? C.acc : col, { fontWeight: p.by === "user" ? 700 : 400 })); }
     else if (c !== "none") kids.push(h("circle", { transform: translate(s0.x0 + 2, s0.y + 8), r: 2, fill: col }));
-    if (draggedId === id) { const lw2 = tw(label, F.mono) + 12; kids.push(h("g", { transform: translate(s0.x0, s0.y - 6) }, h("rect", { width: lw2, height: 18, rx: 9, fill: C.card, stroke: col, strokeWidth: 1.25 }), txt(6, 13, label, F.mono, col))); }
+    if (draggedId === id) { const lw2 = tw(label, F.mono) + 12; kids.push(h("g", { transform: translate(s0.x0, s0.y - 6), opacity: 0.7 }, h("rect", { width: lw2, height: 18, rx: 9, fill: C.card, stroke: col, strokeWidth: 1.25 }), txt(6, 13, label, F.mono, col))); }
+    const hh = HELD || (S.hold && S.hold.th), rt = hh && hh.retags && hh.retags.find((o) => o.piece && o.piece.start === p.start), rv = rt ? vOf(rt.body) : null;
+    if (rv && rv !== "wait" && draggedId !== id) for (const s of a.parts) kids.push(h("rect", { transform: translate(s.x0 - 3, s.y + 10), width: s.x1 - s.x0 + 6, height: 30, rx: 4, fill: "none", stroke: rv === "ok" ? C.fn : C.no, strokeWidth: 1, strokeDasharray: "2 2", opacity: 0.8 }));
     if (isOpen) for (const s of a.parts) kids.push(h("rect", { transform: translate(s.x0 - 3, s.y + 1), width: s.x1 - s.x0 + 6, height: 40, rx: 4, fill: "none", stroke: col, strokeWidth: 1.5 }));
     const th = { t: "piece", p };
     kids.unshift(h("title", null, `${label} | ${clip(rec.text.slice(p.start, p.end))}`));
@@ -581,7 +590,7 @@ function draggable({ state: st, d, draggedId }) {
       const hit = st.target === r.id || (S.hold && S.hold.opts[S.hold.i] && S.hold.opts[S.hold.i].target === r.id);
       const glyph = r.info ? "" : ({ ok: "✓ ", no: "✕ ", wait: "… " })[r.v];
       const name = r.info ? r.label : `${r.label} ${r.v === "ok" ? "✓" : r.v === "no" ? "✕" : "…"}`;
-      rail.push(h("g", { id: r.id, transform: translate(r.x, r.y), className: "rail", role: r.info ? "note" : "button", "data-verdict": r.v },
+      rail.push(h("g", { id: r.id, transform: translate(r.x, r.y), className: "rail", role: r.info ? "note" : "button", "data-verdict": r.v, "data-open": r.o && r.o.open ? "1" : "0" },
         h("title", null, name),
         h("rect", { width: r.w, height: 28, rx: 5, fill: r.info ? "none" : r.v === "no" ? C.noBg : hit ? C.accBg : r.o && r.o.open ? C.card : C.tint, stroke: r.info ? C.rule : r.v === "no" ? C.no : hit ? C.acc : C.fn, strokeDasharray: r.o && r.o.open ? "4 3" : "", strokeWidth: 1.25 }),
         txt(8, 18, glyph + r.label, F.mono, r.v === "ok" ? C.fn : r.v === "no" ? C.no : C.mute)));
@@ -605,7 +614,7 @@ function draggable({ state: st, d, draggedId }) {
   return keyAll(h("g", { id: "root" },
     h("rect", { id: "paper", width: BW, height: BH, fill: C.bg }),
     h("g", { id: "bg" }, ...bg), h("g", { id: "words" }, ...words), h("g", { id: "ops" }, ...ops), h("g", { id: "links" }, ...links),
-    h("g", { id: "page-" + pageKey() }, ...page), h("g", { id: "over" }, ...over), sb, rail.length ? h("g", { id: "railg" }, ...rail) : null));
+    h("g", { id: "page-" + pageKey() }, ...page), h("g", { id: "over" }, ...over), sb, rail.length ? h("g", { id: "railg", dragologyZIndex: 10 }, ...rail) : null));
 }
 function pageKey() { const o = S.open; if (!o) return "world"; return o.t + "-" + (o.p ? o.p.start + "-" + o.p.end : o.name || (o.term ? o.term.id : "") || (o.pl ? pkey(o.pl.t, o.pl.path) : "") || (o.u ? o.u.id : "")).toString().replace(/\W/g, "_"); }
 function drawOp(c, x, y, rec, d, draggedId, drawn, foc, li) {
@@ -647,7 +656,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
   const head = (s, col) => { els.push(txt(x0, y + 12, s, F.head, col || C.mute)); y += 22; };
   const chipEl = (id, x, label, col, bgc, th, opts = {}) => {
     const cw = tw(label, opts.f || F.mono) + 14;
-    const g = h("g", { id, transform: translate(x, y), role: "button", "data-label": label, className: "chip", dragologyZIndex: draggedId === id ? "/1" : false,
+    const g = h("g", { id, transform: translate(x, y), role: "button", "data-label": label, className: "chip", dragologyZIndex: draggedId === id ? "/1" : false, opacity: draggedId === id ? 0.6 : 1,
       ...(opts.drag !== false && th && th.t !== "none" ? { dragologyOnDrag: () => spec(th, d) } : {}), onClick: () => opts.open ? openThing(opts.open) : th && openThing(th) },
       h("rect", { width: cw, height: 22, rx: 4, fill: bgc || C.card, stroke: col, strokeWidth: 1, strokeDasharray: opts.dash ? "3 2" : "" }), txt(7, 15, label, opts.f || F.mono, col));
     drawn.set(id, { x, y, w: cw, h: 22 });
@@ -1009,7 +1018,7 @@ $("board").addEventListener("wheel", (w) => { // scrolling the view, not moving 
   if (DRAGGING || !S.base) return;
   w.preventDefault();
   if (w.clientX > $("board").getBoundingClientRect().left + PX - 20) { S.pscroll = Math.max(0, S.pscroll + w.deltaY); }
-  else { const L = layout(S.base); S.scroll = Math.max(0, Math.min(Math.max(0, L.lines.length - visLines()), S.scroll + w.deltaY / LH)); }
+  else { const L = layout(S.base); S.scroll = Math.max(0, Math.min(Math.max(0, L.lines.length - visLines()), S.scroll + w.deltaY / LH)); S.note = null; }
   paint();
 }, { passive: false });
 
@@ -1031,13 +1040,14 @@ function paint() {
   root.render(h(DraggableRenderer, { key: S.id, draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragStatus: status }));
   if (S.pendingFocus) { requestAnimationFrame(() => { const zone = FOC.filter((f) => f.zone === "text"); if (zone.length && S.pendingFocus) { S.focus = (S.pendingFocus > 0 ? zone[zone.length - 1] : zone[0]).id; S.pendingFocus = 0; paint(); } }); }
   paintDock(DRAGGING ? LIVE : st);
+  if (S.focus) $("board").setAttribute("aria-activedescendant", S.focus); else $("board").removeAttribute("aria-activedescendant");
 }
 // a press that never became a drag (a click) leaves nothing held
 function status(st) {
-  (window.__status = window.__status || []).push(st.type + (st.pendingDrag ? "+pending" : "") + (st.springOrigin ? "+spring" : ""));
   const was = DRAGGING || PENDING, wasD = DRAGGING;
   DRAGGING = st.type === "dragging"; PENDING = !!st.pendingDrag;
-  if (DRAGGING && !wasD && HELD && HELD.places) verdicts(HELD.places.map((o) => o.body)); // the engine's verdict for every place, in one request
+  if (DRAGGING && !wasD && HELD && HELD.places) verdicts([...HELD.places, ...(HELD.retags || [])].map((o) => o.body));
+  if (DRAGGING && !wasD) S.note = null; // a new drag clears the last refusal // the engine's verdict for every place, in one request
   if (!DRAGGING && !st.pendingDrag && HELD) { HELD = null; RAIL_IDS = new Set(); LIVE = null; setTimeout(paint, 0); }
   else if (was && !DRAGGING && !PENDING) setTimeout(paint, 0);
 }
@@ -1046,7 +1056,7 @@ function pick() {
   const ids = [...LATEST.values()].sort((a, b) => !!b.pieces - !!a.pieces || b.text.length - a.text.length);
   if (sel.options.length !== ids.length) sel.innerHTML = ids.map((l) => `<option value="${l.id}">${l.id.slice(0, 8)} · ${l.text.length}${l.pieces ? "" : " · ⊘"}</option>`).join("");
   sel.value = S.id;
-  $("snap").textContent = (S.stale ? "⟳ " : "") + `${S.base.snapshot.slice(0, 8)} · #${IDX.get(S.base.snapshot)} · ${(S.base.pieces || []).length} · ${allTerms(S.base).length}ƒ · ${S.base.corrections.length}✎`;
+  $("snap").textContent = (S.stale ? "⟳ " : "") + `snapshot ${S.base.snapshot.slice(0, 8)} #${IDX.get(S.base.snapshot)} · links ${(S.base.pieces || []).length} · ƒ ${allTerms(S.base).length} · ✎ ${S.base.corrections.length}`;
 }
 async function choose(id) {
   S.id = id; S.base = LATEST.get(id); S.staged = null; S.hold = null; S.open = null; S.scroll = 0; S.focus = null; S.undo = []; S.note = null;

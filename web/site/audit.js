@@ -62,13 +62,13 @@
     return { mid };
   }
   // press a thing; once the rail is laid out from the engine's answers, drop on a place it accepts (✓)
-  async function dragToAccepted(src, name) {
+  async function dragToAccepted(src, name, openOnly) {
     if (src.id) src = document.getElementById(src.id) || src;
     const [sx, sy] = center(rectOf(src));
     await pe("pointermove", sx, sy); await pe("pointerdown", sx, sy);
     for (let i = 1; i <= 4; i++) { await pe("pointermove", sx + i * 3, sy + i * 3); await sleep(30); }
     await until(railReady, 30000); await pe("pointermove", sx + 13, sy + 13); await sleep(200);
-    const target = railOk()[0];
+    const target = openOnly ? railOk().find((g) => g.dataset.open === "1") : railOk()[0];
     if (!target) { await pe("pointerup", sx + 13, sy + 13); await sleep(200); await syncNet(); return { none: true, rail: all("#board [id^=rl-]").length }; }
     const tid = target.id, [dx, dy] = center(rectOf(target));
     for (let i = 1; i <= 8; i++) { await pe("pointermove", sx + 13 + ((dx - sx - 13) * i) / 8, sy + 13 + ((dy - sy - 13) * i) / 8); await sleep(30); }
@@ -115,6 +115,7 @@
       await window.board.choose(id); await sleep(400);
       try {
         const r = S.base;
+        const proseLog = []; proseLog.n = 0; const look = () => { proseLog.n++; for (const x of proseCheck()) if (!proseLog.includes(x)) proseLog.push(x); };
         const rec0 = await server(S.base.snapshot);
         row.chars = r.text.length; row.pieces = (rec0.pieces || []).length;
         // ---- A: one wiki page
@@ -123,6 +124,8 @@
         const L = window.board.layout(r);
         ok(L.words.map((w) => w.str).join("") === rec0.text.replace(/\s+/g, ""), "A1 the layout holds the whole text once");
         ok(linksMatch(rec0), "A2 every drawn link = a piece of the server's record, its target = piece.kind");
+        { const shown = all("#board text.w").map((t) => +t.dataset.s); const want = new Set((rec0.pieces || []).filter((p) => shown.some((s0) => s0 >= p.start && s0 < p.end)).map((p) => p.start));
+          ok([...want].every((s0) => document.getElementById("pc-" + s0)), `A2 every piece of the record under a drawn word is drawn as a link (${want.size})`); }
         const opsIds = rec0.phrases.flatMap((p) => p.terms.map((t) => t.id));
         const drawnOps = all("#board [id^=op-]");
         ok(drawnOps.length > 0 && drawnOps.every((g) => opsIds.includes(g.dataset.op)) && drawnOps.every((g) => { const t = rec0.phrases.flatMap((p) => p.terms).find((x) => x.id === g.dataset.op); return Object.keys(t.parameters).every((k) => document.querySelector(`#board [data-place="${t.id}.${k}"]`)); }), "A3 each drawn function span is an operation of the record, with every declared place");
@@ -131,7 +134,7 @@
         if (ok(typed, "A4 click opens a link and its type page from the world")) {
           const pageT = all("#board [id^=page-] text").map((t) => t.textContent).join("\n");
           ok(pageT.includes(typed.dataset.kind + " : *"), "A4 the page is of the link's target");
-          await shot(`${pre}-a-open-link`);
+          await shot(`${pre}-a-open-link`); look();
           ok(/d1 · kind/.test(pageT) && all("#board [id^=pg-o-]").length >= 2, "A5 d1's options and probabilities for its words");
           // B7: revisit d1: click an option that is not the chosen one
           const optEl = all("#board [id^=pg-o-]").find((g) => !/^●/.test(g.querySelector("text").textContent.trim()) && !/\(none\)/.test(g.dataset.label) && g.getBoundingClientRect().bottom < innerHeight - 60);
@@ -186,7 +189,7 @@
           const p = S.open && S.open.p;
           await key(k); await until(() => !/…/.test(dock()) && /→/.test(dock()), 20000);
           await key("Enter"); await sleep(200); await syncNet();
-          const b = staged() || refusedBody();
+          const b = staged();
           ok(p && b && sent(b) && check(b, p), label + " (/edit kind), then Enter stages it");
           await key("Escape");
         }
@@ -253,11 +256,16 @@
         }
         await key("Tab"); await reset();
         // ---- C: places take words, a world member, a result; they stage where the engine accepts
-        row.holes = all("#board [id^=pl-]").filter((g) => g.dataset.hole === "1").length; row.unresolved = all("#board [id^=un-]").length;
+        row.unresolved = all("#board [id^=un-]").length;
+        const recHoles = rec0.phrases.flatMap((p) => p.terms.flatMap((t) => Object.entries(t.arguments || {}).filter(([, v]) => v && v.hole).map(([k]) => `${t.id}-${k}`)));
+        row.holes = recHoles.length;
+        const openOnly = recHoles.length > 0; // the brief: a rejected or open place takes it. Where the record has none, the check is on filled places, and says so
+        if (!openOnly) row.did.push("C on filled places: the server's record of this snapshot has no hole");
+        const wasHole = (b) => b && recHoles.includes(`${b.number}-${b.path}`);
         { let res = null, n = 0; // C1 words: links in turn until the engine accepts them somewhere
-          for (const g of all("#board [id^=pc-]").slice(4, 12)) { n++; res = await dragToAccepted(g, `${pre}-c-words`); if (!res.none) break; await reset(); }
-          if (ok(res && !res.none, `C1 the engine accepts some held words somewhere (tried ${n} links)`)) {
-            const b = staged(); ok(b && sent(b) && b.number != null && b.value.constant !== undefined && b.value.at[0] >= 0, "C1 words into an accepting place stage (/edit {constant, type, at})");
+          for (const g of all("#board [id^=pc-]").slice(4, 16)) { n++; res = await dragToAccepted(g, `${pre}-c-words`, openOnly); if (!res.none) break; await reset(); }
+          if (ok(res && !res.none, `C1 the engine accepts some held words in ${openOnly ? "a rejected or open place" : "a place"} (tried ${n} links)`)) {
+            const b = staged(); ok(b && sent(b) && b.number != null && b.value.constant !== undefined && b.value.at[0] >= 0 && (!openOnly || wasHole(b)), `C1 words into ${openOnly ? "a rejected or open" : "an accepting"} place stage (/edit {constant, type, at})`);
             const pid = "pl-" + b.number + "-" + b.path.replace(/\./g, "_"), inView = res.mid.places.find(([k]) => k === pid);
             ok(b && (inView ? inView[1] === "⇠" : res.mid.dock.includes(b.path + "=“")), "C1 the draft shows the place filled before release (in the text, or in the dock when the place is out of view)");
             row.did.push("C1 → " + res.tid); await key("Escape");
@@ -267,9 +275,9 @@
         { // C2 a member: open a rejected or open place, its type's page offers members; hold one, drop where the engine accepts
           let res = null; const tried = [];
           for (const h of all("#board [id^=pl-]").filter((g) => g.dataset.hole === "1").concat(all("#board [id^=pl-]"))) {
-            await reset(); await click(h); await pause();
+            await reset(); await click(h); await pause(); look();
             const mem = el("#board [id^=pg-m-]"); if (!mem) continue;
-            tried.push(mem.dataset.label); res = await dragToAccepted(mem, `${pre}-c-member`); if (!res.none) break; await reset();
+            tried.push(mem.dataset.label); res = await dragToAccepted(mem, `${pre}-c-member`, openOnly); if (!res.none) break; await reset();
             if (tried.length >= 3) break;
           }
           if (!res || res.none) for (const g of all("#board [id^=pc-]")) { // else members from the pages of links (a sum type's page)
@@ -277,19 +285,19 @@
             const k = g.dataset.kind; if (!k || k === "(none)" || k === "null") continue;
             await reset(); await click(g); await pause();
             const mem = el("#board [id^=pg-m-]"); if (!mem || tried.includes(mem.dataset.label)) continue;
-            tried.push(mem.dataset.label); res = await dragToAccepted(mem, `${pre}-c-member`); if (!res.none) break;
+            tried.push(mem.dataset.label); res = await dragToAccepted(mem, `${pre}-c-member`, openOnly); if (!res.none) break;
           }
-          if (ok(res && !res.none, `C2 the engine accepts a member somewhere (members tried: ${tried.join(", ") || "none on any place's page"})`)) {
-            const b = staged(); ok(b && sent(b) && b.value.at[0] === -1 && tried.includes(b.value.constant), "C2 member into an accepting place stages (/edit {constant: member words, at: [-1,-1]})");
+          if (ok(res && !res.none, `C2 the engine accepts a member ${openOnly ? "in a rejected or open place" : "somewhere"} (members tried: ${tried.join(", ") || "none on any place's page"})`)) {
+            const b = staged(); ok(b && sent(b) && b.value.at[0] === -1 && tried.includes(b.value.constant) && (!openOnly || wasHole(b)), `C2 member into ${openOnly ? "a rejected or open" : "an accepting"} place stages (/edit {constant: member words, at: [-1,-1]})`);
             row.did.push("C2 → " + res.tid); await key("Escape");
           }
         }
         await reset();
         { // C3 a result: operations in turn until the engine accepts one's result somewhere
           let res = null, n = 0;
-          for (const op of all("#board [id^=op-]")) { n++; res = await dragToAccepted(op.querySelector("text"), `${pre}-c-result`); if (!res.none) break; await reset(); if (n >= 6) break; }
-          if (ok(res && !res.none, `C3 the engine accepts a result somewhere (tried ${n} operations)`)) {
-            const b = staged(); ok(b && sent(b) && b.value.ref != null, "C3 result into an accepting place stages (/edit {ref})");
+          for (const op of all("#board [id^=op-]")) { n++; res = await dragToAccepted(op.querySelector("text"), `${pre}-c-result`, openOnly); if (!res.none) break; await reset(); if (n >= 8) break; }
+          if (ok(res && !res.none, `C3 the engine accepts a result ${openOnly ? "in a rejected or open place" : "somewhere"} (tried ${n} operations)`)) {
+            const b = staged(); ok(b && sent(b) && b.value.ref != null && (!openOnly || wasHole(b)), `C3 result into ${openOnly ? "a rejected or open" : "an accepting"} place stages (/edit {ref})`);
             row.did.push("C3 → " + res.tid); await key("Escape");
           }
         }
@@ -297,7 +305,7 @@
         { // C4 a function onto an unresolved request (ƒ ▢), from that request's own page
           const un = el("#board [id^=un-]");
           if (un) {
-            await click(un); await pause();
+            await click(un); await pause(); look();
             const fnChip = el("#board [id^=pg-f-]");
             if (ok(fnChip, "C4 the page of ƒ ▢ offers the world's functions")) {
               await drag(fnChip, document.getElementById(un.id), { shot: `${pre}-c-function` });
@@ -318,8 +326,8 @@
             if (ok(o && o.body && o.body.number != null, "C1k arrows reach a place")) {
               await until(() => !/…/.test(dock()) && dock().trim(), 15000);
               await key("Enter"); await sleep(200); await syncNet();
-              const b = staged() || refusedBody();
-              ok(b && same(b, o.body) && sent(b), "C1k Enter drops the words (the same request as the pointer)");
+              const b = staged();
+              ok(b && same(b, o.body) && sent(b), "C1k Enter drops the words and it stages (the arrows skip refused places)");
               row.did.push("C1k " + (staged() ? "staged" : "refused"));
               await key("Escape");
             }
@@ -333,7 +341,8 @@
           await until(railReady, 30000); await pe("pointermove", sx + 9, sy + 9); await sleep(300);
           await syncNet();
           const drawnOk = railOk().map((g) => g.id.slice(3)), info = (el("#rl-info") && el("#rl-info").querySelector("text").textContent) || "";
-          const marks = all("#board [id^=pl-]").map((g) => [g.id.slice(3), [...g.querySelectorAll("text")].map((t) => t.textContent).find((t) => t === "✓" || t === "✕") || null]);
+          const railTopD = Math.min(...all("#board [id^=rl-]").map((g) => g.getBoundingClientRect().top), innerHeight);
+          const marks = all("#board [id^=pl-]").filter((g) => g.getBoundingClientRect().bottom < railTopD - 4).map((g) => [g.id.slice(3), [...g.querySelectorAll("text")].map((t) => t.textContent).find((t) => t === "✓" || t === "✕") || null]);
           await shot(`${pre}-d-held`);
           await key("Escape"); await pe("pointerup", sx, sy); await sleep(200); if (S.staged) await key("Escape");
           const mineOf = (x) => x.value && x.value.at && x.value.at[0] === +srcD.dataset.start && x.value.at[1] === +srcD.dataset.end;
@@ -346,13 +355,13 @@
             ok(drawnOk.every((k) => okKeys.includes(k)), "D1 every place the rail offers (✓) is one the engine accepts");
             ok(drawnOk.length + more === okKeys.length, `D1 the rail offers all the engine accepts (${drawnOk.length} + ${more} = ${okKeys.length})`);
             ok(shownNo === noN, `D1 the rail counts the refused (${shownNo} = ${noN})`);
-            ok(marks.every(([k, m]) => m === null || (m === "✓") === okKeys.includes(k)), "D1 each ✓/✕ on a place in the text equals the engine's answer");
+            ok(marks.length > 0 && marks.every(([k, m]) => m !== null && (m === "✓") === okKeys.includes(k)), `D1 every place in view carries ✓/✕, equal to the engine's answer (${marks.length} places)`);
             row.did.push(`D engine ok ${okKeys.length} / no ${noN}; rail ✓ ${drawnOk.length} +${more}`);
           }
         }
         await reset();
-        const prose = proseCheck();
-        ok(prose.length === 0, "F no sentence written by the page" + (prose.length ? ": " + prose.slice(0, 3).join(" / ") : ""));
+        const prose = [...proseLog, ...proseCheck()];
+        ok(prose.length === 0, `F no sentence written by the page, with the pages of a link, a place and ƒ ▢ open and closed (${proseLog.n} looks)` + (prose.length ? ": " + prose.slice(0, 3).join(" / ") : ""));
       } catch (e) { row.bad.push("threw: " + e.message + " " + (e.stack || "").split("\n")[1]); }
       report.readings.push(row);
       if (row.bad.length) report.failures.push({ id: pre, bad: row.bad });
