@@ -76,7 +76,7 @@ def _():
         {("Redesign the mod.", "redesign", "surface"): MOD, ("Then show it.", "show", "subject"): expected.Ref(0), ("Test the search too.", "test", "subject"): SEARCH},
         refers={0: ("redesign", ("the mod",))})
     d1 = Standin(answers, expected.World("next"))
-    reading: scriptt16.Reading = scriptt16.read(text, world, [], d1, join=False, watch=d1.watch)
+    reading: scriptt16.Reading = scriptt16.read(text, world, [], d1, join=False)
     json.loads(json.dumps(scriptt16.record(reading)))["phrases"]
     return
 
@@ -133,7 +133,7 @@ def _():
 def _():
     """SAVE, RELOAD, VALIDATE AGAIN. The record is form 5: references are {"ref": id}, decisions keep their path. Reload asks d1 nothing."""
     store: pathlib.Path = pathlib.Path(tempfile.mkdtemp()) / "store.jsonl"
-    draft = scriptt16.save(draft, store)
+    saved_draft = scriptt16.save(draft, store)
     calls_before: int = d1.calls
     loaded, load_faults = scriptt16.load(scriptt16.saved(store)[-1], world)
     {"load diagnostics": load_faults, "diagnostics after reload": scriptt16.diagnostics(loaded), "same meaning": scriptt16.meaning(loaded) == scriptt16.meaning(draft),
