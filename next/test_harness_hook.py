@@ -180,11 +180,16 @@ def test_hooks() -> None:
         print("stop with both: PASS, no block; with a failing command:", [one["outcome"] for one in last_stop(home)["outcomes"]])
 
         # 5. serve: the readings, the worlds, and the engine's edit, accept and restore.
+        site = folder / "board"  # a board's web/site, linked as .scriptt/site as a lab folder would
+        site.mkdir()
+        (site / "index.html").write_text("<p>the board</p>")
+        (home / "site").symlink_to(site)
         served = subprocess.Popen([PYTHON, str(home / "harness.py"), "serve", "8799"], stdout=subprocess.PIPE, text=True)
         try:
             served.stdout.readline()
             get = lambda path: json.load(urllib.request.urlopen(f"http://127.0.0.1:8799/{path}"))
             post = lambda path, body: json.load(urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:8799/{path}", json.dumps(body).encode(), {"Content-Type": "application/json"})))
+            assert urllib.request.urlopen("http://127.0.0.1:8799/").read() == b"<p>the board</p>", "the linked site is not the page"
             readings, worlds = get("readings"), get("worlds")
             assert all(one["form"] == 5 for one in readings) and line["world"] in worlds and worlds[line["world"]]["identity"] == line["world"]
             clear = {"reading": line["id"], "number": 0, "path": "surface", "value": {"hole": "Surface", "reason": "cleared"}}
@@ -195,12 +200,17 @@ def test_hooks() -> None:
             assert bad["draft"] and bad["diagnostics"], bad
             accepted = post("accept", clear)
             assert accepted["diagnostics"] == [] and accepted["saved"]["corrections"] and len(get("readings")) == len(readings) + 1
+            # Rerun with d1 that still prefers the original (the mod): the accepted correction is retained, not given back to d1.
+            rerun = post("rerun", {"reading": line["id"]})
+            assert rerun["diagnostics"] == [] and [one["status"] for one in rerun["corrections"]] == ["retained"], rerun
+            assert rerun["saved"]["id"] == line["id"] and rerun["saved"]["phrases"][0]["terms"][0]["arguments"]["surface"] == {"hole": "Surface", "reason": "cleared"}
+            assert len(get("readings")) == len(readings) + 2
             first = 1 + next(n for n, one in enumerate(readings) if one["id"] == line["id"])
             restored = post("restore", {"snapshot": first})
             assert restored["diagnostics"] == [] and restored["saved"]["corrections"] == [] and restored["saved"]["id"] == line["id"]
             cli = subprocess.run([PYTHON, str(home / "harness.py"), "post", "/edit"], input=json.dumps(clear), capture_output=True, text=True)
             assert json.loads(cli.stdout) == post("edit", clear) | {"draft": json.loads(cli.stdout)["draft"]} and json.loads(cli.stdout)["diagnostics"] == [], cli.stderr  # the mod's way in: the same answer
-            print(f"serve: {len(readings)} readings, {len(worlds)} world(s); edit gave a draft, a wrong-typed edit gave {bad['diagnostics']}, accept saved a correction, restore saved snapshot {first}")
+            print(f"serve: {len(readings)} readings, {len(worlds)} world(s); edit gave a draft, a wrong-typed edit gave {bad['diagnostics']}, accept saved a correction, rerun kept it {rerun['corrections'][0]['status']}, restore saved snapshot {first}")
         finally:
             served.terminate()
     server.shutdown()

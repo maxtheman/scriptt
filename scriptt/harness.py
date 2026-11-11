@@ -16,7 +16,7 @@ You run it for the rest:
   python harness.py serve [port]   the page, the readings, the worlds and the log, and the engine's edit, accept and restore
   python harness.py find WORDS     the phrases of every reading that have these words or this function; "?" finds the unresolved
   python harness.py world          the world as JSON (agree.world_record)
-  python harness.py post /accept   what POST /accept of serve answers, with the body on stdin (also /edit, /restore): the mod's way in
+  python harness.py post /accept   what POST /accept of serve answers, with the body on stdin (also /edit, /restore, /rerun): the mod's way in
 
 Which evidence is about which obligation (the harness's rule; scriptt16.check then applies the engine's own: an artifact
 names a function and its values, and counts only for the 1 obligation that has exactly those):
@@ -30,6 +30,7 @@ With "block": true, a turn goes back only for an obligation that is FAIL, or UNV
 The last run of each command and the last write of each file count. A command passes with exit code 0, a write when the file exists.
 """
 
+import dataclasses
 import json
 import pathlib
 import re
@@ -399,6 +400,13 @@ def posted(path: str, body: dict) -> dict:
             if reading is not None:
                 reading, found = scriptt16.save(reading, store())
             return {"saved": latest(chosen["id"]) if reading is not None and not found else None, "diagnostics": plain(found)}
+        case "/rerun":  # read the saved source again with d1 and re-apply each correction: retained, or invalidated with its reason
+            lines_ = scriptt16.saved(store())
+            chosen = lines_[int(body["snapshot"]) - 1] if body.get("snapshot") else latest(body["reading"])
+            again = scriptt16.rerun(chosen, world(chosen["world"]), d1)
+            again = dataclasses.replace(again, id=chosen["id"], base=latest(chosen["id"])["snapshot"])  # a new snapshot of the same reading
+            again, found = scriptt16.save(again, store())
+            return {"saved": latest(chosen["id"]) if not found else None, "corrections": again.corrections, "diagnostics": plain(found + scriptt16.diagnostics(again))}
     raise LookupError(path)
 
 
@@ -410,6 +418,9 @@ def serve(port: int):
     POST /edit       {reading, number, path, value, phrase?} -> {draft, diagnostics}; nothing is saved
     POST /accept     the same, as a correction; saved when it has no diagnostics -> {saved, diagnostics}
     POST /restore    {snapshot: n from 1} -> {saved, diagnostics}: the n-th snapshot becomes the latest
+    POST /rerun      {reading} or {snapshot: n from 1} -> {saved, corrections, diagnostics}: the source read again with d1,
+                     each correction retained or invalidated with its reason, saved as a new snapshot of that reading
+    The page is HOME/site if it exists (a lab folder can link it to a board's web/site), else web/site beside this folder.
     A value is a term as a record writes it ({"constant", "type", "at"}, {"ref"}, {"hole", "reason"}, ...), or null to remove the binding.
     """
     from http.server import BaseHTTPRequestHandler, HTTPServer
