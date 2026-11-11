@@ -1234,6 +1234,19 @@ def plain(data: object) -> object:
     return json.loads(json.dumps(data))
 
 
+def finite(data: object) -> object:
+    """Returns data with each number that JSON cannot hold (NaN, an infinity, from a malformed raw answer of d1) as the
+    string JSON's own extension writes for it, so a line is valid JSON and the answer still reads as no share."""
+    match data:
+        case float() if not math.isfinite(data):
+            return "NaN" if data != data else "Infinity" if data > 0 else "-Infinity"
+        case dict():
+            return {key: finite(value) for key, value in data.items()}
+        case list() | tuple():
+            return [finite(value) for value in data]
+    return data
+
+
 def term_record(term: Term, written: set[int], judged: dict[int, dict] | None = None) -> dict:
     """Converts a term to data that JSON can hold, in the shape of the saved record.
 
@@ -1292,7 +1305,7 @@ def record(reading: Reading) -> dict:
     chosen = lambda value: [term_record(one, written) for one in value] if isinstance(value, list) else term_record(value, written) if isinstance(value, Constant | Application | Record | Several | Empty | Hole) else value
     decisions = [one | {"offered": [term_record(term, written) for term in one["offered"]], "cut": [term_record(term, written) for term in one["cut"]], "chosen": chosen(one["chosen"])}
                  for one in reading.decisions]
-    return ({"form": 5, "id": reading.id, "text": reading.text, "source": hashlib.sha256(reading.text.encode()).hexdigest()[:16], "world": reading.world, "base": reading.base, "phrases": phrases_line,
+    return finite({"form": 5, "id": reading.id, "text": reading.text, "source": hashlib.sha256(reading.text.encode()).hexdigest()[:16], "world": reading.world, "base": reading.base, "phrases": phrases_line,
              "constants": [term_record(one, written) for one in reading.constants], "decisions": decisions, "corrections": reading.corrections}
             | ({"fulfillment": [dataclasses.asdict(one) for one in reading.fulfillment]} if reading.fulfillment is not None else {}))
 
@@ -1414,7 +1427,7 @@ def save(reading: Reading, store: pathlib.Path) -> tuple[Reading, list[tuple[Non
         return reading, [(None, None, "stale")]
     line = record(reading) | {"snapshot": uuid.uuid4().hex}
     with store.open("a") as file:
-        file.write(json.dumps(line) + "\n")
+        file.write(json.dumps(line, allow_nan=False) + "\n")
     return dataclasses.replace(reading, base=line["snapshot"]), []
 
 
