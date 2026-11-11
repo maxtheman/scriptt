@@ -356,6 +356,7 @@ function fromReading(line, k0) {
     if (p.term?.kind === "Application") app(p.term, k);
   });
   for (const d of ev.demands) ev.parts[d.part].demands.push(d.function);
+  ev.line = line;  // the record as it was saved: every field of it can be opened
   for (const q of line.decisions ?? []) ev.requests.push({ key: q.id, phrase: q.phrase, path: q.path ?? null, state: q.state, instructions: q.instructions ?? "", options: q.options ?? [], answer: { probabilities: q.answers ?? {} }, automatic: q.automatic });
   return ev;
 }
@@ -381,6 +382,36 @@ const litTypeFor = (t, words) => (t === "str" || t === "Path") || (t === "int" &
 const litType = (e, words) => takes(e.type).find((t) => litTypeFor(t, words));  // the type that these words can be a value of in a place
 const tagState = (st, id, s0, e0, part, type, value) => edit(st, (x) => { x.lits = [...(x.lits ?? []).filter((l) => l.id !== id), { id, start: s0, end: e0, part, type, value }]; });  // the words are tagged with a type: they stay where they are
 const replaceFn = (ev, st, n, f, fn2) => addFn(ev, dropFn(st, n, f), n, fn2);
+// A correction is what you changed against what d1 read: the phrase, the place, before and after. It is kept with the message, and marked invalid when the world has changed under it.
+const hash = (t) => [...t].reduce((x, c) => (x * 31 + c.charCodeAt(0)) | 0, 7).toString(36);
+const msgKey = (ev) => "scriptt.msg." + hash(ev.text), worldKey = () => hash(JSON.stringify(WORLD0));
+const CORRINV = {};
+function corrs(before, after) {
+  const out = [], at = new Date().toISOString();
+  for (let n = 0; n < after.parts.length; n++) {
+    const a = before.parts[n], b = after.parts[n];
+    for (const key of new Set([...Object.keys(a.things), ...Object.keys(b.things)])) if (JSON.stringify(a.things[key] ?? null) !== JSON.stringify(b.things[key] ?? null)) out.push({ phrase: n, path: key, before: a.things[key] ?? null, after: b.things[key] ?? null, at });
+    const fa = a.fns.map((f) => f.fn).join("+"), fb = b.fns.map((f) => f.fn).join("+");
+    if (fa !== fb) out.push({ phrase: n, path: "operation", before: fa || null, after: fb || null, at });
+  }
+  return out;
+}
+function keptFor(ev, ref) {  // the corrections that touch a thing
+  const i = EVENTS.indexOf(ev), [k, a, b, c] = String(ref).split(":");
+  if (i < 0 || !["h", "v", "c"].includes(k)) return [];
+  const all = [...corrs(decided(ev), reading(i)), ...(CORRINV[i] ?? [])];
+  return all.filter((x) => x.phrase === +a && (k === "h" ? x.path === `${b}.${c}` : x.path === "operation"));
+}
+function loadSaved() {  // the corrections that were saved: each message that was saved is read as you left it, unless the world is not the one that it was read in
+  for (const k of MSGS) {
+    let e = null;
+    try { e = JSON.parse(localStorage.getItem(msgKey(EVENTS[k])) ?? "null"); } catch { e = null; }
+    if (!e) continue;
+    if (e.world === worldKey()) { store[k] = e.state; if (WDELTA) store[k].dw = WDELTA; else delete store[k].dw; (saved[k] ??= {}); store[k].parts.forEach((_, n) => { saved[k][n] = sig(store[k], n); }); }
+    else CORRINV[k] = (e.corrections ?? []).map((x) => ({ ...x, invalid: "world changed" }));
+  }
+}
+const clearSaved = () => { for (const q of Object.keys(localStorage)) if (q.startsWith("scriptt.")) localStorage.removeItem(q); for (const k of Object.keys(saved)) delete saved[k]; for (const k of Object.keys(CORRINV)) delete CORRINV[k]; };
 const piecesIn = (p, key) => [p.by[key]].flat().filter((x) => x != null);  // the pieces in a hole: 1, or several for a Many hole
 
 // ---------- the states that a drop can produce ----------
@@ -538,6 +569,22 @@ function decisionsFor(ev, n, path) {
   const sc = path == null ? partsOf(ev)[n]?.scores : null;
   return sc ? Object.entries(sc).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id, p]) => ({ id, p, tip: WORLD.functions[id]?.asks })) : [];
 }
+// Every record behind a thing, as it is: the page shows these fields and no others, and shows all of them.
+const pathGet = (o, path) => (path ? path.split("/").map(decodeURIComponent).reduce((x, k) => (x == null ? undefined : x[k]), o) : o);
+function rawOf(ev, st, ref) {
+  const [k, a, b] = ref.split(":"), P = piecesAt(ev, st), line = ev.line, slim = (e) => ({ kind: e.kind, key: e.key, path: e.path, type: e.type, state: e.state, value: e.v, pieces: e.pids, reference: e.ref ?? null, operation: e.app, reason: e.reason ?? null, many: e.many });
+  if (k === "p") { const p = P.find((x) => String(x.id) === a); return p && { piece: p, constant: line?.constants?.find((c) => c.start === p.start && c.end === p.end) ?? null, bound: st.parts.flatMap((q, n) => Object.keys(q.by).filter((key) => piecesIn(q, key).includes(p.id)).map((key) => `${clause(n)} ${key}`)) }; }
+  if (k === "s") { const [s0, e0] = a.split("-").map(Number); return { start: s0, end: e0, words: ev.text.slice(s0, e0), phrase: partAt(ev, s0) }; }
+  if (k === "c") { const part = partsOf(ev)[+a]; return part && { phrase: part, term: line?.phrases?.[+a] ?? null, state: st.parts[+a], decisions: (ev.requests ?? []).filter((r) => r.phrase === +a) }; }
+  if (k === "v") { const f = st.parts[+a]?.fns.find((g) => g.fn === b); if (!f) return null; const d = f.id[0] === "d" ? ev.demands[+f.id.slice(1)] : null; return { operation: f, demand: d, term: line?.phrases?.[+a]?.term ?? null, world: WORLD.functions[b] ?? null }; }
+  if (k === "h") { const e = placeAt(ev, st, ref); if (!e) return null; const d = e.f.id[0] === "d" ? ev.demands[+e.f.id.slice(1)] : null; return { place: slim(e), argument: d?.parameters?.[e.path] ?? null, decisions: (ev.requests ?? []).filter((r) => r.phrase === e.n && r.path === e.path), declared: WORLD.functions[e.f.fn]?.holes?.[e.path] ?? null }; }
+  if (k === "t") return { type: a, definition: WORLD.types[a] ?? null, builtin: !WORLD.types[a] };
+  if (k === "m") return { member: ref.split(":").slice(2).join(":"), type: a, definition: WORLD.types[a] ?? null };
+  if (k === "w") return WORLD.functions[a] ? { function: a, definition: WORLD.functions[a] } : null;
+  if (k === "n") return { types: Object.keys(WORLD.types), functions: FNS, draft: WDELTA };
+  return null;
+}
+const fmtVal = (v) => (v === null ? "null" : Array.isArray(v) ? `[${v.length}]` : typeof v === "object" ? `{${Object.keys(v).length}}` : typeof v === "string" ? `“${short(v, 40)}”` : String(v));
 // What a thing is, from the data: its name and type, rows of chips (a chip with `follow` goes to the thing that it names), and d1's options.
 function facts(ev, st, ref) {
   const [k, a, b] = ref.split(":"), P = piecesAt(ev, st), quote = (n) => ({ text: `“${short(wordsOf(ev, n).trim(), 40)}”`, follow: `c:${n}` });
@@ -574,6 +621,11 @@ function facts(ev, st, ref) {
     return { role: "text", name: short(words, 30), type: null, rows: [row("source", [{ text: `${s0}–${e0}` }, quote(partAt(ev, s0))]), row("fits", take)], options: [] };
   }
   if (k === "n") return { role: "world", name: "+", type: null, rows: [], options: [] };
+  if (k === "d") {  // the whole record: each field is a chip, and a record inside a record can be opened
+    const m = /^d:([^|]*)\|?(.*)$/.exec(ref), base = decodeURIComponent(m[1]), obj = pathGet(rawOf(ev, st, base), m[2]);
+    if (obj === undefined || obj === null || typeof obj !== "object") return null;
+    return { role: "data", name: m[2] ? decodeURIComponent(m[2].split("/").at(-1)) : "{ }", type: null, rows: [{ tip: "fields", chips: Object.entries(obj).map(([key, v]) => ({ text: `${key} ${v !== null && typeof v === "object" ? "" : "= "}${fmtVal(v)}`, key, follow: v !== null && typeof v === "object" && Object.keys(v).length ? `d:${m[1]}|${m[2] ? m[2] + "/" : ""}${encodeURIComponent(key)}` : undefined })) }], options: [] };
+  }
   if (k === "w") {
     const def = WORLD.functions[a];
     if (!def) return null;
@@ -671,6 +723,21 @@ function relIds(ev, st, ref) {
   if (k === "p") { const p = piecesAt(ev, st).find((x) => String(x.id) === a); return p ? [tn(p.type)] : []; }
   return [];
 }
+// The places that cannot take what is held, and why: shown on the board while a thing is held.
+function refusals(ev, st, ref) {
+  const [k, a] = String(ref).split(":"), L = layoutOf(ev, st), ok = new Set(transitions(ev, st, ref).filter((t) => t.kind === "move").map((t) => t.target)), out = {}, P = piecesAt(ev, st);
+  const T = k === "p" ? P.find((x) => String(x.id) === a)?.type : k === "m" ? a : k === "h" ? L.els.find((x) => x.ask === ref)?.type : null;
+  for (const e of L.els) {
+    if (ok.has(e.id)) continue;
+    if ((e.kind === "hole" || e.kind === "link") && !(k === "h" && e.ask === ref)) {
+      if (k === "s") out[e.id] = `not ${takes(e.type).join(" | ")}`;
+      else if (T && !takes(e.type).includes(takes(T)[0])) out[e.id] = `${takes(T)[0]} ≠ ${takes(e.type).join(" | ")}`;
+      else if (T) out[e.id] = "already here";
+    } else if (e.kind === "socket" && (k === "w" || k === "v")) out[e.id] = "already there";
+    else if (e.kind === "wfn" && (k === "c" || k === "v")) out[e.id] = "already there";
+  }
+  return out;
+}
 const moves = (ev, st, ref) => transitions(ev, st, ref).filter((t) => t.kind === "move").map((t) => ({ target: t.target, state: t.state }));  // what a drag of this thing can land on
 const pulled = (ev, st, ref) => transitions(ev, st, ref).find((t) => t.kind === "clear")?.state ?? st;  // what pulling it far away does
 const changedIds = (ev, a, b) => layoutOf(ev, b).els.filter((e) => (e.kind === "hole" || e.kind === "link") && (JSON.stringify([a.parts[e.n]?.things[e.key], a.parts[e.n]?.refs?.[e.key]]) !== JSON.stringify([b.parts[e.n].things[e.key], b.parts[e.n].refs?.[e.key]]))).map((e) => e.id);
@@ -687,7 +754,9 @@ function panelOf(ev, st, ref, base) {  // the panel is chains too: the way here,
   for (const r of f.rows) chain(r.chips.map((x) => ({ ...x, tip: x.tip ?? r.tip })));
   const best = Math.max(0, ...f.options.map((o) => o.p));
   chain(f.options.map((o) => ({ text: short(o.id, 22), p: o.p, tip: o.tip, role: "option", best: o.p === best })));
-  chain([...shown.map((t) => ({ text: t.label, act: t.label })), ...(acts.length > shown.length ? [{ text: `+${acts.length - shown.length}`, more: true }] : [])]);
+  const kept = keptFor(ev, ref);
+  if (kept.length) chain(kept.map((c) => ({ text: `${c.invalid ? "⚠ " : ""}${c.before == null ? "◻" : short(String(c.before), 14)} → ${c.after == null ? "◻" : short(String(c.after), 14)}`, tip: c.invalid ? c.invalid : "correction" })));
+  chain([...shown.map((t) => ({ text: t.label, act: t.label })), ...(acts.length > shown.length ? [{ text: `+${acts.length - shown.length}`, more: true }] : []), ...(ref.startsWith("d:") ? [] : [{ text: "{ }", tip: "data", follow: `d:${encodeURIComponent(ref)}` }])]);
   const target = base.els.find((e) => e.ask === ref || (e.kind === "piece" && "p:" + e.p.id === ref));
   return { kind: "panel", id: "pn", x: 0, y: base.chainEnd + 28, w: W, h: y, ref, items, selWorld: !!target?.world, sel: target ? { x: target.x, y: target.y, w: target.w, h: target.h ?? BH } : null };
 }
@@ -730,7 +799,8 @@ function draggable({ state: st, d, draggedId }) {
   const frame = (e) => { const dd = shapePath(e.w, { socket: e.socket, plug: e.plug }), dash = e.state === "empty" ? "1.5 3" : e.state === "optional" ? "2 4" : "5 3"; return [h("path", { dragologyKey: "solid", className: "mark", d: dd, fill: C.bg, stroke: C.t1, strokeWidth: 2, strokeOpacity: solid(e) ? 1 : 0 }), h("path", { dragologyKey: "dash", d: dd, fill: "none", stroke: C.t1, strokeWidth: 2, strokeDasharray: dash, strokeOpacity: solid(e) ? 0 : 1 })]; };
   const hit = (e) => h("rect", { dragologyKey: "hit", x: -8, y: -10, width: e.w + 16, height: BH + 20, fill: "transparent" });  // the zone of a place: its block and 8 to 10 px around it
   const placeLabel = (e) => `${e.ref ? "reference" : "place"} ${e.path} : ${e.type}`;
-  const placeProps = (e) => ({ "data-type": takes(e.type)[0], "data-role": e.ref ? "reference" : "place", "data-state": e.state, "data-arg": e.path, "data-of": e.app, "data-ref": e.ask, "aria-label": `place ${e.path} : ${e.type}`, "data-label": placeLabel(e), ...(e.ref ? { "data-to": e.ref } : {}) });
+  const holdRef = HELD?.ref ?? HOLDING, RJ = holdRef ? refusals(ev, st, holdRef) : null;  // while something is held: what each place says about it
+  const placeProps = (e) => ({ ...(RJ?.[e.id] ? { "data-reject": RJ[e.id] } : {}), "data-type": takes(e.type)[0], "data-role": e.ref ? "reference" : "place", "data-state": e.state, "data-arg": e.path, "data-of": e.app, "data-ref": e.ask, "aria-label": `place ${e.path} : ${e.type}`, "data-label": placeLabel(e), ...(e.ref ? { "data-to": e.ref } : {}) });
 
   // a node of the world: a block like the others, linked by its type to every block of that type, a source for the drags that make sense for it, a target for the others
   const holdT = ((r) => { const [k, a] = String(r ?? "").split(":"); return k === "p" ? P.find((x) => String(x.id) === a)?.type : k === "v" || k === "w" ? returnsOf(ev, a === undefined ? "" : (k === "v" ? r.split(":")[2] : a)) : k === "m" || k === "t" ? a : k === "h" ? layoutOf(ev, st).els.find((x) => x.ask === r)?.type : null; })(HELD?.ref ?? HOLDING);
@@ -790,7 +860,7 @@ function draggable({ state: st, d, draggedId }) {
         const can = !!(it.act || it.more || it.follow || it.crumb || it.back), kind = it.act ? "act" : it.head ? "head" : it.crumb || it.back ? "crumb" : "fact";
         const press = () => (it.act ? applyAct(it.act) : it.more ? (MORE = true, draw()) : it.back ? back() : it.crumb ? jump(it.crumb) : follow(it.follow));
         const props = { "data-part": "", ...(it.role ? { "data-role": it.role } : {}), ...(it.act ? { "data-act": it.act, onPointerEnter: () => DRAGGING || HELD || hoverAct(it.act), onPointerLeave: () => DRAGGING || HELD || hoverAct(null) } : {}),
-          ...(it.more ? { "data-more": "" } : {}), ...(it.back ? { "data-back": "" } : {}), ...(it.crumb ? { "data-crumb": it.crumb } : {}), ...(it.follow && !it.crumb ? { "data-follow": it.follow } : {}),
+          ...(it.more ? { "data-more": "" } : {}), ...(it.back ? { "data-back": "" } : {}), ...(it.crumb ? { "data-crumb": it.crumb } : {}), ...(it.follow && !it.crumb ? { "data-follow": it.follow } : {}), ...(it.key ? { "data-key": it.key } : {}),
           ...(can ? { className: "act", role: "button", tabIndex: 0, "aria-label": it.act ?? it.tip ?? it.text, onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); press(); } } } : {}) };
         const stroke = kind === "act" ? C.accent : kind === "crumb" ? C.rule : kind === "head" ? C.t1 : C.t2;
         return h("g", { id: it.id, dragologyKey: it.id, transform: translate(it.x, it.y), "data-w": Math.round(it.w), ...(it.plug ? { "data-plug": PLUG.tag } : {}), ...(it.socket ? { "data-socket": PLUG.tag } : {}), ...props },
@@ -812,7 +882,8 @@ function draggable({ state: st, d, draggedId }) {
   // the relations of what is selected or picked up: a curve to each thing of the world that it is tied to
   const focus = HELD?.ref ?? HOLDING ?? SEL, from = focus && L.els.find((e) => e.ask === focus || (e.kind === "piece" && "p:" + e.p.id === focus)), rel = [];
   if (from) for (const id of relIds(ev, st, focus)) { const to = L.box[id]; if (to && to !== from) { const x1 = from.x + from.w / 2, y1 = from.y + (from.h ?? BH), x2 = to.x + to.w / 2, y2 = to.y, ym = (y1 + y2) / 2; rel.push(h("path", { id: `rel-${id}`, d: `M${x1},${y1}C${x1},${ym} ${x2},${ym} ${x2},${y2}`, fill: "none", stroke: C.accent, strokeWidth: 2, strokeOpacity: 0.55, strokeDasharray: "2 4", pointerEvents: "none" })); } }
-  return h("g", null, ...L.els.map((e) => draw[e.kind](e)), h("g", { id: "rel" }, ...rel), h("g", { id: "here" }, ...here), h("g", { id: "next" }, ...next), h("g", { id: "held" }, ...held));
+  const why = RJ ? Object.entries(RJ).map(([id, w]) => L.box[id] && h("text", { id: `why-${id}`, transform: translate(L.box[id].x + 4, L.box[id].y - 4), fontFamily: C.code, fontSize: 10, fill: C.t2, pointerEvents: "none" }, `✕ ${w}`)).filter(Boolean) : [];
+  return h("g", null, ...L.els.map((e) => draw[e.kind](e)), h("g", { id: "rel" }, ...rel), h("g", { id: "why" }, ...why), h("g", { id: "here" }, ...here), h("g", { id: "next" }, ...next), h("g", { id: "held" }, ...held));
 }
 
 {
@@ -947,6 +1018,7 @@ function load(data) {
   for (const k of Object.keys(undos)) delete undos[k];
   for (const k of Object.keys(redos)) delete redos[k];
   for (const r of data.events) if (r.event === "Disagree" && Number.isInteger(r.part)) restore(r);
+  loadSaved();
   // Your own log opens on the newest message. The recorded one opens on the message of 5 parts or fewer with the most pieces in holes, then the most pieces.
   const rank = (ev) => (partsOf(ev).length <= 5) * 100 + piecesOf(ev).filter((p) => p.to).length * 10 + piecesOf(ev).length * 3 - ev.text.length / 1e4;
   at = LOCAL ? Math.max(0, LEGACY - 1) : MSGS.slice(0, LEGACY || undefined).reduce((best, m) => (rank(EVENTS[m]) > rank(EVENTS[MSGS[best]]) ? m : best), 0);
@@ -962,8 +1034,11 @@ $("save").addEventListener("click", async () => {  // the local page adds 1 Disa
       const answer = await fetch("/disagree", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session: ev.session, text: ev.text, part: n, ...readingOf(st, n) }) });
       if (!answer.ok) throw new Error(answer.status);
     }
-    for (const n of todo) (saved[i] ??= {})[n] = sig(st, n);
-    localStorage.setItem("scriptt.world", JSON.stringify(WDELTA)); SAVED_W = JSON.stringify(WDELTA);
+    const when = new Date().toISOString();  // everything is written first; only then is anything marked as saved, so a failure keeps the draft
+    for (const k of Object.keys(store)) localStorage.setItem(msgKey(EVENTS[k]), JSON.stringify({ at: when, world: worldKey(), state: store[k], corrections: corrs(decided(EVENTS[k]), store[k]) }));
+    localStorage.setItem("scriptt.world", JSON.stringify(WDELTA));
+    for (const k of Object.keys(store)) { (saved[k] ??= {}); store[k].parts.forEach((_, n) => { saved[k][n] = sig(store[k], n); }); }
+    SAVED_W = JSON.stringify(WDELTA);
     delete b.dataset.error; b.title = ""; b.textContent = "Save";
   } catch (error) { b.dataset.error = String(error.message); b.title = String(error.message); b.textContent = "Save ⚠"; }
   draw();
