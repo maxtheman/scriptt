@@ -915,6 +915,7 @@ class Reading:
             path, others, value (as a term record), refers, status ("retained"
             or "invalidated") and reason.
         base: The snapshot of the store that this reading was loaded from or saved as; None for a new reading.
+        fulfillment: The outcomes of the last ``check``, or None if none ran since the last edit.
     """
 
     id: str
@@ -925,6 +926,7 @@ class Reading:
     world: str
     corrections: list[dict] = dataclasses.field(default_factory=list)
     base: str | None = None
+    fulfillment: list | None = None
 
 
 def read(text: str, world: World, replies: list[str], model: Model, join: bool = True, limits: Limits = Limits(),
@@ -1114,7 +1116,7 @@ def edit(reading: Reading, number: int | None, path: str, value: Term | None, co
         the caller keeps the base.
     """
     copies: dict = {}
-    draft = copy.deepcopy(reading, copies)
+    draft = dataclasses.replace(copy.deepcopy(reading, copies), fulfillment=None)  # an edit makes an earlier check stale
     value = copy.deepcopy(value, copies)
     asked = number is None
     if asked:
@@ -1123,7 +1125,9 @@ def edit(reading: Reading, number: int | None, path: str, value: Term | None, co
             return draft, [(None, path.partition(".")[2], "reference")]
         value = bindings(by_number(draft, number))[path]
     entries = [term for _, term in obligations(draft)]
-    target = next((term for term in entries if term.number == number and isinstance(term, Application)), None)
+    target = next((term for term in entries if term.number == number), None)
+    if isinstance(target, Unresolved):
+        return draft, [(number, path, "unresolved")]
     if target is None:
         return draft, [(None if asked else number, path, "reference")]
     earlier = {id(term) for term in entries[:entries.index(target)]}
@@ -1261,8 +1265,9 @@ def record(reading: Reading) -> dict:
     chosen = lambda value: [term_record(one, written) for one in value] if isinstance(value, list) else term_record(value, written) if isinstance(value, Constant | Application | Record | Several | Empty | Hole) else value
     decisions = [one | {"offered": [term_record(term, written) for term in one["offered"]], "cut": [term_record(term, written) for term in one["cut"]], "chosen": chosen(one["chosen"])}
                  for one in reading.decisions]
-    return {"form": 5, "id": reading.id, "text": reading.text, "source": hashlib.sha256(reading.text.encode()).hexdigest()[:16], "world": reading.world, "base": reading.base, "phrases": phrases_line,
-            "constants": [term_record(one, written) for one in reading.constants], "decisions": decisions, "corrections": reading.corrections}
+    return ({"form": 5, "id": reading.id, "text": reading.text, "source": hashlib.sha256(reading.text.encode()).hexdigest()[:16], "world": reading.world, "base": reading.base, "phrases": phrases_line,
+             "constants": [term_record(one, written) for one in reading.constants], "decisions": decisions, "corrections": reading.corrections}
+            | ({"fulfillment": [dataclasses.asdict(one) for one in reading.fulfillment]} if reading.fulfillment is not None else {}))
 
 
 def type_named(name: str, world: World) -> Type:
@@ -1346,7 +1351,8 @@ def load(line: dict, world: World) -> tuple[Reading | None, list[tuple[None, Non
     rebuilt = lambda value: [term_from(one, world, made_by, dangling) for one in value] if isinstance(value, list) else term_from(value, world, made_by, dangling) if isinstance(value, dict) else value
     message = recorded_phrases(line, world, made_by, dangling)
     decisions = [one | {"offered": rebuilt(one["offered"]), "cut": rebuilt(one["cut"]), "chosen": rebuilt(one["chosen"])} for one in line["decisions"]]
-    reading = Reading(line["id"], line["text"], message, rebuilt(line["constants"]), decisions, line["world"], [dict(one) for one in line["corrections"]], line.get("snapshot"))
+    reading = Reading(line["id"], line["text"], message, rebuilt(line["constants"]), decisions, line["world"], [dict(one) for one in line["corrections"]], line.get("snapshot"),
+                      [Checked(**one) for one in line["fulfillment"]] if "fulfillment" in line else None)
     found = validate(reading)
     for number, path, rule in found:
         if rule in ("type", "kind"):  # a saved value of the wrong type is not trusted: its place becomes a hole
@@ -1360,21 +1366,22 @@ def by_number(reading: Reading, number: int) -> Application | None:
     return next((term for _, term in obligations(reading) if term.number == number), None)
 
 
-def save(reading: Reading, store: pathlib.Path) -> Reading:
+def save(reading: Reading, store: pathlib.Path) -> tuple[Reading, list[tuple[None, None, str]]]:
     """Appends the record of a reading to the store as a new snapshot, and returns the reading with that snapshot as its base.
 
+    A draft made from an earlier snapshot of the same reading than the store's
+    latest is not saved: it returns the draft and a "stale" diagnostic.
+
     Raises:
-        ValueError: If the store holds a later snapshot of the same reading than
-            the one this draft was made from: a stale draft is not saved over it.
         OSError: If the write fails; the caller keeps its draft.
     """
     earlier = [line["snapshot"] for line in saved(store) if line["id"] == reading.id]
     if earlier and earlier[-1] != reading.base:
-        raise ValueError(f"the draft was made from snapshot {reading.base}, and the store's latest is {earlier[-1]}")
+        return reading, [(None, None, "stale")]
     line = record(reading) | {"snapshot": uuid.uuid4().hex}
     with store.open("a") as file:
         file.write(json.dumps(line) + "\n")
-    return dataclasses.replace(reading, base=line["snapshot"])
+    return dataclasses.replace(reading, base=line["snapshot"]), []
 
 
 def saved(store: pathlib.Path) -> list[dict]:
@@ -1471,7 +1478,8 @@ class Gate:
             not empty, and every accepted obligation keeps its operation and
             bindings, and no obligation is added.
         verdict: PASS, FAIL (a fault or a regression) or UNVERIFIED (no corpus).
-        regressions: (line, obligation) of each accepted obligation that changed, disappeared or was added; on PASS, the migrated ones.
+        regressions: (line, obligation) of each accepted obligation that changed, disappeared or was added, and not migrated.
+        migrated: The changes that the caller accepted explicitly.
         faults: The faults of the proposed world.
         world: The active world after the decision.
         source: The source of the active world after the decision.
@@ -1481,6 +1489,7 @@ class Gate:
     activated: bool
     verdict: str
     regressions: list[tuple[int, int]]
+    migrated: list[tuple[int, int]]
     faults: list[tuple[str, str, str]]
     world: World
     source: str
@@ -1500,16 +1509,17 @@ def gate(source: str, folder: pathlib.Path, lines: list[dict], model: Model, act
     """
     proposed = loads(source, folder)
     if proposed.faults or not lines:
-        return Gate(False, FAIL if proposed.faults else UNVERIFIED, [], proposed.faults, active, active_source, lines)
+        return Gate(False, FAIL if proposed.faults else UNVERIFIED, [], [], proposed.faults, active, active_source, lines)
     regressions, reread = [], []
     for number, line in enumerate(lines):
         again = rerun(line, proposed, model, limits)
         before, after = meaning(load(line, active)[0]), meaning(again)
         regressions += [(number, index) for index in range(max(len(before), len(after))) if index >= len(before) or index >= len(after) or after[index] != before[index]]
         reread.append(plain(record(again)))
-    if set(regressions) - set(migrations):
-        return Gate(False, FAIL, regressions, [], active, active_source, lines)
-    return Gate(True, PASS, regressions, [], proposed, source, reread)
+    migrated, regressions = [one for one in regressions if one in migrations], [one for one in regressions if one not in migrations]
+    if regressions:
+        return Gate(False, FAIL, regressions, migrated, [], active, active_source, lines)
+    return Gate(True, PASS, [], migrated, [], proposed, source, reread)
 
 
 # ---- Part 6: fulfillment -------------------------------------------------------
@@ -1564,7 +1574,7 @@ def about(application: Application, artifact: Artifact, index: dict[int, int]) -
             and artifact.operation in (None, application.number))
 
 
-def check(reading: Reading, reply: str, artifacts: list[Artifact], criteria: list[tuple[str, typing.Callable]], model: Model, limits: Limits = Limits()) -> tuple[list[Checked], str, dict]:
+def check(reading: Reading, reply: str, artifacts: list[Artifact], criteria: list[tuple[str, typing.Callable]], model: Model, limits: Limits = Limits()) -> tuple[Reading, str, dict]:
     """Checks a reply and its evidence against every obligation of a reading, unresolved ones included.
 
     d1 is asked once whether the reply says each exact operation (its call,
@@ -1572,8 +1582,9 @@ def check(reading: Reading, reply: str, artifacts: list[Artifact], criteria: lis
     only from the criteria applied to artifacts about that operation.
 
     Returns:
-        The outcomes, the verdict (PASS only if every outcome is PASS; FAIL if
-        any is FAIL; else UNVERIFIED) and the request to d1.
+        The reading with the outcomes as its ``fulfillment`` (saved with it),
+        the verdict (PASS only if every outcome is PASS; FAIL if any is FAIL;
+        else UNVERIFIED) and the request to d1.
     """
     entries = [term for _, term in obligations(reading)]
     index = {id(term): number for number, term in enumerate(entries)}
@@ -1590,5 +1601,5 @@ def check(reading: Reading, reply: str, artifacts: list[Artifact], criteria: lis
             found.append(Checked(term.number, name, outcome, evidence, claims.get(f"did {term.number}")))
     outcomes = {one.outcome for one in found}
     verdict = FAIL if FAIL in outcomes else PASS if outcomes == {PASS} else UNVERIFIED
-    return found, verdict, judgment
+    return dataclasses.replace(reading, fulfillment=found), verdict, judgment
 

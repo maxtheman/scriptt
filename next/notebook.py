@@ -133,7 +133,7 @@ def _():
 def _():
     """SAVE, RELOAD, VALIDATE AGAIN. The record is form 5: references are {"ref": id}, decisions keep their path. Reload asks d1 nothing."""
     store: pathlib.Path = pathlib.Path(tempfile.mkdtemp()) / "store.jsonl"
-    saved_draft = scriptt16.save(draft, store)
+    saved_draft, stale = scriptt16.save(draft, store)
     calls_before: int = d1.calls
     loaded, load_faults = scriptt16.load(scriptt16.saved(store)[-1], world)
     {"load diagnostics": load_faults, "diagnostics after reload": scriptt16.diagnostics(loaded), "same meaning": scriptt16.meaning(loaded) == scriptt16.meaning(draft),
@@ -145,8 +145,8 @@ def _():
 @app.cell
 def _():
     """CHECK a reply. A reply's words are no evidence: with no artifact every obligation is UNVERIFIED, whatever d1 says the reply claims."""
-    checks, verdict, judgment = scriptt16.check(loaded, "I redesigned the mod, showed it and tested the search.", [], [("evidence", lambda term, artifact: False)], d1)
-    {"verdict": verdict, "checks": [(one.obligation, one.criterion, one.outcome, one.claim) for one in checks], "d1 read": judgment["state"] if judgment else None}
+    checked, verdict, judgment = scriptt16.check(loaded, "I redesigned the mod, showed it and tested the search.", [], [("evidence", lambda term, artifact: False)], d1)
+    {"verdict": verdict, "checks": [(one.obligation, one.criterion, one.outcome, one.claim) for one in checked.fulfillment], "d1 read": judgment["state"] if judgment else None}
     return
 
 
