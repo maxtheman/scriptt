@@ -10,9 +10,9 @@ data attributes, the judgment mark), and, where the engine has an answer, compar
 Output of each run is stored in `web/site/audits/vNN-run.txt` next to the build.
 
 ## A. Data (T1, US "data source", A-7)
-- A01 The page loads `engine/readings.json` and `engine/worlds.json` by fetch; the reading list has 38 entries, the first shown is the specimen "Redesign the mod. Then show it. Test the search too." (probe: network log has both URLs; picker lists 38; first text equals the engine's first text).
+- A01 The page loads `engine/readings.json` and `engine/worlds.json` by fetch; the reading list has as many entries as the file (38 when written, 52 after the engine data was regenerated at 0249f2b), the first shown is the specimen "Redesign the mod. Then show it. Test the search too." (probe: network log has both URLs; picker lists 38; first text equals the engine's first text).
 - A02 No type name, member name, function name or phrase text is hard-coded in the page source: every name drawn on the board is found in the loaded JSON (probe: collect all text drawn on the board for all 38 readings; each token is in the reading text, the world JSON, a fixed UI vocabulary list of at most 25 words that is printed by the probe, or a number).
-- A03 For all 38 readings, every phrase is drawn, every term's id is drawn, every constant `at` span is the exact substring `text[at[0]:at[1]]` (probe: loop all 38 through the picker's own control, read the DOM).
+- A03 For all 38 readings, every phrase is drawn, every term's id is drawn, every constant `at` span is the exact substring `text[at[0]:at[1]]` (probe: loop all readings through the picker's own control, read the DOM).
 - A04 Kinds of missing are four different marks with their reasons in words: hole (reason text: rejected / no candidate / bounded / cleared), empty (Maybe), empty list (Many), unresolved phrase with its reason (probe on readings 12, 13, 19, 20, 34, 35 and the one with `several: []` if present; the four marks have distinct `data-missing` values and distinct stroke dash patterns).
 
 ## B. Every piece is a draggable thing (F-2.1, F-4.1, T4, A-2)
@@ -21,7 +21,7 @@ Output of each run is stored in `web/site/audits/vNN-run.txt` next to the build.
 
 ## C. Dragging a word moves what it is tagged with, not the word (F-3, T)
 - C01 After dragging the word "the mod" onto an argument place and releasing, the word is still at its original coordinates (±1 px) and the message text is unchanged (probe: bounding rect before and after).
-- C02 Dragging a constant word onto an argument place whose declared type accepts it binds it there: the place's drawn value equals the word, and the reading's state shows `constant` with the same `at` (probe: specimen, drag "the search" onto `show.subject`; place text becomes "the search"; the engine file's analogous result is reading 37 for "the mod"; probe 37-equivalence: drag "the mod" onto `show.subject`, then compare the resulting place value and the pending/ready marks with reading 37's `show` term).
+- C02 Dragging a constant word onto an argument place whose declared type accepts it binds it there: the place's drawn value equals the word, and the reading's state shows `constant` with the same `at` (probe: specimen, drag "the search" onto `show.subject`; place text becomes "the search"; the engine file's analogous result is the reading with case "specimen, show rebound to the original mod by an edit" (index 37 when written, 51 now); probe 37-equivalence: drag "the mod" onto `show.subject`, then compare the resulting place value and the flags with that engine reading's `show` term).
 - C03 Dropping a word onto a place whose declared type does not accept it is refused: the reading is unchanged after release, and a reason naming the declared type and the word's type is shown (probe: specimen, drag "the search" (Code) onto `redesign.surface` (Surface)).
 - C04 Dragging a place's value far away from every place clears it to a hole with reason "cleared"; the hole is drawn as a hole (US "kinds of missing").
 - C05 Dragging an open hole onto a word (the other direction) fills it with that word's constant, if accepted (tagging both ways, F-4.2.1 context).
@@ -39,18 +39,18 @@ Output of each run is stored in `web/site/audits/vNN-run.txt` next to the build.
 ## E. Click shows possible actions and why (T2)
 - E01 Clicking a value chip opens a panel with: its place (operation id + path), declared type, kind, the type's definition (sum alternatives / product fields / brand chain), and a list of every place in the reading with accepted/refused and the reason (probe: click "the mod" in the specimen; the panel lists all 3 places; `redesign.surface` accepted/current, `show.subject` accepted, `test.subject` accepted; for "the search" `redesign.surface` refused with a reason).
 - E02 Every action offered in the panel is also available as the same drag (and gives the same resulting reading), and every refused entry has a reason text (probe: click the action, read the result; compare with the drag's result).
-- E03 Clicking a reference opens: the operation it refers to, the original value it can be rebound to, and its pending/ready judgment from the record; the rebinding actions exist and work (specimen: rebind show.subject to the original mod gives the reading-37 marks).
+- E03 Clicking a reference opens: the operation it refers to, the original value it can be rebound to, and its pending/ready judgment from the record; the rebinding actions exist and work (specimen: rebind show.subject to the original mod gives the engine edit reading's flags).
 - E04 Clicking an operation shows its function's signature from the world (parameters with declared types and the result), the function's doc (`asks`), whether it is pending (engine `judgments.pending`) or has open holes, and what each pending/ready/complete flag is derived from; engine flags are shown as the engine's, edited ones as provisional.
 - E05 Clicking a type name shows its definition, its kind, brand chain, constructors applied, the functions that accept it and the ones that return it; following any listed name replaces the panel with that thing's panel, with a Back control (probe: follow 3 links, back 3 times, return to the first).
 - E06 Clicking a hole shows its reason in words, the candidates that fit its declared type (words and references), and the decisions recorded for that place (offered, cut, chosen, with d1's probabilities) when any exist.
 
 ## F. Interrelation (T3, F-4.2)
-- F01 The world graph is built from the loaded world: one node per type, one per function, with one edge per parameter and one per result, one per brand-wrap, sum alternative and product field (probe: edge count equals the count computed independently by a script from worlds.json, for the 6 worlds, via changing reading).
+- F01 The world graph is built from the loaded world: one node per type, one per function, with one edge per parameter and one per result, one per brand-wrap, sum alternative and product field (probe: edge count equals the count computed independently by a script from worlds.json, for every world in worlds.json (6 when written, 9 now), via changing reading).
 - F02 Each function node shows a port per parameter, with the parameter's name and declared type name.
 - F03 Sum and product types are shown as such (a fork to alternatives / a box of fields) when the type is selected; brands as a wrap chain; kinds (`*`, `* -> *`) are shown for types and constructors (Many, Maybe, Later), with the constructor's `describes`.
 - F04 Hovering or holding anything lights its counterpart in the message and the world: hovering the place `show.subject` lights the operation `show`, the phrase text, the type `Subject` and the reference's source op; hovering a word lights its phrase, op, place and type (probe: set of lit elements after pointermove).
 - F05 A reference is drawn as an arc from the place to its source operation with the same id on both ends; two operations of the same function have different ids and are never merged (reading 5).
-- F06 Pending vs ready is a mark on the operation (from the record's `judgments`), identical in all readings to the engine's flags for untouched operations (probe: compare for all 38 readings, all ops).
+- F06 Pending vs ready is a mark on the operation (from the record's `judgments`), identical in all readings to the engine's flags for untouched operations (probe: compare for all readings, all ops). Since the regenerated engine data, `deferred` (own result is Later) is a separate flag: pending, deferred, ready are drawn as: open / waits / ready, with `later` and a dashed result chip for deferred.
 - F07 Doc strings: function `asks` and type definitions reachable by click.
 
 ## G. Reading the record, steps, history (US "step through decisions")
@@ -62,13 +62,17 @@ Output of each run is stored in `web/site/audits/vNN-run.txt` next to the build.
 - H01 The main view contains no sentence of more than 6 words that is not data (the message text, a decision's question, reasons from the engine) (probe: list all text nodes on the main view in 5 readings; each is either data from JSON or at most 6 words).
 - H02 No text smaller than 12 px (computed font-size of every text element on the board).
 - H03 Spacing is on an 8 px grid for rows and block heights (probe: y of every row `data-row` is a multiple of 8 relative to the board top).
-- H04 No text overlaps other text on the board in any of the 38 readings (pairwise bounding boxes of text elements, tolerance 0).
+- H04 No text overlaps other text on the board in any reading (pairwise bounding boxes of text elements, tolerance 0).
 - H05 The long reading (34 or 35) fits in the width without horizontal scroll at 1280 and at 1024.
 
 ## I. Honesty
 - I01 Everything the page derives itself (accepts, pending, complete, ready after an edit; the new operation) carries a visible "provisional" mark and `data-provisional="1"`; engine-owned values do not (probe: after the specimen rebind, the edited show term's flags carry the mark and the untouched `test` term does not).
-- I02 The provisional recomputation is cross-checked against the engine: for the 38 readings' untouched operations it reproduces the engine's complete/pending/ready flags, and the specimen rebind (C02) reproduces reading 37 exactly (probe prints both, any mismatch is reported as a failure and shown in the run output, not hidden).
+- I02 The provisional recomputation is cross-checked against the engine: for every operation of every reading it reproduces the engine's complete/pending/deferred/ready flags, and the specimen rebind (C02) reproduces the engine's edit reading exactly (probe prints both, any mismatch is reported as a failure and shown in the run output, not hidden).
 - I03 Things the engine does not yet provide (applying a function, world edits, save to the engine, project-wide object identity) are labelled, not faked.
 
+## J. Every case (added after Max's message "simulate all of the different cases and interactions ... what each is supposed to do versus what it actually does"; adds items, loosens none)
+- J01 For 16 readings chosen to cover each kind (specimen, conjunction, shared result, record, several, maybe, through result, many of records, unresolved hole, given, unknown, empty list, reshape, chain, whole many, bounded), for every movable piece (value, operation, function, parameter label), up to 3 accepted and 2 refused targets: a real drag held over an accepted target shows the same reading that the drop commits; a drop on an accepted target changes the reading (except a place dragged onto itself); a drop on a refused target changes nothing, previews nothing, and has a reason of more than 5 characters. At least 100 drags.
+- J02 No script error or unhandled rejection occurs during the whole run.
+
 ## Scoring
-48 would be a perfect score of the criteria above if each lettered item counts one (there are 41 items; the denominator is the number of items, stated on each run). A criterion passes only when its whole sentence is verified by the probe; a probe covering part of a sentence is recorded as partial (0.5) and says which part is missing.
+Each lettered item counts one: 45 items (A4 B2 C7 D6 E6 F7 G3 H5 I3 J2). The denominator is stated on each run. A criterion passes only when its whole sentence is verified by the probe; a probe covering part of a sentence is recorded as partial (0.5) and says which part is missing. The independent review of the probes (a sub-agent that read the specs, the criteria and audit.js) is stored in web/site/audits/ with each run; its verdicts, not the probes' own PASS lines, give the honest score.

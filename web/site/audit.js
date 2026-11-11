@@ -6,7 +6,7 @@
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (id) => document.getElementById(id), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const ctr = (el) => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
-function fire(type, x, y) { const t = document.elementFromPoint(x, y) ?? document.body; t.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0, buttons: type === "pointerup" ? 0 : 1 })); return t; }
+function fire(type, x, y) { const t = document.elementFromPoint(x, y) ?? document.body; t.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0, buttons: type === "pointerup" || type === "pointerover" ? 0 : 1 })); return t; }
 async function press(el, to, { hold = false, steps = 14, settle = 140 } = {}) {   // pointerdown on the element's centre, moves to `to` (element or [x,y]), then releases unless hold
   const [x0, y0] = ctr(el), [x1, y1] = Array.isArray(to) ? to : ctr(to);
   fire("pointerdown", x0, y0);
@@ -29,6 +29,8 @@ const P = (id, ok, note, partial = false) => { scoreD++; const v = partial ? (ok
 
 window.AUDIT = async function () {
   out.length = 0; scoreN = 0; scoreD = 0; window.AUDIT_LOG = out; window.AUDIT_AT = "start";
+  window.__errs = []; addEventListener("error", (e) => window.__errs.push(e.message)); addEventListener("unhandledrejection", (e) => window.__errs.push(String(e.reason)));
+  { const ce = console.error.bind(console); console.error = (...a) => { window.__errs.push(a.map(String).join(" ").slice(0, 160)); ce(...a); }; }
   try { Object.keys(localStorage).filter((k) => k.startsWith("scriptt-audit:")).forEach((k) => localStorage.removeItem(k)); } catch {}   // only the audit's own draft namespace
   const eng = await (await fetch("engine/readings.json")).text().then(parseEngine), wor = await (await fetch("engine/worlds.json")).text().then(parseEngine);
   const B = window.BOARD, N = eng.length;
@@ -41,12 +43,19 @@ window.AUDIT = async function () {
   const res = performance.getEntriesByType("resource").map((e) => e.name);
   P("A01", res.some((n) => /engine\/readings\.json/.test(n)) && res.some((n) => /engine\/worlds\.json/.test(n)) && $$("#pick option").length === N && N >= 38 && $("pick").options[iSpec].text.includes("Redesign the mod. Then show it. Test the search too.") && iSpec === 0, `fetched both files; ${$$("#pick option").length} readings (file has ${N}); specimen first`);
   { // A02: every drawn token of every reading is in the data or the fixed UI list
-    const UI = ["ready", "waits", "open", "none", "wraps"];
-    const allowed = new Set(UI);
-    const addStr = (v) => { if (typeof v === "string") v.split(/[^\p{L}\d_]+/u).forEach((w) => w && allowed.add(w)); else if (v && typeof v === "object") Object.entries(v).forEach(([k, x]) => { addStr(k); addStr(x); }); };
-    addStr(eng); addStr(wor);
+    const UI = ["ready", "waits", "open", "none", "later", "wraps"];
+    const add = (set, v) => String(v ?? "").split(/[^\p{L}\d_]+/u).forEach((w) => w && set.add(w));
     const unknown = new Set();
-    for (let i = 0; i < N; i++) { await pick(i); await revert(); $$("#board svg text").forEach((t) => (t.textContent.match(/[\p{L}\d_]+/gu) ?? []).forEach((w) => { if (!allowed.has(w) && !/^\d+$/.test(w)) unknown.add(w); })); }
+    for (let i = 0; i < N; i++) {
+      const r = eng[i], w = wor[r.world], allowed = new Set(UI);   // names come from: the message, the world's declarations (types, members, functions, parameters, fields, constructors, kinds), and the record's reasons
+      add(allowed, r.text); r.phrases.forEach((p) => { add(allowed, p.unresolved?.reason); add(allowed, p.quotes); });
+      const walk = (v) => { if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === "object") { if (v.reason !== undefined) add(allowed, v.reason); Object.values(v).forEach(walk); } };
+      walk(r.phrases);
+      for (const [n, t] of Object.entries(w.types)) { add(allowed, n); add(allowed, t.kind); const m = (x) => { if (!x) return; add(allowed, x.base); add(allowed, x.brand); add(allowed, x.sum); add(allowed, x.product); add(allowed, x.member); add(allowed, x.words); add(allowed, x["constructor"]); Object.keys(x.fields ?? {}).forEach((k) => add(allowed, k)); m(x.of); (x.alternatives ?? []).forEach(m); Object.values(x.fields ?? {}).forEach(m); }; m(t); }
+      for (const [n, f] of Object.entries(w.functions)) { add(allowed, n); f.parameters.forEach(([p]) => add(allowed, p)); }
+      for (const [c, d] of Object.entries(w.constructors)) { add(allowed, c); add(allowed, d.kind); }
+      await pick(i); await revert(); $$("#board svg text").forEach((t) => (t.textContent.match(/[\p{L}\d_]+/gu) ?? []).forEach((x) => { if (!allowed.has(x) && !/^\d+$/.test(x)) unknown.add(`${i}:${x}`); }));
+    }
     P("A02", unknown.size === 0, `fixed UI words: ${UI.join(", ")}; tokens not in the data: ${[...unknown].join(", ") || "none"}`);
   }
   { // A03
@@ -54,7 +63,8 @@ window.AUDIT = async function () {
     for (let i = 0; i < N; i++) {
       await pick(i); await revert(); const r = eng[i];
       for (const p of r.phrases) for (const t of p.terms) if (!document.querySelector(`#board [data-op="${t.id}"]`)) bad.push(`${i}: op ${t.id}`);
-      for (const c of r.constants) { const u = document.getElementById(`u-${c.at[0]}`); if (!u || u.dataset.text !== r.text.slice(c.at[0], c.at[1])) bad.push(`${i}: ${c.constant}`); }
+      for (const c of r.constants) { const u = document.getElementById(`u-${c.at[0]}`); if (!u || u.dataset.text !== r.text.slice(c.at[0], c.at[1]) || u.dataset.role !== "value") bad.push(`${i}: ${c.constant}`); }
+      { const buf = Array.from(r.text, (ch) => (/\s/.test(ch) ? " " : "\u0000")); $$("#board [data-role=word],#board [data-role=value]").forEach((u) => { const s0 = Number(u.dataset.k.slice(2)); [...u.dataset.text].forEach((ch, k) => { buf[s0 + k] = ch; }); }); if (buf.join("") !== r.text.replace(/\s/g, " ")) bad.push(`${i}: the message is not whole on the board`); }   // the board's units rebuild the message exactly
       r.phrases.forEach((p, pi) => { if (p.unresolved && !document.querySelector(`#board [data-k="un-${pi}"]`)) bad.push(`${i}: unresolved phrase ${pi}`); });
     }
     P("A03", bad.length === 0, `${N} readings; ${bad.length} missing ${bad.slice(0, 4).join(" | ")}`);
@@ -72,7 +82,7 @@ window.AUDIT = async function () {
   await pick(iSpec); await revert();
 
   // ---- B every piece draggable
-  { const kinds = {}; const fails = [];
+  { const kinds = Object.create(null); const fails = [];
     for (const i of [0, 7, 10, 20]) {
       await pick(i); await revert();
       const els = $$("#board [data-grab]");
@@ -149,14 +159,16 @@ window.AUDIT = async function () {
     const h4 = await press(byK("u-9"), [farPoint()[0], farPoint()[1]], { hold: true });
     const fns = $$("#board [data-role=function]"), takes = fns.filter((e) => e.dataset.takes), rest = fns.filter((e) => !e.dataset.takes);
     const maxT = Math.max(...takes.map((e) => e.getBoundingClientRect().top)), minR = Math.min(...rest.map((e) => e.getBoundingClientRect().top));
-    const w = wor[eng[iSpec].world], expect = Object.keys(w.functions).filter((f) => w.functions[f].parameters.some(([, t]) => Model.takes(Model.indexWorld(w), t, "Surface")));
+    const w = wor[eng[iSpec].world], occ = (t, n) => nameOf(t) === n || (t.constructor === "Many" || t.constructor === "Maybe" || t.constructor === "Later" ? occ(t.of, n) : t.sum ? t.alternatives.some((a) => !a.member && occ(a, n)) : false);
+    const expect = Object.keys(w.functions).filter((f) => w.functions[f].parameters.some(([, t]) => occ(t, "Surface"))), got = takes.map((e) => e.dataset.name);
     await release(h4);
     const ys1 = Object.fromEntries($$("#board [data-role=function]").map((e) => [e.dataset.name, e.getBoundingClientRect().top]));
-    P("D04", takes.length > 0 && rest.length > 0 && maxT < minR && Object.keys(ys0).every((k) => Math.abs(ys0[k] - ys1[k]) < 1), `holding “the mod”: ${takes.length} functions that take it come first (${takes.map((e) => e.dataset.name)}); order restored on release; model says ${expect.length} take Surface`); }
+    P("D04", takes.length > 0 && rest.length > 0 && maxT < minR && JSON.stringify([...got].sort()) === JSON.stringify([...expect].sort()) && Object.keys(ys0).every((k) => Math.abs(ys0[k] - ys1[k]) < 1), `holding “the mod”: ${takes.length} functions that take it come first (${takes.map((e) => e.dataset.name)}); order restored on release; model says ${expect.length} take Surface`); }
   { await revert(); const w = wor[eng[iSpec].world];
     const h5 = await press(byK("ty-Surface"), [farPoint()[0], farPoint()[1]], { hold: true });
     const litFn = $$("#board [data-role=function][data-lit]").map((e) => e.dataset.name).sort(), litP = $$("#board [data-role=place][data-lit]").map((e) => e.dataset.place);
-    const mention = Object.keys(w.functions).filter((f) => w.functions[f].parameters.some(([, t]) => nameOf(inner(t)) === "Surface") || nameOf(inner(w.functions[f].result)) === "Surface").sort();
+    const occurs = (t, n) => nameOf(t) === n || (t.constructor === "Many" || t.constructor === "Maybe" || t.constructor === "Later" ? occurs(t.of, n) : t.sum ? t.alternatives.some((a) => !a.member && occurs(a, n)) : false);
+    const mention = Object.keys(w.functions).filter((f) => w.functions[f].parameters.some(([, t]) => occurs(t, "Surface")) || nameOf(inner(w.functions[f].result)) === "Surface").sort();
     const s0 = places(); await release(h5);
     P("D05", JSON.stringify(litFn) === JSON.stringify(mention) && litP.includes("0.surface") && places() === s0, `holding type Surface lights functions [${litFn}] (worlds.json: [${mention}]) and places [${litP}]; nothing changed on release`); }
   { await revert(); const h6 = await press(byK("fn-build"), [farPoint()[0], farPoint()[1]], { hold: true });
@@ -168,7 +180,7 @@ window.AUDIT = async function () {
   const panel = () => $("sel").textContent;
   { await revert(); await click(byK("u-9")); const p = panel(), okc = $$("#sel .chip.ok").length;
     await click(byK("u-37")); const nos = $$("#sel .chip.no").map((e) => e.textContent + " " + e.nextElementSibling?.textContent);
-    P("E01", /Surface/.test(p) && /redesign|0\.surface/.test(p) && okc === 3 && nos.some((x) => /0\.surface/.test(x) && /Surface/.test(x)) && /Surface|kind|sum/.test(p), `“the mod”: ${okc} accepted places, kind/definition shown; “the search” refused: ${nos[0]}`); }
+    P("E01", /Surface/.test(p) && /redesign|0\.surface/.test(p) && okc === 3 && nos.some((x) => /0\.surface/.test(x) && /Surface/.test(x)) && /sum/.test(p) && p.includes("the page") && p.includes("the visualization") && /kind\s*\*/.test(p) && /bound in[^a-z]*(0\.surface)/.test(p.replace(/\s+/g, " ")), `“the mod”:${okc} accepted places, kind/definition shown; “the search” refused: ${nos[0]}`); }
   { await revert(); await click(byK("u-9")); const btn = $$("#sel button[data-act]").find((b) => b.parentElement.querySelector(".chip")?.textContent.includes("1.subject")) ?? $$("#sel .row").find((r) => r.textContent.includes("1.subject"))?.querySelector("button");
     const sPre = places(); btn.click(); await sleep(500); const viaButton = places(); await revert();
     await press(byK("u-9"), byK("pl-1-subject")); const viaDrag = places();
@@ -178,12 +190,14 @@ window.AUDIT = async function () {
     const rb = rebind?.querySelector("button"); if (rb) { rb.click(); await sleep(500); }
     const flags = byK("st-1").dataset, eng2 = eng[iEdit].phrases.flatMap((x) => x.terms).find((t) => t.function === "show").judgments;
     P("E03", !!link && /same operation/.test(p) && !!rb && flags.ready === String(eng2.ready) && flags.pending === String(eng2.pending), `reference panel links op 0 (${!!link}), offers rebind to “the mod” (${!!rb}); after rebinding flags ready/pending ${flags.ready}/${flags.pending} = engine edit ${eng2.ready}/${eng2.pending}`); await revert(); }
-  { await click(byK("op-1")); const p = panel(), w = wor[eng[iSpec].world];
-    P("E04", p.includes(w.functions.show.asks) && /subject/.test(p) && /Subject/.test(p) && /pending|available/.test(p) && /engine/.test(p), `operation panel shows asks "${w.functions.show.asks}", signature, flags, source of flags`); }
+  { await pick(iSpec); await revert(); await click(byK("op-1")); const p = panel(), w = wor[eng[iSpec].world], j = eng[iSpec].phrases[1].terms[0].judgments, chips = $$("#sel .chip").map((e) => e.textContent);
+    const flagsOk = chips.includes(j.complete ? "complete" : "open") && chips.includes(j.pending ? "pending" : "available") && chips.includes(j.ready ? "ready" : "waits") && chips.includes(j.deferred ? "deferred" : "") === !!j.deferred;
+    P("E04", p.includes(w.functions.show.asks) && p.includes("subject: Subject") && p.includes("→ Subject") && flagsOk && /engine/.test(p) && /reads\s*[^a-z]*0/.test(p.replace(/\s+/g, " ")) , `operation panel: asks "${w.functions.show.asks}", signature, flags ${chips.slice(0, 5).join("/")} equal the engine's (${flagsOk}), flags named as the engine's, what it reads`); }
   { await click(byK("u-9")); const first = $("sel").querySelector("b").textContent; let n = 0;
-    for (const sel of ['[data-go="ty-Surface"]', '[data-go^="fn-"]', '[data-go^="ty-"]']) { const a = $("sel").querySelector(sel); if (a) { await click(a); n++; } }
-    let backs = 0; while ($("sel").querySelector("[data-back]")) { await click($("sel").querySelector("[data-back]")); backs++; if (backs > 6) break; }
-    P("E05", n === 3 && backs === 3 && $("sel").querySelector("b").textContent === first, `followed ${n} links, Back ${backs} times, back at "${$("sel").querySelector("b").textContent}"`); }
+    const heads = [first];
+    for (const sel of ['[data-go="ty-Surface"]', '[data-go^="fn-"]', '[data-go^="ty-"]']) { const a = $("sel").querySelector(sel); if (a) { a.click(); await sleep(200); n++; heads.push($("sel").querySelector("b")?.textContent); } }   // a real click on a panel link
+    let backs = 0; const seen = []; while ($("sel").querySelector("[data-back]")) { $("sel").querySelector("[data-back]").click(); await sleep(200); backs++; seen.push($("sel").querySelector("b")?.textContent); if (backs > 6) break; }
+    P("E05", n === 3 && new Set(heads).size === 4 && backs === 3 && JSON.stringify(seen) === JSON.stringify([heads[2], heads[1], heads[0]]) && $("sel").querySelector("b").textContent === first, `followed ${n} links, Back ${backs} times, back at "${$("sel").querySelector("b").textContent}"`); }
   { const i = eng.findIndex((r) => r.case === "C05 unresolved"); await pick(i); await revert(); const hole = $$("#board [data-missing=hole]")[0]; await click(hole);
     const p = panel(), okc = $$("#sel .chip.ok").length, dec = /decided/.test($("sel").textContent);
     P("E06", /rejected/.test(p) && okc >= 1 && dec, `hole panel: reason shown, ${okc} candidates that fit, decisions section ${dec}`); }
@@ -214,29 +228,27 @@ window.AUDIT = async function () {
     await pick(iSpec); await revert();
     P("F05", ops.length >= 2 && new Set(ops.map((o) => o[0])).size === ops.length && ops.every((o) => /redesign/.test(o[1])) && !!document.querySelector('#board [data-arc="op-0"]'), `two operations of one function stay two (${ops.map((o) => o[0])}); the reference arc ends at the same op id`); }
   { const bad = []; let n = 0;
-    for (let i = 0; i < N; i++) { await pick(i); await revert(); for (const p of eng[i].phrases) for (const t of p.terms) { n++; const d = byK(`st-${t.id}`)?.dataset, j = t.judgments; if (!d || d.complete !== String(j.complete) || d.pending !== String(j.pending) || d.deferred !== String(!!j.deferred) || d.ready !== String(j.ready) || d.provisional) bad.push(`${i}:${t.id}`); } }
+    for (let i = 0; i < N; i++) { await pick(i); await revert(); for (const p of eng[i].phrases) for (const t of p.terms) { n++; const d = byK(`st-${t.id}`)?.dataset, j = t.judgments; const word = byK(`st-${t.id}`)?.textContent ?? "", want = !j.complete ? "open" : !j.ready ? "waits" : "ready" + (j.deferred ? " · later" : ""), shape = byK(`rs-${t.id}`)?.querySelector("rect.mark")?.getAttribute("stroke-dasharray");   // what is drawn, against what the engine says
+      if (!d || word.trim() !== want || (!!j.deferred) !== (shape === "5 3") || d.provisional) bad.push(`${i}:${t.id} drew "${word}" want "${want}"`); } }
     P("F06", n > 50 && bad.length === 0, `${n} operations in ${N} readings: marks equal the engine's judgments, none provisional; wrong: ${bad.slice(0, 4).join(" ") || "none"}`); }
   { await pick(iSpec); await click(byK("fn-show")); const a = /show or open something/.test($("sel").textContent); await click(byK("ty-Subject")); const b = /one of/.test($("sel").textContent) && /taken by/.test($("sel").textContent);
     P("F07", a && b, `function asks shown ${a}; type definition shown ${b}`); }
 
   // ---- G
-  { await pick(iSpec); const n = eng[iSpec].decisions.length; let c = 0; const next = () => $("dec").querySelector('[data-step="1"]');
-    for (let k = 0; k < n + 2; k++) { next().click(); await sleep(120); c++; }
-    const chipTxt = $("dec").querySelector(".chip:nth-child(2)")?.textContent ?? $$("#dec .chip")[0]?.textContent, stayed = /9 \/ 9/.test($("dec").textContent);
-    // a decision that names a place lights it
-    $("dec").querySelector('[data-step="-1"]').click(); await sleep(100); for (let k = 0; k < n; k++) { $("dec").querySelector('[data-step="-1"]').click(); await sleep(80); }
-    next().click(); await sleep(150); next().click(); await sleep(300);
-    const lit = $$("#board [data-lit]").map((e) => e.dataset.k);
+  { await pick(iSpec); const ds = eng[iSpec].decisions, n = ds.length; const next = () => $("dec").querySelector('[data-step="1"]');
+    for (let k = 0; k < n + 2; k++) { next().click(); await sleep(100); }
+    const stayed = new RegExp(`${n} / ${n}`).test($("dec").textContent);
+    await pick(iSpec); const k1 = ds.findIndex((d) => d.operation != null && d.path); for (let k = 0; k <= k1; k++) { next().click(); await sleep(150); } await sleep(300);
+    const want = `pl-${ds[k1].operation}-${ds[k1].path}`, lit = $$("#board [data-lit]").map((e) => e.dataset.k);
+    const shownQ = ds[k1].asked && Object.values(ds[k1].asked).some((a) => $("dec").textContent.includes(a.instructions.slice(0, 30)));
     const iRule = eng.findIndex((r) => r.decisions.some((d) => d.by === "rule")); await pick(iRule); const di = eng[iRule].decisions.findIndex((d) => d.by === "rule");
     for (let k = 0; k <= di; k++) { $("dec").querySelector('[data-step="1"]').click(); await sleep(80); }
     const ruleShown = $("dec").textContent.includes(eng[iRule].decisions[di].rule) && /rule/.test($("dec").textContent);
-    P("G01", stayed && lit.some((k) => k.startsWith("pl-") || k.startsWith("op-")) && ruleShown, `stepped ${n} decisions (counter ends at ${n}/${n}: ${stayed}); a step lights ${lit.slice(0, 4)}; rule decision text shown: ${ruleShown}`); }
+    P("G01", stayed && lit.includes(want) && !!shownQ && ruleShown, `stepped ${n} decisions (ends at ${n}/${n}: ${stayed}); decision ${k1 + 1} lights ${want}: ${lit.includes(want)} and shows its question: ${!!shownQ}; rule decision text shown: ${ruleShown}`); }
   { await pick(iSpec); await revert(); const s0 = places(); await press(byK("u-37"), byK("pl-1-subject")); const s1 = places();
     $("undo").click(); await sleep(400); const s2 = places(); $("redo").click(); await sleep(400); const s3 = places();
     P("G02", s1 !== s0 && s2 === s0 && s3 === s1 && !$("undo").hidden, `drop, Undo, Redo restore the readings (${s2 === s0}, ${s3 === s1})`); }
-  { await pick(iSpec); await revert(); await press(byK("u-37"), byK("pl-1-subject")); const logged = (B.RD.st.log ?? []).length;
-    sessionStorage.setItem("audit-g03", JSON.stringify({ expect: placeText("pl-1-subject"), logged }));
-    P("G03", logged >= 1 && !!localStorage.getItem(`scriptt-audit:${eng[iSpec].id}:${eng[iSpec].case}`), `drop kept in the draft log (${logged} entry) and saved; the reload half runs in AUDIT_AFTER_RELOAD()`, true); }
+  // G03 (kept corrections survive a reload) runs in two calls: AUDIT_G03_BEFORE(), then location.reload(), then AUDIT_G03_AFTER()
   await revert();
 
   // ---- H
@@ -272,14 +284,45 @@ window.AUDIT = async function () {
   { await pick(iSpec); await revert(); await click(byK("fn-build")); const a = /provisional|≈/.test($("sel").textContent); await click(byK("ty-Surface")); const b = /gated/.test($("sel").textContent);
     P("I03", a && b, `apply-to is marked provisional (${a}); world edits marked as separate and gated (${b})`); }
 
+  // ---- J every case: for every movable piece of many readings, every accepted target (previewed, then dropped) and refused target (held, then dropped)
+  { const cases = ["C15 specimen", "C16 compare_conjunction", "C17 shared_result", "C10 record", "C10 several", "C10 maybe", "C10 through_result", "C10 many_of_records", "C05 unresolved", "C05 given", "C06 unknown", "C06 absent_many", "C07 reshape_open", "C09 chain", "C09 whole_many", "C14 bounded"];
+    let drags = 0, okN = 0, noN = 0, bad = []; const snapAll = () => places() + "|" + $$("#board [data-role=op]").map((e) => e.dataset.op).join(",");
+    for (const cs of cases) {
+      const i = eng.findIndex((r) => r.case === cs); if (i < 0) { bad.push(`${cs}: missing`); continue; }
+      await pick(i); await revert();
+      const pieces = $$("#board [data-role=value],#board [data-role=op],#board [data-role=function],#board [data-role=label],#board [data-role=place],#board [data-role=word]").map((e) => e.dataset.k).filter((k, x, a) => a.indexOf(k) === x).slice(0, 22);
+      for (const k of pieces) {
+        const piece = () => byK(k); if (!piece()) continue;
+        const h0 = await press(piece(), farPoint(), { hold: true }); const acc = $$("#board [data-accepts]").map((e) => e.dataset.accepts), no = $$("#board [data-refused]").map((e) => [e.dataset.refused, e.dataset.why]); await release(h0);
+        for (const t of acc.slice(0, 3)) {
+          await revert(); if (!piece() || !byK(t)) continue; const base = snapAll();
+          const hh = await press(piece(), byK(t), { hold: true }); const prev = snapAll(); await release(hh); const fin = snapAll(); drags++; okN++;
+          if (prev !== fin) bad.push(`${cs}: ${k}→${t} preview≠drop`); if (fin === base) bad.push(`${cs}: ${k}→${t} accepted but nothing changed`);
+        }
+        for (const [t, why] of no.slice(0, 2)) {
+          await revert(); if (!piece() || !byK(t)) continue; const base = snapAll();
+          const hh = await press(piece(), byK(t), { hold: true }); const prev = snapAll(); await release(hh); const fin = snapAll(); drags++; noN++;
+          if (prev !== base || fin !== base || !why || why.length < 6) bad.push(`${cs}: ${k}→${t} refused but ${prev !== base ? "previewed" : fin !== base ? "committed" : "no reason"}`);
+        }
+        await revert();
+      }
+    }
+    P("J01", drags > 100 && bad.length === 0, `${drags} real drags (${okN} to accepted targets, ${noN} to refused) over ${cases.length} readings: the preview equals the drop, refusals change nothing and say why; failures: ${bad.slice(0, 6).join(" | ") || "none"} (${bad.length})`); }
+  P("J02", (window.__errs ?? []).length === 0, `script errors during the whole run: ${(window.__errs ?? []).length} ${(window.__errs ?? []).slice(0, 3).join(" | ")}`);
   await revert();
   const line = `SCORE ${scoreN}/${scoreD} (viewport ${innerWidth}px, ${N} readings, ${Object.keys(wor).length} worlds)`;
   const text = out.join("\n") + "\n" + line; window.AUDIT_OUT = text; return text;
 };
-window.AUDIT_AFTER_RELOAD = async function () {   // second half of G03: after location.reload(), the draft is read again from storage
-  const g = JSON.parse(sessionStorage.getItem("audit-g03") ?? "null"); await sleep(600);
+// G03: a correction made on the page is listed (operation, path, value, status) and is still there after a reload
+window.AUDIT_G03_BEFORE = async function () {
   const eng = BOARD.READINGS, iSpec = eng.findIndex((r) => r.case === "C15 specimen");
-  const now = (document.getElementById("pl-1-subject")?.textContent) ?? null, logged = (BOARD.RD.st.log ?? []).length;
-  return `G03b after reload: show.subject "${now}" (expected "${g?.expect}"), log entries ${logged} (before ${g?.logged}): ${now === g?.expect && logged === g?.logged ? "PASS" : "FAIL"}`;
+  await pick(iSpec); await revert(); await press(byK("u-37"), byK("pl-1-subject")); await sleep(300);
+  const shown = $("dec").textContent; sessionStorage.setItem("audit-g03", JSON.stringify({ shown }));
+  return `before reload: corrections list reads "${shown.replace(/\s+/g, " ").slice(-90)}" (${/1\.subject/.test(shown) && /the search/.test(shown) && /provisional/.test(shown) ? "listed" : "NOT listed"})`;
+};
+window.AUDIT_G03_AFTER = async function () {
+  await sleep(800); const g = JSON.parse(sessionStorage.getItem("audit-g03") ?? "null"), now = $("dec").textContent, place = document.getElementById("pl-1-subject")?.textContent;
+  const ok = !!g && /1\.subject/.test(now) && /the search/.test(now) && /provisional/.test(now) && place === "the search";
+  return `${ok ? "PASS" : "FAIL"} G03 after reload the page shows show.subject = "${place}" and the corrections list "${now.replace(/\s+/g, " ").slice(-80)}"`;
 };
 })();
