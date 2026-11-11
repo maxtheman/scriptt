@@ -886,10 +886,10 @@ def choose(phrase: Phrase, environment: Environment, search: Search) -> Phrase:
     while True:
         done = [term.function.asks if isinstance(term, Application) else ELSE[NONE] for term in terms]
         key = "also" if terms else "what"
-        chosen = {term.function.name for term in terms if isinstance(term, Application)}
-        functions = {name: function.asks for name, function in search.world.functions.items() if name not in chosen or again(function)}
+        asked_for = {term.function.name for term in terms if isinstance(term, Application)}
+        functions = {name: function.asks for name, function in search.world.functions.items() if name not in asked_for or again(function)}
         answers, decision = ask(search, state, {key: OneOf(ALSO.format(done="; ".join(done)) if done else shipped.WHAT, functions | ELSE)}, {})
-        decision["chosen"] = best = answers[key].best
+        decision["chosen"] = best = chosen(answers[key])
         if best == NOTHING:
             break
         if len(terms) == search.limits.operations:
@@ -906,6 +906,23 @@ def choose(phrase: Phrase, environment: Environment, search: Search) -> Phrase:
         if best is None or len(terms) > search.limits.operations:
             break
     return dataclasses.replace(phrase, terms=tuple(terms))
+
+
+def chosen(choice: Choice) -> str | None:
+    """Decides an operation question from d1's shares, by the rule of the 0.1.6 harness (measured there on recorded messages).
+
+    A function counts only if its share is greater than "(none)" and "(nothing)"
+    together; else "(none)" (a request outside the world) if its share is at
+    least one half; else "(nothing)". None for an invalid answer. The same rule
+    decides the first question of a phrase and every "also".
+    """
+    if choice.best is None:
+        return None
+    shares = choice.shares
+    top = max((name for name in shares if name not in ELSE), key=shares.get, default=None)
+    if top and shares[top] > shares.get(NONE, 0) + shares.get(NOTHING, 0):
+        return top
+    return NONE if shares.get(NONE, 0) >= 0.5 else NOTHING
 
 
 def operations(term: Application | Unresolved | Term, seen: set[int]) -> list[Application | Unresolved]:

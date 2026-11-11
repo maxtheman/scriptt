@@ -912,7 +912,29 @@ def test_same_words_once():
     assert [scriptt16.say(term) for _, term in scriptt16.obligations(tested)] == ["test(subject='the search')", "research(topic=test(subject='the search'))"]  # the repeat is the same request
 
 
-UNIT_TESTS = [test_same_words_once, test_final_review, test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
+def test_chosen_rule():
+    """The operation questions use the 0.1.6 rule (scriptt16.chosen), with the shares the live d1 gave for "Redesign the mod."."""
+    test = world_of((HERE / "world.py").read_text())
+    def model(also: dict):
+        def answer(state, asked):
+            found = {}
+            for key, question in asked.items():
+                ids = [one["id"] for one in question.get("options", [])]
+                given = {"what": {"redesign": 0.72, scriptt16.NONE: 0.11, "build": 0.09}, "also": also}.get(key, {"0": 0.86, "none": 0.14})
+                rest = (1 - sum(share for one, share in given.items() if one in ids)) / max(1, len([one for one in ids if one not in given]))
+                found[key] = {"probabilities": {one: given.get(one, rest) for one in ids}}
+            return found
+        return answer
+    names = lambda also: [scriptt16.say(term) if isinstance(term, Application) else f"? {term.reason}" for _, term in scriptt16.obligations(scriptt16.read("Redesign the mod.", test, [], model(also), join=False))]
+    assert names({"build": 0.34, scriptt16.NONE: 0.29, scriptt16.NOTHING: 0.10}) == ["redesign(surface='the mod')"]  # a weak argmax is nothing more
+    assert names({"research": 0.8, scriptt16.NONE: 0.05, scriptt16.NOTHING: 0.05}) == ["redesign(surface='the mod')", "research(topic='Redesign the mod.')"]  # a strong second function
+    assert names({scriptt16.NONE: 0.52, "delegate": 0.17, scriptt16.NOTHING: 0.06})[1] == "? rejected"  # (none) at half or more: a request outside the world
+    shares = lambda pairs: scriptt16.Choice(pairs, max(pairs, key=pairs.get))
+    assert (scriptt16.chosen(shares({"build": 0.4, scriptt16.NONE: 0.3, scriptt16.NOTHING: 0.1})), scriptt16.chosen(shares({"build": 0.41, scriptt16.NONE: 0.3, scriptt16.NOTHING: 0.1}))) == (scriptt16.NOTHING, "build")
+    assert scriptt16.chosen(shares({"build": 0.5, scriptt16.NONE: 0.5})) == scriptt16.NONE and scriptt16.chosen(scriptt16.Choice({}, None)) is None
+
+
+UNIT_TESTS = [test_chosen_rule, test_same_words_once, test_final_review, test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
 
 
 # ---- Laws over the real next/world.py -------------------------------------------------
