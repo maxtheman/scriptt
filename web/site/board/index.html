@@ -3,34 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>script&lt;T&gt; board</title>
+<title>script&lt;T&gt;</title>
 <link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
 <style>
   :root {
-    color-scheme: light dark;
-    --ink:#16181d; --mute:#5b6473; --faint:#9aa2ae; --rule:#d5d9df; --bg:#fbfbfa; --card:#ffffff; --tint:#f0f2f5;
-    --type:#1747c9; --type-bg:#e6edff; --fn:#0b7a4b; --fn-bg:#ddf3e8; --con:#7a3fc4; --con-bg:#efe6fb;
-    --accent:#c2410c; --accent-bg:#ffedd5; --no:#b42318; --no-bg:#fde8e7; --paste:#f3efe6;
-    --text: ui-serif, Georgia, "Iowan Old Style", serif; --ui: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --code: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    color-scheme: dark;
+    --ink:#f8f8f8; --mute:#aeaeae; --faint:#8d8d8d; --rule:#26282c; --bg:#0a0a0a; --card:#111214; --tint:#18191c;
+    --type:#89bdff; --type-bg:#16253a; --fn:#65b042; --fn-bg:#15261a; --con:#b9a3c6; --con-bg:#241d2a;
+    --accent:#f38ad5; --accent-bg:#33192c; --no:#ff8b8b; --no-bg:#341a1a; --paste:#131417;
+    --text: "IBM Plex Sans", system-ui, sans-serif; --ui: "IBM Plex Sans", system-ui, sans-serif; --code: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-    --ink:#eceff4; --mute:#a2acbb; --faint:#6b7480; --rule:#3a414d; --bg:#14171c; --card:#1c2027; --tint:#232933;
-    --type:#8fb0ff; --type-bg:#1f2b4d; --fn:#6fd49a; --fn-bg:#15301f; --con:#c9a2ff; --con-bg:#2c1f45;
-    --accent:#fb923c; --accent-bg:#3d2410; --no:#ff8b85; --no-bg:#3a1c1b; --paste:#24221d; } }
   * { box-sizing: border-box; }
   html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:14px/1.4 var(--ui); overflow:hidden; }
-  header { height:64px; display:flex; flex-wrap:wrap; column-gap:12px; row-gap:2px; align-content:center; align-items:center; padding:0 16px; border-bottom:1px solid var(--rule); }
-  header #snap { white-space:nowrap; }
-  header .key.legend { flex-basis:100%; flex-wrap:wrap; row-gap:0; column-gap:9px; white-space:nowrap; }
+  header { height:40px; display:flex; align-items:stretch; gap:0; background:var(--card); border-bottom:1px solid var(--rule); font:13px var(--ui); }
+  header .mark { display:flex; align-items:center; padding:0 16px; font:600 15px var(--code); border-right:1px solid var(--rule); }
+  header .mark b { color:var(--type); font-weight:600; }
+  header .tab { display:flex; align-items:center; padding:0 16px; max-width:50%; color:var(--ink); background:var(--bg); border-right:1px solid var(--rule); box-shadow: inset 0 2px 0 var(--type); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   header .grow { flex:1; }
-  header .key { font:12px var(--code); color:var(--mute); display:flex; gap:12px; align-items:center; }
-  header .key i { display:inline-block; width:18px; height:0; border-bottom:2px solid; vertical-align:middle; margin-right:4px; }
+  header .status { display:flex; align-items:center; gap:12px; padding:0 12px; font:12px var(--code); color:var(--mute); }
+  header #keybtn { align-self:center; margin-right:12px; width:28px; padding:0; border-color:var(--rule); color:var(--mute); }
+  #key { position:absolute; top:40px; right:12px; z-index:5; background:var(--card); border:1px solid var(--rule); border-radius:6px; padding:10px 12px; font:12px var(--code); color:var(--mute); display:grid; grid-template-columns:repeat(2, auto); gap:4px 18px; }
+  #key[hidden] { display:none; }
+  #key i { display:inline-block; width:18px; height:0; border-bottom:2px solid; vertical-align:middle; margin-right:6px; }
   select, button { font:13px var(--ui); height:28px; border:1px solid var(--rule); border-radius:6px; background:var(--card); color:var(--ink); padding:0 10px; }
   button { cursor:pointer; border-color:var(--ink); }
-  button.go { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.go { background:var(--type); border-color:var(--type); color:#0a0a0a; font-weight:600; }
   button:disabled { opacity:.4; cursor:default; }
   :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  #board { position:absolute; top:64px; left:0; right:0; bottom:56px; overflow:hidden; }
+  #board { position:absolute; top:40px; left:0; right:0; bottom:56px; overflow:hidden; }
   #board svg { display:block; touch-action:none; user-select:none; -webkit-user-select:none; }
   #board svg :focus, #board:focus, #board:focus-visible { outline:none; }
   #dock { position:absolute; left:0; right:0; bottom:0; height:56px; border-top:1px solid var(--rule); background:var(--card);
@@ -44,19 +47,19 @@
 </head>
 <body>
 <header>
-  <strong>scriptt</strong>
-  <select id="pick" aria-label="reading"></select>
-  <span id="snap" class="key"></span>
+  <span class="mark">script<b>&lt;T&gt;</b></span>
+  <span id="tab" class="tab"></span>
   <span class="grow"></span>
-  <span class="key legend" aria-label="key">
-    <span><i style="border-color:var(--type)"></i>type</span>
-    <span><i style="border-color:var(--con);border-bottom-style:dashed"></i>T[…]</span>
-    <span><i style="border-color:var(--fn)"></i>ƒ</span>
-    <span><i style="border-color:var(--faint);border-bottom-style:dotted"></i>(none)</span>
-    <span><i style="border-color:var(--no);border-bottom-style:dotted"></i>null</span>
-    <span style="color:var(--type)">• T</span><span>⇠ at</span><span>↩ ref</span><span>▢ hole</span><span>∅ empty</span><span>⧗ pending</span><span>⏲ deferred</span><span style="color:var(--no)">● complete ✕</span><span>✓ ✕ engine</span><span>⊂ brand</span><span>| sum</span><span>∋ members</span><span>⟷ relations</span><span>✎ corrections</span><span>⟳ newer</span><span>⊘ not built</span>
-  </span>
+  <span id="snap" class="status"></span>
+  <button type="button" id="keybtn" aria-expanded="false" aria-controls="key" title="key">?</button>
 </header>
+<div id="key" hidden>
+  <span><i style="border-color:var(--type)"></i>type</span><span><i style="border-color:var(--con);border-bottom-style:dashed"></i>constructed type</span>
+  <span><i style="border-color:var(--fn)"></i>ƒ function</span><span><i style="border-color:var(--faint);border-bottom-style:dotted"></i>(none)</span>
+  <span><i style="border-color:var(--no);border-bottom-style:dotted"></i>null</span><span>• T  d1's top choice</span>
+  <span>⇠ at</span><span>↩ ref</span><span>▢ hole</span><span>∅ empty</span><span>⧗ pending</span><span>⏲ deferred</span>
+  <span>✓ ✕ engine</span><span>⊂ brand</span><span>| sum</span><span>∋ members</span><span>⟷ relations</span><span>✎ corrections</span><span>⟳ newer</span><span>⊘ not built</span>
+</div>
 <div id="board" tabindex="0" aria-label="message"></div>
 <div id="dock" role="status" aria-live="polite"></div>
 <script src="vendor/dragology-0.2.0.iife.js"></script>

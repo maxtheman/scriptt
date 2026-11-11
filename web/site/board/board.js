@@ -140,7 +140,8 @@ function kindWords(rec) { // the words of each kind question, found in order in 
 }
 
 // ---------- measures ----------
-const F = { text: '16px Georgia, "Iowan Old Style", serif', it: 'italic 16px Georgia, "Iowan Old Style", serif', code: '13.5px ui-monospace, "SF Mono", Menlo, monospace', mono: '12px ui-monospace, "SF Mono", Menlo, monospace', monoB: '600 12px ui-monospace, "SF Mono", Menlo, monospace', small: '12px ui-monospace, "SF Mono", Menlo, monospace', head: '600 13px system-ui, -apple-system, sans-serif' };
+const SANS = '"IBM Plex Sans", system-ui, sans-serif', MONO = '"IBM Plex Mono", ui-monospace, Menlo, monospace';
+const F = { text: `16px ${SANS}`, it: `italic 16px ${SANS}`, code: `13.5px ${MONO}`, mono: `12px ${MONO}`, monoB: `600 12px ${MONO}`, small: `12px ${MONO}`, head: `600 13px ${SANS}` };
 const CTX = document.createElement("canvas").getContext("2d");
 const MW = new Map();
 const tw = (s, f) => { const k = f + "\u0000" + s; let w = MW.get(k); if (w == null) { CTX.font = f; w = CTX.measureText(s).width; MW.set(k, w); } return w; };
@@ -1047,11 +1048,11 @@ function status(st) {
   else if (was && !DRAGGING && !PENDING) setTimeout(paint, 0);
 }
 function pick() {
-  const sel = $("pick");
-  const ids = [...LATEST.values()].sort((a, b) => !!b.pieces - !!a.pieces || b.text.length - a.text.length);
-  if (sel.options.length !== ids.length) sel.innerHTML = ids.map((l) => `<option value="${l.id}">${l.id.slice(0, 8)} · ${l.text.length}${l.pieces ? "" : " · ⊘"}</option>`).join("");
-  sel.value = S.id;
-  $("snap").textContent = (S.stale ? "⟳ " : "") + `snapshot ${S.base.snapshot.slice(0, 8)} #${IDX.get(S.base.snapshot)} · pieces ${(S.base.pieces || []).length} · ƒ ${allTerms(S.base).length} · corrections ${S.base.corrections.length}`;
+  const words = S.base.text.trim().split(/\s+/);
+  $("tab").textContent = words.slice(0, 8).join(" ") + (words.length > 8 ? " …" : "");
+  $("tab").title = S.base.text.slice(0, 300);
+  const n = S.base.corrections.length;
+  $("snap").textContent = [S.stale ? "⟳ newer" : "", n ? `✎ ${n}` : ""].filter(Boolean).join("   ");
 }
 async function choose(id) {
   S.id = id; S.base = LATEST.get(id); S.staged = null; S.hold = null; S.open = null; S.scroll = 0; S.focus = null; S.undo = []; S.note = null;
@@ -1062,9 +1063,9 @@ async function choose(id) {
 (async function main() {
   await loadAll();
   const query = new URL(location).searchParams, want = query.get("r") || query.get("reading"); // ?reading= from the desktop mod
-  const ids = [...LATEST.values()].sort((a, b) => !!b.pieces - !!a.pieces || b.text.length - a.text.length);
-  const first = (want && ids.find((l) => l.id.startsWith(want))) || ids[0];
-  $("pick").onchange = (e) => choose(e.target.value);
+  await Promise.all([F.text, F.it, F.code, F.monoB].map((f) => document.fonts.load(f).catch(() => null))); // text is measured on a canvas: the fonts first
+  const latest = LINES.at(-1).id, first = (want && [...LATEST.keys()].find((id) => id.startsWith(want))) || latest; // the latest message unless a link names one
+  $("keybtn").onclick = () => { const k = $("key"); k.hidden = !k.hidden; $("keybtn").setAttribute("aria-expanded", String(!k.hidden)); };
   addEventListener("resize", () => paint());
-  await choose(first.id);
+  await choose(first);
 })();
