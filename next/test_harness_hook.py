@@ -224,6 +224,14 @@ def test_hooks() -> None:
             assert member["diagnostics"] == [] and member["draft"]["phrases"][0]["terms"][0]["arguments"]["surface"] == {"constant": "the page", "type": "Surface", "at": [-1, -1]}, member
             assert any(one["operation"] == 0 and one["path"] == "surface" and one["chosen"]["constant"] == "the mod" for one in member["draft"]["decisions"]), "d1's decision is lost"
             assert len(get("readings")) == len(readings), "a preview saved something"
+            # Several previews of one snapshot in one request: the same answers as /edit, in order; nothing saved.
+            many = [clear, clear | {"value": {"constant": "the ui", "type": "Code", "at": [20, 26]}}, {"path": "kind", "at": [0, 8], "value": "Later[Surface]"}, {"path": "kind", "at": [0, 8], "value": "Nope"}]
+            batch = post("edits", {"reading": line["id"], "edits": many})
+            assert [one["diagnostics"] for one in batch["results"]] == [post("edit", one | {"reading": line["id"]})["diagnostics"] for one in many], batch
+            assert batch["results"][0]["draft"] and batch["snapshot"] == [one for one in readings if one["id"] == line["id"]][-1]["snapshot"] and len(get("readings")) == len(readings)
+            quick = post("edits", {"reading": line["id"], "edits": many, "drafts": False})
+            assert [one["draft"] for one in quick["results"]] == [None] * 4 and [one["diagnostics"] for one in quick["results"]] == [one["diagnostics"] for one in batch["results"]]
+            assert all("describes" in one for one in worlds[line["world"]]["types"].values()) and worlds[line["world"]]["types"]["Surface"]["describes"] == "what the user looks at"
             accepted = post("accept", clear)
             assert accepted["diagnostics"] == [] and accepted["saved"]["corrections"] and len(get("readings")) == len(readings) + 1
             # Rerun with d1 that still prefers the original (the mod): the accepted correction is retained, not given back to d1.

@@ -437,8 +437,8 @@ def identity(world: World) -> str:
 
 
 def world_record(world: World) -> dict:
-    """Converts a world to data that JSON can hold: its identity, each type and constructor with its kind, each function. A record names its world by the identity."""
+    """Converts a world to data that JSON can hold: its identity, each type with its kind and docstring, each constructor, each function. A record names its world by the identity."""
     return {"identity": identity(world),
-            "types": {name: tree(one) | {"kind": show(kind_of(one))} for name, one in world.types.items()},
+            "types": {name: tree(one) | {"kind": show(kind_of(one)), "describes": getattr(one, "describes", "")} for name, one in world.types.items()},
             "constructors": {name: {"kind": show(one.kind), "describes": one.describes} for name, one in CONSTRUCTORS.items()},
             "functions": {f.name: {"asks": f.asks, "parameters": [[name, tree(one)] for name, one in f.parameters], "result": tree(f.result)} for f in world.functions.values()}}

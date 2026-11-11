@@ -376,12 +376,16 @@ def install():
 plain = lambda found: [list(one) for one in found]
 
 
-def edited(body: dict, correction: bool) -> tuple:
-    saved = latest(body["reading"])
-    here = world(saved["world"])
-    reading, found = scriptt16.load(saved, here)
-    if reading is None:
-        return None, found
+def edited(body: dict, correction: bool, loaded: tuple | None = None) -> tuple:
+    """One edit of the latest snapshot of a reading; ``loaded`` is (reading, world) when the caller loaded it already."""
+    if loaded is None:
+        saved = latest(body["reading"])
+        here = world(saved["world"])
+        reading, found = scriptt16.load(saved, here)
+        if reading is None:
+            return None, found
+    else:
+        reading, here = loaded
     if body["path"] == "kind":  # the user's kind for the words at [start, end]: a type, a constructed type, a function or "(none)"
         return scriptt16.retag(reading, *body["at"], body["value"], here)
     made_by = {term.number: term for _, term in scriptt16.obligations(reading) if isinstance(term, scriptt16.Application)}
@@ -398,6 +402,17 @@ def posted(path: str, body: dict) -> dict:
         case "/edit":
             draft, found = edited(body, False)
             return {"draft": draft and scriptt16.record(draft), "diagnostics": plain(found)}
+        case "/edits":  # several previews of one snapshot, loaded once: the verdicts a page needs while a thing is held
+            saved = latest(body["reading"])
+            here = world(saved["world"])
+            reading, found = scriptt16.load(saved, here)
+            if reading is None:
+                return {"snapshot": saved["snapshot"], "results": [], "diagnostics": plain(found)}
+            results = []
+            for one in body["edits"]:
+                draft, found = edited(one | {"reading": body["reading"]}, False, (reading, here))
+                results.append({"diagnostics": plain(found), "draft": draft and scriptt16.record(draft) if body.get("drafts", True) else None})
+            return {"snapshot": saved["snapshot"], "results": results}
         case "/accept":
             draft, found = edited(body, True)
             if draft and not found:
@@ -426,6 +441,8 @@ def serve(port: int):
     GET  /log        hooks.jsonl                                 GET /<file>   the page
     POST /edit       {reading, number, path, value, phrase?} -> {draft, diagnostics}; nothing is saved
                      {reading, path: "kind", at: [start, end], value: a kind} gives those words that kind (scriptt16.retag)
+    POST /edits      {reading, edits: [edit, ...], drafts?: true} -> {snapshot, results: [{diagnostics, draft}]}: each edit as /edit
+                     makes it, of one loaded snapshot, in order; drafts false returns diagnostics only
     POST /accept     the same, as a correction; saved when it has no diagnostics -> {saved, diagnostics}
     POST /restore    {snapshot: n from 1} -> {saved, diagnostics}: the n-th snapshot becomes the latest
     POST /rerun      {reading} or {snapshot: n from 1} -> {saved, corrections, diagnostics}: the source read again with d1,
