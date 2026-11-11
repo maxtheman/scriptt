@@ -481,7 +481,9 @@ def serve(port: int):
                 if site and (site / name).resolve().is_relative_to(site.resolve()) and (site / name).is_file():
                     body = (site / name).read_bytes()
                 elif name.startswith("board/") or name in ("favicon.svg", "favicon-32.png"):  # no copy of the board here: the public one
-                    body = urllib.request.urlopen("https://scriptt.ai/" + urllib.request.quote(name), timeout=30).read()
+                    remote = "board/" if name == "board/index.html" else name  # the site answers index.html with a redirect to board/
+                    request = urllib.request.Request("https://scriptt.ai/" + urllib.request.quote(remote), headers={"User-Agent": f"scriptt/{VERSION}"})  # the site refuses Python's default agent
+                    body = urllib.request.urlopen(request, timeout=30).read()
                 else:
                     return self.send_error(404)
             except OSError:

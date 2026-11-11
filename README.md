@@ -74,6 +74,18 @@ running in the browser through Pyodide.
 
 The Claude desktop app can draw the reading on each message you type with a plugin, not yet tested in the app: see [mod/](mod/README.md).
 
+### Tag your own messages
+
+1. Send messages to Claude Code in the project as usual. The hook reads each one and saves it to `.scriptt/events.jsonl`.
+2. Run `python3.14 .scriptt/harness.py serve` and open http://127.0.0.1:8787. The board opens on your latest message. With
+   the desktop plugin, the link under a message opens the board on that message.
+3. Click a word. The pane shows its type in your world, the functions that take or return that type, and d1's options
+   for the word with their probabilities.
+4. Retag it: click another of d1's options, drag a type or a `Later[…]`, `Many[…]` or `Maybe[…]` type onto any words,
+   or drag the ends of a link to cover more or fewer words. Drag words, a member or an earlier result into an argument.
+5. ✓ (or `a`) saves the change as your correction, ✕ (or `esc`) cancels, and `z` undoes. Every rerun keeps your
+   corrections, or marks one invalidated with the reason.
+
 ## This repository
 
 | Path | What it holds |
