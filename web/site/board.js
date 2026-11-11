@@ -9,12 +9,13 @@ const HUES = ["#2563eb", "#d97706", "#059669", "#db2777", "#7c3aed", "#0891b2", 
 const SHAPES = ["M-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0", "M-5,-5h10v10h-10z", "M0,-6L6,5L-6,5z", "M0,-7L7,0L0,7L-7,0z", "M-6,0L-3,-6L3,-6L6,0L3,6L-3,6z", "M-2,-6h4v4h4v4h-4v4h-4v-4h-4v-4h4z"];
 let W = 1200, GX = 744, FX = 1008, NAR = false; const MW = 680, RH = 48, CH = 32;
 const V = Number(new URLSearchParams(location.search).get("v") ?? 15), INLINE = V === 13 || V >= 15;
-const setMode = () => { NAR = innerWidth < 1120; W = NAR ? 740 : 1200; GX = NAR ? 28 : 744; FX = NAR ? 330 : 1008; };
+const G14 = () => V === 14;
+const setMode = () => { NAR = !G14() && innerWidth < 1120; W = G14() ? 1180 : NAR ? 740 : 1200; GX = G14() ? 28 : NAR ? 28 : 744; FX = G14() ? 300 : NAR ? 330 : 1008; };
 const cv = document.createElement("canvas").getContext("2d");
 const tw = (s, px = 15, wt = 400, fam = C.text) => { cv.font = `${wt} ${px}px ${fam}`; return Math.ceil(cv.measureText(String(s)).width); };
 
 // ---------- the open reading
-let READINGS = [], WORLDS = {}, RD = null, SEL = null, NAV = [], HOVER = null, HELD = null, LIT = new Set(), ACCEPT = new Set(), REFUSED = {}, STEP = null, root = null, LASTL = null;
+let SCROLL_OFF = 0, LASTGH = 0, PLAY = null, READINGS = [], WORLDS = {}, RD = null, SEL = null, NAV = [], HOVER = null, HELD = null, LIT = new Set(), ACCEPT = new Set(), REFUSED = {}, STEP = null, root = null, LASTL = null;
 const NS = /[?&]audit/.test(location.search) ? "scriptt-audit:" : "scriptt-draft:";
 const FIT = () => HELD?.fit ?? null;
 
@@ -105,7 +106,8 @@ function layout(st) {
     let x = 0, y = y0;
     list.forEach((u) => { const w = tw(u.text, 20, u.c ? 600 : 400), prev = U[U.indexOf(u) - 1], first = list[0] === u;
       const gap = first || !prev ? 0 : u.start > prev.end ? SP + (u.phrase !== prev.phrase ? 8 : 0) : 0;
-      if (x + gap + w > MW && x > 0) { x = 0; y += 40; } else x += gap;
+      const nl = prev && !first ? (RD.r.text.slice(prev.end, u.start).match(/\n/g) ?? []).length : 0;
+      if (nl > 0 && x > 0) { x = 0; y += 40 + (nl > 1 ? 16 : 0); } else if (x + gap + w > MW && x > 0) { x = 0; y += 40; } else x += gap;
       put(u.id, x, y, w, 32, { t: "unit" , u }); x += w; });
     return y;
   };
@@ -114,10 +116,10 @@ function layout(st) {
   const finishRules = () => { rulesFor(); L.rules = Object.values(lineEnd); };
   // 2. operations: one row per operation, in the order of the phrases; open phrases and quotes are rows too
   const rows = [];
-  r.phrases.forEach((p, pi) => { st.order.filter((id) => st.ops[id].phrase === pi).forEach((id) => rows.push({ k: "op", id })); if (p.unresolved) rows.push({ k: "un", pi, p }); else if (p.quotes != null && !p.terms.length) rows.push({ k: "qt", pi, p }); });
+  r.phrases.forEach((p, pi) => { st.order.filter((id) => st.ops[id].phrase === pi).forEach((id) => rows.push({ k: "op", id })); if (p.un.length) p.un.forEach((u, idx) => rows.push({ k: "un", pi, p, u, idx })); else if (p.quotes != null && !p.terms.length) rows.push({ k: "qt", pi, p }); });
   st.order.filter((id) => st.ops[id].phrase == null).forEach((id) => rows.push({ k: "op", id }));
   let ry = 0;
-  const opRows = rows.filter((x) => x.k === "op"), opW = Math.max(0, ...opRows.map((x) => tw(x.id, 12, 600, C.code) + tw(st.ops[x.id].fn, 15, 600) + 34)), stW = Math.max(0, ...opRows.map((x) => 20 + tw(flagText(st.ops[x.id]), 13, 400, C.code) + 8));
+  const opRows = rows.filter((x) => x.k === "op"), opW = Math.max(0, ...opRows.map((x) => VL ? tw(opLabel(st, x.id), 15, 600) + 34 : tw(x.id, 12, 600, C.code) + tw(st.ops[x.id].fn, 15, 600) + 34)), stW = Math.max(0, ...opRows.map((x) => 20 + tw(flagText(st.ops[x.id]), 13, 400, C.code) + 8));
   const rsW = Math.max(0, ...opRows.map((x) => 14 + 12 + tw(st.ops[x.id].type, 13, 400, C.code) + 12)), px0 = 28 + opW + 8 + rsW + 8 + stW + 24;   // the column where the places start: every row shares it (alignment)
   const lblW = Math.max(0, ...L.places.map((p) => tw(p.path.split(".")[0], 12, 400, C.code))) + 8;
   const emit = (row) => {
@@ -133,7 +135,7 @@ function layout(st) {
         put(`lb-${row.id}-${nm}`, cx, cy, lblW - 4, 32, { t: "label", op: row.id, name: nm, pl: first }); cx += lblW;
         for (const pl of L.places.filter((p) => p.op === row.id && p.path.split(".")[0] === nm)) {
           const pw = placeW(pl, st);
-          if (cx + pw > MW + 40 && cx > px0 + lblW) { cx = px0 + lblW; line++; cy += 40; }
+          if (cx + pw > (NAR || G14() ? MW + 40 : GX - 44) && cx > px0 + lblW) { cx = px0 + lblW; line++; cy += 40; }
           put(pl.id, cx, cy, pw, 32, { t: "place", pl, op: row.id }); cx += pw + 8;
           if (pl.val?.ref != null) L.arcs.push({ from: `op-${row.id}`, via: pl.id, to: `op-${pl.val.ref}`, id: `arc-${pl.id}` });
         }
@@ -141,14 +143,15 @@ function layout(st) {
       }
       ry += Math.max(48, Math.max(1, line) * 40 + 8) + 8;
     } else if (row.k === "un") {
-      const s2 = `? ${row.p.unresolved.reason}`, w = tw(s2, 14, 600) + 24;
-      put(`un-${row.pi}`, 28, ry + 8, w, 32, { t: "unres", p: row.p, pi: row.pi }); ry += 56;
+      const s2 = `? ${row.u.reason}`, w = tw(s2, 14, 600) + 24;
+      put(`un-${row.pi}-${row.idx}`, 28, ry + 8, w, 32, { t: "unres", p: row.p, u: row.u, pi: row.pi }); ry += 56;
     } else {
-      const s2 = `“ ${row.p.quotes}`, w = tw(s2, 14, 600) + 24;
+      const s2 = VL ? "“ quoted" : `“ ${row.p.quotes}`, w = tw(s2, 14, 600) + 24;
       put(`qt-${row.pi}`, 28, ry + 8, w, 32, { t: "quote", p: row.p, pi: row.pi }); ry += 56;
     }
   };
-  if (!INLINE) { const yEnd = flow(U, 0); ry = yEnd + 72; rows.forEach(emit); }
+  if (G14()) { const yEnd = flow(U, 0); ry = yEnd + 40; rows.filter((x) => x.k !== "op").forEach(emit); }
+  else if (!INLINE) { const yEnd = flow(U, 0); ry = yEnd + 72; rows.forEach(emit); }
   else { ry = 0; r.phrases.forEach((p, pi) => { const list = U.filter((u) => u.phrase === pi); if (list.length) ry = flow(list, ry) + 32 + 8; rows.filter((x) => (x.k === "op" ? st.ops[x.id].phrase === pi : x.pi === pi)).forEach(emit); ry += 16; }); rows.filter((x) => x.k === "op" && st.ops[x.id].phrase == null).forEach(emit); }
   finishRules();
   // refs: each arc has its own lane in the gutter
@@ -157,7 +160,8 @@ function layout(st) {
   // 3. the world graph, built from worlds.json: types (left), functions with a port for each parameter (right)
   const fit = FIT(), tys = Object.keys(T), fns = Object.keys(F);
   const selT = /^(ty|sm|kd)-/.test(SEL ?? "") ? SEL.slice(3) : /^u-/.test(SEL ?? "") ? RD.units.find((x) => x.id === SEL)?.c?.type ?? null : null;
-  let gy = NAR ? L.leftBottom + 32 : 24; const tn = {}, gTop = gy;
+  const gOff = VL && !NAR && !G14() ? Math.max(0, Math.min(SCROLL_OFF, L.leftBottom - (LASTGH ?? 0))) : 0;   // the world stays beside the reading while a long message scrolls
+  let gy = G14() ? L.leftBottom + 16 : NAR ? L.leftBottom + 32 : 24 + gOff; const tn = {}, gTop = gy;
   for (const n of tys) {
     const t = T[n], w = 14 + 8 + tw(n, 14, 600) + 12, kw = tw(t.kind, 12, 400, C.code) + 16;
     const e = put(`ty-${n}`, GX, gy, w, 32, { t: "tnode", name: n, def: t }); tn[n] = e;
@@ -172,20 +176,28 @@ function layout(st) {
   const gc = {}; for (const [c, def] of Object.entries(wx.W.constructors)) { const s = `${c} : ${def.kind}`, w = tw(s, 14, 600) + 28; put(`ct-${c}`, GX, gy, w, 32, { t: "ctor", name: c, def }); gy += 40; }
   // functions: re-ranked while holding: those that take or give what is held come first
   const takesHeld = (f) => fit ? fit.has(f) : false;
-  const order = [...fns].sort((a, b) => (takesHeld(b) ? 1 : 0) - (takesHeld(a) ? 1 : 0) || fns.indexOf(a) - fns.indexOf(b));
-  let fy = gTop, sep = false;
+  const used = (f) => st.order.some((id) => st.ops[id].fn === f);
+  const order = [...fns].sort((a, b) => (takesHeld(b) ? 1 : 0) - (takesHeld(a) ? 1 : 0) || (G14() ? (used(b) ? 1 : 0) - (used(a) ? 1 : 0) : 0) || fns.indexOf(a) - fns.indexOf(b));
+  let fy = gTop, sep = false; const PP = G14() ? 40 : 24, PH = G14() ? 32 : 24, IX = FX + 270;
   order.forEach((f, k) => {
     if (fit && !sep && !takesHeld(f)) { sep = true; if (k > 0) fy += 16; }
-    const np = F[f].parameters.length, w = 188;
+    const np = F[f].parameters.length, w = 188, mine = G14() ? st.order.filter((id) => st.ops[id].fn === f) : [], slots = Math.max(1, mine.length), slotH = 32 + PP * np + 8;
     put(`fn-${f}`, FX, fy, w, 32, { t: "fnode", name: f, def: F[f] });
-    F[f].parameters.forEach(([p, tr], i) => put(`pt-${f}-${p}`, FX + 8, fy + 32 + 24 * i, w - 8, 24, { t: "port", fn: f, param: p, tree: tr, i }));
-    fy += 32 + 24 * np + 8;
+    F[f].parameters.forEach(([p, tr], i) => put(`pt-${f}-${p}`, FX + 8, fy + 32 + PP * i, w - 8, PH, { t: "port", fn: f, param: p, tree: tr, i, ph: PH }));
+    if (G14()) mine.forEach((id, j) => {   // the operation is plugged into the function's ports: its places sit beside the ports
+      const y0 = fy + j * slotH, op = st.ops[id];
+      put(`op-${id}`, IX, y0, opW, 32, { t: "op", op, row: id }); put(`rs-${id}`, IX + opW + 8, y0, rsW, 32, { t: "result", op }); put(`st-${id}`, IX + opW + 8 + rsW + 8, y0, stW, 32, { t: "status", op });
+      F[f].parameters.forEach(([p], i) => { const pls = L.places.filter((q) => q.op === id && q.path.split(".")[0] === p); let cx = IX;
+        if (j > 0) put(`lb-${id}-${p}`, FX + 8, y0 + 32 + PP * i, 112, 32, { t: "label", op: id, name: p, pl: pls[0] });
+        pls.forEach((pl) => { const pw = placeW(pl, st); put(pl.id, cx, y0 + 32 + PP * i, pw, 32, { t: "place", pl, op: id }); cx += pw + 8; if (pl.val?.ref != null) L.arcs.push({ from: `op-${id}`, via: pl.id, to: `op-${pl.val.ref}`, id: `arc-${pl.id}` }); }); });
+    });
+    fy += slotH * slots;
   });
   const inner = (t) => (M.ctorOf(t) ? inner(t.of) : t);
-  for (const f of fns) F[f].parameters.forEach(([p, tr], i) => { const tnode = tn[M.nameOf(inner(tr))], fnode = L.box[`fn-${f}`]; if (tnode && fnode) L.edges.push({ id: `e-${f}-${p}`, a: tnode, b: fnode, dy: 32 + 24 * i + 12, kind: "param", fn: f, ty: tnode.id }); });
+  for (const f of fns) F[f].parameters.forEach(([p, tr], i) => { const tnode = tn[M.nameOf(inner(tr))], fnode = L.box[`fn-${f}`]; if (tnode && fnode) L.edges.push({ id: `e-${f}-${p}`, a: tnode, b: fnode, dy: 32 + PP * i + PH / 2, kind: "param", fn: f, ty: tnode.id }); });
   for (const f of fns) { const tnode = tn[M.nameOf(inner(F[f].result))], fnode = L.box[`fn-${f}`]; if (tnode && fnode) L.edges.push({ id: `r-${f}`, a: tnode, b: fnode, dy: 16, kind: "result", fn: f, ty: tnode.id }); }
   L.struct = []; for (const [n, t] of Object.entries(T)) { const kids = t.brand && t.of ? [[t.of, "of"]] : t.sum ? t.alternatives.filter((a) => !a.member).map((a) => [a, "alt"]) : t.product ? Object.values(t.fields).map((f) => [f, "field"]) : []; kids.forEach(([k, kind]) => { const nm = M.nameOf(inner(k)); if (tn[nm] && nm !== n) L.struct.push({ id: `s-${n}-${nm}`, a: tn[n], b: tn[nm], kind }); }); }
-  L.height = Math.max(L.leftBottom, gy, fy) + 16;
+  LASTGH = Math.max(gy, fy) - gTop; L.height = Math.max(L.leftBottom, gy, fy) + 16;
   return L;
 }
 function placeW(pl, st) {
@@ -193,6 +205,7 @@ function placeW(pl, st) {
   if (pl.add) return pl.emptyList ? 10 + tw("none", 14) + 20 + 12 : 32;
   const g = 14 + 6;
   if (k === "const") return 10 + g + tw(v.constant, 15, 600) + 12;
+  if (k === "ref" && VL) return 10 + tw("↩", 15) + 6 + tw(opLabel(st, v.ref), 15, 600) + 12;
   if (k === "ref") { const o = st.ops[v.ref]; return 10 + tw("↩", 15) + 6 + tw(v.ref, 12, 600, C.code) + 8 + tw(o?.fn ?? "?", 15, 600) + 12; }
   if (k === "hole") return 10 + g + tw(`${pl.declared} · ${v.reason || "open"}`, 14) + 12;
   if (k === "empty") return 10 + g + tw(`none ${v.empty}`, 14) + 12;
@@ -202,7 +215,15 @@ function placeW(pl, st) {
 // ---------- the board
 const typeIdx = (n) => Math.max(0, Object.keys(RD.wx.W.types).indexOf(n));
 const color = (n) => HUES[typeIdx(n) % HUES.length];
-const glyph = (x, y, n, k = "g") => h("path", { dragologyKey: k, d: SHAPES[typeIdx(n) % SHAPES.length], transform: translate(x, y), fill: color(n), stroke: C.ink, strokeWidth: 1, "data-type": n });
+const VL = V >= 15;
+const FIN = (s) => String(s).replace(/^(Many|Maybe|Later)\[(.*)\]$/, "$2");
+const famOf = (n) => { const T = RD.wx.W.types, out = new Set(); const go = (t) => { if (!t) return; if (t.base) out.add(t.base); else if (t.brand) go(t.of); else if (t.sum) t.alternatives.forEach((a) => (a.member ? go(a.type) : go(a))); else if (t.product) out.add("record"); else if (M.ctorOf(t)) go(t.of); }; go(T[FIN(n)] ?? { base: FIN(n) }); return [...out].sort(); };
+const FAMS = ["str", "Path", "int", "NoneType", "record"], FHUE = ["#2563eb", "#059669", "#d97706", "#6b7280", "#db2777"];
+const famColor = (n) => { const f = famOf(n); if (f.length !== 1) return "#7c3aed"; const i = FAMS.indexOf(f[0]); return FHUE[i < 0 ? 3 : i]; };
+const structOfName = (n) => { const t = RD.wx.W.types[FIN(n)]; return !t ? 0 : t.base ? 0 : t.brand ? 1 : t.sum ? 2 : t.product ? 3 : 0; };
+const VSHAPES = ["M-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0", "M-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0M-2.4,0a2.4,2.4 0 1,0 4.8,0a2.4,2.4 0 1,0 -4.8,0", "M0,-7L7,0L0,7L-7,0z", "M-6,-6h12v12h-12zM-6,0h12M0,-6v12"];
+const opLabel = (st, id) => { const op = st.ops[id]; if (!op) return "?"; const same = st.order.filter((x) => st.ops[x].fn === op.fn); return same.length > 1 ? `${op.fn} ${same.indexOf(id) + 1}` : op.fn; };
+const glyph = (x, y, n, k = "g") => VL ? (n === "\u0000ctor" ? h("path", { dragologyKey: k, d: "M-3,-6H-6V6H-3M3,-6H6V6H3", transform: translate(x, y), fill: "none", stroke: C.ink, strokeWidth: 1.8 }) : h("path", { dragologyKey: k, d: VSHAPES[structOfName(n)], transform: translate(x, y), fill: famColor(n), fillRule: "evenodd", stroke: C.ink, strokeWidth: 1, "data-type": n })) : h("path", { dragologyKey: k, d: SHAPES[typeIdx(n) % SHAPES.length], transform: translate(x, y), fill: color(n), stroke: C.ink, strokeWidth: 1, "data-type": n });
 const txt = (k, x, y, s, o = {}) => h("text", { dragologyKey: k, transform: translate(x, y), fontFamily: o.code ? C.code : C.text, fontSize: o.size ?? 15, fontWeight: o.w ?? 400, fill: o.fill ?? C.ink, textAnchor: o.anchor, ...(o.rest ?? {}) }, s);
 const rect = (k, w, hh, o = {}) => h("rect", { dragologyKey: k, className: "mark", width: w, height: hh, rx: o.rx ?? 6, fill: o.fill ?? C.bg, stroke: o.stroke ?? C.ink, strokeWidth: o.sw ?? 1.5, ...(o.dash ? { strokeDasharray: o.dash } : {}) });
 
@@ -210,7 +231,7 @@ let DR = null;   // set by the render function so grab() can reach the builder
 function thingOf(e, st) {
   const { wx } = RD;
   switch (e.t) {
-    case "unit": return e.u.c ? { k: "const", c: e.u.c } : (() => { const id = st.order.find((o) => st.ops[o].phrase === e.u.phrase); return id != null ? { k: "op", id } : { k: "none", why: RD.r.phrases[e.u.phrase]?.unresolved ? `no function: ${RD.r.phrases[e.u.phrase].unresolved.reason}` : "quoted: an earlier reply, kept as given" }; })();
+    case "unit": return e.u.c ? { k: "const", c: e.u.c } : (() => { const id = st.order.find((o) => st.ops[o].phrase === e.u.phrase); return id != null ? { k: "op", id } : { k: "none", why: RD.r.phrases[e.u.phrase]?.un.length ? `no function: ${RD.r.phrases[e.u.phrase].un[0].reason}` : "quoted: an earlier reply, kept as given" }; })();
     case "op": return { k: "op", id: e.row };
     case "place": { const v = e.pl.val, k = M.kindOf(v); return k === "const" ? { k: "const", c: v, from: e.pl.id } : k === "ref" ? { k: "op", id: v.ref, from: e.pl.id } : { k: "hole", place: e.pl }; }
     case "label": return { k: "hole", place: e.pl };
@@ -219,11 +240,13 @@ function thingOf(e, st) {
     case "port": return { k: "type", name: M.nameOf((function g(x) { return M.ctorOf(x) ? g(x.of) : x; })(e.tree)) };
     case "tchild": return e.kd.k === "member" ? { k: "const", c: e.kd.c } : { k: "type", name: e.kd.name ?? e.of };
     case "fnode": return { k: "fn", name: e.name };
+    case "ctor": return { k: "ctor", name: e.name };
     case "status": return { k: "none", why: "" };
     default: return { k: "none", why: "" };
   }
 }
-function fitSet(st, t) {   // the functions that take or give what is held, read from the world's declared parameters and results
+function fitSet(st, t) {
+  if (t.k === "ctor") { const F0 = RD.wx.W.functions, s0 = new Set(); for (const f of Object.keys(F0)) if (F0[f].parameters.some(([, tr]) => M.ctorOf(tr) === t.name) || M.ctorOf(F0[f].result) === t.name) s0.add(f); return s0; }   // the functions that take or give what is held, read from the world's declared parameters and results
   const { wx } = RD, F = wx.W.functions, s = new Set(), inner = (x) => (M.ctorOf(x) ? inner(x.of) : x);
   if (t.k === "const" || t.k === "op") { const tn = M.typeOfThing(st, t); for (const f of Object.keys(F)) if (F[f].parameters.some(([, tr]) => M.takes(wx, tr, tn) || (M.ctorOf(tr) === "Many" && M.takes(wx, tr.of, tn)))) s.add(f); }
   else if (t.k === "type") for (const f of Object.keys(F)) if (F[f].parameters.some(([, tr]) => M.takes(wx, tr, t.name) || (M.ctorOf(tr) === "Many" && M.takes(wx, tr.of, t.name))) || M.nameOf(inner(F[f].result)) === t.name) s.add(f);
@@ -237,11 +260,13 @@ function farState(e, st) {
   return M.recompute(RD.wx, M.sweep(n), RD.base);
 }
 
+function replayOf() { if (STEP == null || V < 15) return null; const ops = new Set(), pls = []; for (const d of RD.r.decisions.slice(0, STEP + 1)) { if (d.operation != null) ops.add(String(d.operation)); if (d.path) pls.push([String(d.operation), d.path]); } return { ops, pls }; }
 function draggable({ state: st, d, draggedId }) {
-  const L = layout(st); LASTL = L;
+  const L = layout(st); LASTL = L; const RP = replayOf();
+  const ghost = (e) => !RP ? false : (e.t === "op" || e.t === "result" || e.t === "status") ? !RP.ops.has(String(e.row ?? e.op.id)) : e.t === "label" ? !RP.ops.has(e.op) : e.t === "place" ? !RP.ops.has(e.pl.op) || !RP.pls.some(([o, p]) => o === e.pl.op && (e.pl.path === p || e.pl.path.startsWith(p + ".") || p.startsWith(e.pl.path + "."))) : false;
   const lit = (id) => LIT.has(id), acc = (id) => ACCEPT.has(id), ref = REFUSED;
   const grabProps = (e) => ({
-    id: e.id, transform: translate(e.x, e.y), "data-k": e.id, "data-t": e.t, "data-grab": "1", ...(LIT.has(e.id) ? { "data-lit": "1" } : {}), style: { cursor: "grab" },
+    id: e.id, transform: translate(e.x, e.y), "data-k": e.id, "data-t": e.t, "data-grab": "1", ...(ghost(e) ? { opacity: 0.28, "data-ghost": "1" } : {}), ...(LIT.has(e.id) ? { "data-lit": "1" } : {}), style: { cursor: "grab" },
     dragologyZIndex: draggedId === e.id ? "/1" : false,
     dragologyOnDrag: () => {
       const th = thingOf(e, st);
@@ -261,6 +286,7 @@ function draggable({ state: st, d, draggedId }) {
   });
   const edgeP = (a, b, dy, res) => { const x1 = (a.rx ?? a.x + a.w), y1 = a.y + a.h / 2 + (res ? 4 : -4), x2 = b.x, y2 = b.y + dy; const mx = (x1 + x2) / 2; return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`; };
   const kids = [];
+  const PRB = st.probe ? `${st.probe.ctor}[${st.probe.type}]` : null, PRT = PRB ? Object.keys(RD.wx.W.functions).filter((f) => RD.wx.W.functions[f].parameters.some(([, tr]) => M.nameOf(tr) === PRB)) : [];
   kids.push(h("path", { dragologyKey: "divider", d: NAR ? `M0,${L.leftBottom + 8}H${W}` : `M${GX - 36},8V${L.height - 8}`, stroke: C.rule, strokeWidth: 1 }));
   // phrase rules (grouping, quoted ones dashed)
   L.rules.forEach((r, i) => kids.push(h("path", { dragologyKey: "rule" + i, d: `M${r.x1},${r.y - 4}H${r.x2}`, stroke: lit(`ph-${r.ph}`) ? C.accent : C.rule, strokeWidth: 2, ...(RD.r.phrases[r.ph].quotes != null ? { strokeDasharray: "4 3" } : {}) })));
@@ -268,14 +294,48 @@ function draggable({ state: st, d, draggedId }) {
   for (const s of L.struct) kids.push(h("path", { dragologyKey: s.id, d: `M${s.a.x},${s.a.y + s.a.h / 2} C${s.a.x - 22},${s.a.y + s.a.h / 2} ${s.b.x - 22},${s.b.y + s.b.h / 2} ${s.b.x},${s.b.y + s.b.h / 2}`, fill: "none", stroke: lit(s.a.id) && lit(s.b.id) ? C.accent : "#d9dce2", strokeWidth: 1.25, strokeDasharray: s.kind === "alt" ? "" : s.kind === "of" ? "2 3" : "6 3", "data-edge": s.kind }));
   for (const e of L.edges) { const on = lit(e.fn ? `fn-${e.fn}` : "") && lit(e.ty); kids.push(h("path", { dragologyKey: e.id, d: edgeP(e.a, e.b, e.dy, e.kind === "result"), fill: "none", stroke: on ? C.accent : "#e6e8ec", strokeWidth: on ? 2.5 : 1, strokeDasharray: e.kind === "result" ? "5 3" : "", "data-edge": e.kind, "data-fn": e.fn, "data-ty": e.ty })); }
   // reference arcs: from the place to the operation it refers to, the same operation (identity, not a copy)
-  for (const a of L.arcs) { const p = L.box[a.from], o = L.box[a.to]; if (!p || !o) continue; const on = lit(a.via) || lit(a.to); kids.push(h("path", { dragologyKey: a.id, d: `M${p.x},${p.y + 16}H${a.lane + 4}V${o.y + 16}H${o.x}`, fill: "none", stroke: on ? C.accent : C.mute, strokeWidth: on ? 2.5 : 1.5, "data-arc": a.to })); }
+  for (const a of L.arcs) { const p = L.box[a.from], o = L.box[a.to]; if (!p || !o) continue; const on = lit(a.via) || lit(a.to); kids.push(h("path", { dragologyKey: a.id, d: G14() ? `M${p.x},${p.y + 16}C${p.x - 70},${p.y + 16} ${o.x - 70},${o.y + 16} ${o.x},${o.y + 16}` : `M${p.x},${p.y + 16}H${a.lane + 4}V${o.y + 16}H${o.x}`, fill: "none", stroke: on ? C.accent : C.mute, strokeWidth: on ? 2.5 : 1.5, "data-arc": a.to })); }
+  // ---- v15 visual language: shape = structure of the thing (base, brand, sum, product, function, constructor), colour = what it is made of (read from the world), no outline that carries no information
+  const hit = (e) => h("rect", { dragologyKey: "hit", width: e.w, height: e.h, fill: "transparent" });
+  const arrow = (k, w, hh, o = {}) => h("path", { dragologyKey: k, className: "mark", d: `M0,0H${w - 10}L${w},${hh / 2}L${w - 10},${hh}H0Z`, fill: o.fill ?? C.ink, stroke: o.stroke ?? C.ink, strokeWidth: o.sw ?? 1.5, strokeLinejoin: "round" });
+  const vl = (e) => {
+    const on = lit(e.id), sel = SEL === e.id, ok = acc(e.id), no = !!ref[e.id], hot = on || sel, stroke = hot ? C.accent : C.ink, sw = hot ? 2.5 : 1.5;
+    switch (e.t) {
+      case "op": return h("g", { ...grabProps(e), "data-role": "op", "data-op": e.row }, arrow("b", e.w, e.h, { stroke: hot ? C.accent : C.ink, sw: hot ? 3 : 1 }), txt("n", 12, 21, opLabel(st, e.row), { w: 600, fill: "#ffffff" }));
+      case "place": { const pl = e.pl, v = pl.val, k = M.kindOf(v), missing = k === "hole" ? "hole" : k === "empty" ? "empty" : pl.emptyList ? "list" : null;
+        const dash = k === "hole" ? "5 3" : k === "empty" ? "1.5 3.5" : pl.emptyList ? "8 3" : pl.add ? "2 4" : null;
+        const fam = k === "const" ? famColor(v.type) : k === "ref" ? C.ink : famColor(pl.declared);
+        const inside = k === "const" ? [glyph(16, 16, v.type, "g"), txt("t", 30, 21, v.constant, { w: 600 })]
+          : k === "ref" ? [txt("a", 10, 22, "↩", {}), txt("n", 10 + tw("↩", 15) + 6, 21, opLabel(st, v.ref), { w: 600 })]
+          : k === "hole" ? [glyph(16, 16, pl.declared, "g"), txt("t", 30, 21, `${pl.declared} · ${v.reason || "open"}`, { size: 14, fill: C.no })]
+          : k === "empty" ? [glyph(16, 16, pl.declared, "g"), txt("t", 30, 21, `none ${v.empty}`, { size: 14, fill: C.mute })]
+          : pl.add ? (pl.emptyList ? [txt("t", 10, 21, "none", { size: 14, fill: C.mute }), txt("p", 10 + tw("none", 14) + 8, 21, "+", { w: 600 })] : [txt("t", 16, 22, "+", { anchor: "middle", w: 600 })]) : [txt("t", 30, 21, pl.declared, { size: 14 })];
+        return h("g", { ...grabProps(e), "data-role": "place", "data-place": `${pl.op}.${pl.path}`, "data-declared": pl.declared, "data-kind": k, ...(missing ? { "data-missing": missing } : {}), "data-reason": v?.reason ?? "" },
+          hit({ ...e, w: e.w + 12, h: e.h + 12 }) && h("rect", { dragologyKey: "hit", x: -6, y: -6, width: e.w + 12, height: CH + 12, fill: "transparent" }),
+          h("rect", { dragologyKey: "b", className: "mark", width: e.w, height: CH, rx: 16, fill: ok ? "rgba(29,78,216,.14)" : dash ? C.bg : k === "ref" ? "#16181d14" : fam + "2e", stroke: no ? C.no : ok || hot ? C.accent : dash ? C.ink : "none", strokeWidth: ok || hot ? 2.5 : 1.5, ...(dash ? { strokeDasharray: dash } : {}) }), ...inside); }
+      case "result": return h("g", { ...grabProps(e), "data-role": "result", "data-deferred": String(!!e.op.judg.deferred) }, hit(e), glyph(8, 16, FIN(M.resultName(e.op)), "g"), txt("t", 22, 21, e.op.type, { code: true, size: 13, fill: hot ? C.accent : C.mute }),
+        e.op.judg.deferred ? h("path", { dragologyKey: "u", d: `M22,28H${e.w - 6}`, stroke: C.mute, strokeWidth: 1.5, strokeDasharray: "4 3" }) : null);
+      case "unres": return h("g", { ...grabProps(e), "data-role": "unresolved", "data-missing": "unresolved", "data-reason": e.u.reason }, h("rect", { dragologyKey: "b", className: "mark", width: e.w, height: e.h, rx: 16, fill: C.bg, stroke, strokeWidth: sw, strokeDasharray: "10 3 2 3" }), txt("t", 12, 21, `? ${e.u.reason}`, { size: 14, w: 600, fill: C.no }));
+      case "quote": return h("g", { ...grabProps(e), "data-role": "quote" }, hit(e), txt("t", 0, 22, "“ quoted", { size: 15, w: 600, fill: hot ? C.accent : C.mute }), h("path", { dragologyKey: "u", d: `M0,28H${e.w - 12}`, stroke: C.mute, strokeWidth: 1.5, strokeDasharray: "3 3" }));
+      case "tnode": { const t = e.def; return h("g", { ...grabProps(e), "data-role": "type", "data-name": e.name, "data-struct": t.sum ? "sum" : t.product ? "product" : t.brand ? "brand" : "base" }, h("rect", { dragologyKey: "hit", width: e.w, height: 32, rx: 6, fill: hot ? "rgba(29,78,216,.10)" : "transparent" }), glyph(12, 16, e.name, "g"), txt("t", 26, 21, e.name, { size: 15, w: 600 })); }
+      case "smark": { const t = e.def, mk = t.sum ? "|" : t.product ? "×" : t.brand ? "▸" : "·"; return h("g", { ...grabProps(e), "data-role": "structure", "data-name": e.name }, h("rect", { dragologyKey: "hit", width: e.w, height: 32, rx: 6, fill: hot ? "rgba(29,78,216,.10)" : "transparent" }), txt("m", 14, 21, mk, { code: true, size: 15, w: 600, anchor: "middle", fill: hot ? C.accent : C.mute })); }
+      case "kmark": return h("g", { ...grabProps(e), "data-role": "kind", "data-name": e.name }, h("rect", { dragologyKey: "hit", width: e.w, height: 32, rx: 6, fill: hot ? "rgba(29,78,216,.10)" : "transparent" }), txt("k", 8, 21, e.def.kind, { code: true, size: 12, fill: hot ? C.accent : C.mute }));
+      case "tchild": { const kd = e.kd; return h("g", { ...grabProps(e), "data-role": kd.k }, h("rect", { dragologyKey: "hit", width: e.w, height: 32, rx: 6, fill: hot ? "rgba(29,78,216,.10)" : "transparent" }), h("circle", { dragologyKey: "d", transform: translate(8, 16), r: 4, fill: kd.k === "member" ? famColor(e.of) : C.bg, stroke: C.ink, strokeWidth: 1 }), txt("t", 20, 21, kd.text + (kd.draft ? " ≈" : ""), { code: true, size: 13 })); }
+      case "ctor": return h("g", { ...grabProps(e), "data-role": "constructor" }, h("rect", { dragologyKey: "hit", width: e.w, height: 32, rx: 6, fill: hot ? "rgba(29,78,216,.10)" : "transparent" }), glyph(12, 16, "\u0000ctor", "g"), txt("t", 28, 21, e.name, { size: 15, w: 600 }), txt("k", 28 + tw(e.name, 15, 600) + 8, 21, e.def.kind, { code: true, size: 12, fill: C.mute }));
+      case "fnode": { const f = e.def, takes = FIT()?.has(e.name) && (!PRB || PRT.includes(e.name)); return h("g", { ...grabProps(e), "data-role": "function", "data-name": e.name, ...(takes ? { "data-takes": "1" } : {}) }, arrow("b", e.w, 32, { fill: C.bg, stroke: takes || hot ? C.accent : C.ink, sw: takes || hot ? 2.5 : 1.5 }), txt("t", 12, 21, e.name, { size: 15, w: 600 }), glyph(e.w - 28, 16, FIN(M.nameOf((function f2(t) { return M.ctorOf(t) ? f2(t.of) : t; })(f.result))), "rg")); }
+      case "port": { const tn = FIN(M.nameOf(e.tree)); return h("g", { ...grabProps(e), "data-role": "port", "data-fn": e.fn, "data-param": e.param }, h("rect", { dragologyKey: "hit", width: e.w, height: e.ph, rx: 5, fill: hot ? "rgba(29,78,216,.10)" : "transparent" }), glyph(8, e.ph / 2, tn, "d"), txt("n", 22, e.ph / 2 + 4, `${e.param} : ${M.nameOf(e.tree)}`, { code: true, size: 12, fill: C.ink })); }
+    }
+    return null;
+  };
+  if (PRB && L.box[`ty-${st.probe.type}`]) { const b = L.box[`ty-${st.probe.type}`]; kids.push(h("g", { dragologyKey: "probe", transform: translate((b.rx ?? b.x + b.w) + 10, b.y), "data-probe": PRB }, h("rect", { dragologyKey: "r", width: tw(PRB, 14, 600) + 60, height: 32, rx: 16, fill: C.accent }), h("text", { dragologyKey: "t", transform: translate(14, 21), fontFamily: C.code, fontSize: 14, fontWeight: 600, fill: "#fff" }, `${PRB} ·${PRT.length}`))); }
   for (const e of L.items) {
+    if (VL) { const el = vl(e); if (el) { kids.push(el); continue; } }
     const on = lit(e.id), sel = SEL === e.id, ok = acc(e.id), no = !!ref[e.id], stroke = on || sel ? C.accent : C.ink, sw = on || sel ? 2.5 : 1.5;
     switch (e.t) {
       case "unit": kids.push(h("g", { ...grabProps(e), "data-role": e.u.c ? "value" : "word", "data-text": e.u.text },
         h("rect", { dragologyKey: "hit", width: e.w + 4, height: e.h, x: -2, fill: on || sel ? "rgba(29,78,216,.10)" : "transparent", rx: 4 }),
         txt("t", 0, 23, e.u.text, { size: 20, w: e.u.c ? 600 : 400, fill: C.ink }),
-        e.u.c ? h("rect", { dragologyKey: "ul", y: 28, width: e.w, height: 3, fill: color(e.u.c.type) }) : null)); break;
+        e.u.c ? h("rect", { dragologyKey: "ul", y: 28, width: e.w, height: 3, fill: VL ? famColor(e.u.c.type) : color(e.u.c.type) }) : null)); break;
       case "op": kids.push(h("g", { ...grabProps(e), "data-role": "op", "data-op": e.row },
         rect("b", e.w, e.h, { fill: C.ink, stroke: on || sel ? C.accent : C.ink, sw: on || sel ? 3 : 1.5, rx: 8 }),
         txt("id", 10, 21, e.row, { code: true, size: 12, w: 600, fill: "#aab0bd" }),
@@ -302,7 +362,7 @@ function draggable({ state: st, d, draggedId }) {
           h("circle", { dragologyKey: "c", transform: translate(7, 16), r: 6, fill: f === "ready" ? C.ok : C.bg, stroke: f === "ready" ? C.ok : C.ink, strokeWidth: 1.5, ...(f === "open" ? { strokeDasharray: "2 2" } : {}) }),
           f === "waits" ? h("path", { dragologyKey: "w", d: "M7,12V16H10", fill: "none", stroke: C.ink, strokeWidth: 1.5 }) : null,
           txt("t", 20, 21, flagText(e.op), { code: true, size: 13, fill: e.op.prov ? C.accent : C.ink }))); break; }
-      case "unres": kids.push(h("g", { ...grabProps(e), "data-role": "unresolved", "data-missing": "unresolved", "data-reason": e.p.unresolved.reason }, rect("b", e.w, CH, { dash: "10 3 2 3", stroke }), txt("t", 12, 21, `? ${e.p.unresolved.reason}`, { size: 14, w: 600, fill: C.no }))); break;
+      case "unres": kids.push(h("g", { ...grabProps(e), "data-role": "unresolved", "data-missing": "unresolved", "data-reason": e.u.reason }, rect("b", e.w, CH, { dash: "10 3 2 3", stroke }), txt("t", 12, 21, `? ${e.u.reason}`, { size: 14, w: 600, fill: C.no }))); break;
       case "quote": kids.push(h("g", { ...grabProps(e), "data-role": "quote" }, rect("b", e.w, CH, { dash: "3 3", stroke }), txt("t", 12, 21, `“ ${e.p.quotes}`, { size: 14, w: 600, fill: C.mute }))); break;
       case "tnode": { const t = e.def;
         kids.push(h("g", { ...grabProps(e), "data-role": "type", "data-name": e.name, "data-struct": t.sum ? "sum" : t.product ? "product" : t.brand ? "brand" : "base" },
@@ -311,11 +371,11 @@ function draggable({ state: st, d, draggedId }) {
         kids.push(h("g", { ...grabProps(e), "data-role": "structure", "data-name": e.name }, rect("b", e.w, 32, { stroke, sw, fill: C.surface }), txt("m", 14, 21, mark, { code: true, size: 14, w: 600, anchor: "middle" }))); break; }
       case "kmark": kids.push(h("g", { ...grabProps(e), "data-role": "kind", "data-name": e.name }, rect("b", e.w, 32, { stroke, sw, fill: C.surface }), txt("k", 8, 21, e.def.kind, { code: true, size: 12, fill: C.mute }))); break;
       case "port": { const tr = e.tree; kids.push(h("g", { ...grabProps(e), "data-role": "port", "data-fn": e.fn, "data-param": e.param },
-          rect("b", e.w, 24, { stroke, sw: on || sel ? 2.5 : 1, fill: C.bg, rx: 5 }), h("circle", { dragologyKey: "d", transform: translate(0, 12), r: 4.5, fill: C.bg, stroke: C.ink, strokeWidth: 1.5 }),
-          txt("n", 12, 16, `${e.param} : ${M.nameOf(tr)}`, { code: true, size: 12, fill: C.ink }))); break; }
+          rect("b", e.w, e.ph, { stroke, sw: on || sel ? 2.5 : 1, fill: C.bg, rx: 5 }), h("circle", { dragologyKey: "d", transform: translate(0, e.ph / 2), r: 4.5, fill: C.bg, stroke: C.ink, strokeWidth: 1.5 }),
+          txt("n", 12, e.ph / 2 + 4, `${e.param} : ${M.nameOf(tr)}`, { code: true, size: 12, fill: C.ink }))); break; }
       case "tchild": { const kd = e.kd; kids.push(h("g", { ...grabProps(e), "data-role": kd.k }, rect("b", e.w, 32, { stroke, sw, fill: C.surface, dash: kd.k === "member" ? undefined : "4 3" }), txt("t", 10, 21, kd.text, { code: true, size: 13 }))); break; }
       case "ctor": kids.push(h("g", { ...grabProps(e), "data-role": "constructor" }, rect("b", e.w, 32, { stroke, sw, dash: "2 3" }), txt("t", 14, 21, `${e.name} : ${e.def.kind}`, { size: 14, w: 600 }))); break;
-      case "fnode": { const f = e.def, takes = FIT()?.has(e.name);
+      case "fnode": { const f = e.def, takes = FIT()?.has(e.name) && (!PRB || PRT.includes(e.name));
         kids.push(h("g", { ...grabProps(e), "data-role": "function", "data-name": e.name, ...(takes ? { "data-takes": "1" } : {}) },
           rect("b", e.w, 32, { stroke: takes ? C.accent : stroke, sw: takes ? 2.5 : sw, fill: C.surface }),
           txt("t", 10, 21, e.name, { size: 15, w: 600 }), glyph(e.w - 16, 16, M.nameOf((function f2(t) { return M.ctorOf(t) ? f2(t.of) : t; })(f.result)), "rg"))); break; }
@@ -335,14 +395,16 @@ function paint() {
 const fitView = () => { const sv = document.querySelector("#board svg"); if (sv) { const hh = sv.getAttribute("height"); if (sv.getAttribute("viewBox") !== `0 0 ${W} ${hh}`) sv.setAttribute("viewBox", `0 0 ${W} ${hh}`); } };
 new MutationObserver(fitView).observe($("board"), { childList: true, subtree: true, attributes: true, attributeFilter: ["height", "viewBox"] });
 const layoutHeight = () => { const L = layout(RD.st); return Math.max(L.height, 200); };
-function previewed(next) { if (!HELD) return; const ch = changes(HELD.base, next); say(ch.length ? ch.map((c) => c.text).join("   ·   ") : "no change", false, true); }
-function dropped(next) { const was = HELD; HELD = null; ACCEPT = new Set(); REFUSED = {}; LIT = HOVER ? litFrom(HOVER, LASTL?.rel ?? new Map()) : new Set(); const ch = changes(RD.st, next); say(ch.length ? ch.map((c) => c.text).join("   ·   ") : was && was.mv.no.length && !was.mv.ok.length ? "refused" : "", false); commit(next); if (!ch.length) paint(); }
+function previewed(next) { if (!HELD) return; if (next?.probe) return say(`${next.probe.ctor}[${next.probe.type}]`, false, true); const ch = changes(HELD.base, next); say(ch.length ? ch.map((c) => c.text).join("   ·   ") : "no change", false, true); }
+function dropped(next) { if (next?.probe) { const p = next.probe; HELD = null; ACCEPT = new Set(); REFUSED = {}; SEL = `ex-${p.ctor}[${p.type}]`; NAV = []; LIT = new Set(); paint(); renderPanel(); say(`${p.ctor}[${p.type}]`); return; } const was = HELD; HELD = null; ACCEPT = new Set(); REFUSED = {}; LIT = HOVER ? litFrom(HOVER, LASTL?.rel ?? new Map()) : new Set(); const ch = changes(RD.st, next); say(ch.length ? ch.map((c) => c.text).join("   ·   ") : was && was.mv.no.length && !was.mv.ok.length ? "refused" : "", false); commit(next); if (!ch.length) paint(); }
 const say = (s, held = false, diff = false) => { $("bar").innerHTML = `<span class="${diff ? "ok" : ""}">${esc(s ?? "")}</span>`; };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function relight(key) { if (HELD) return; HOVER = key; LIT = litFrom(key ?? SEL, LASTL?.rel ?? new Map()); if (SEL && key) LIT = new Set([...LIT, ...litFrom(SEL, LASTL.rel)]); paint(); }
 let hv = null;
 document.addEventListener("keydown", (k) => { if (k.key === "Escape" && SEL) { SEL = null; NAV = []; LIT = new Set(); paint(); renderPanel(); } });
+let sr = 0;
+addEventListener("scroll", () => { if (!VL || HELD || NAR || !RD) return; cancelAnimationFrame(sr); sr = requestAnimationFrame(() => { const b = $("board").getBoundingClientRect(), sc = b.width / W, want = Math.max(0, Math.round((-b.top + 8) / sc / 8) * 8); if (Math.abs(want - SCROLL_OFF) >= 16) { SCROLL_OFF = want; paint(); } }); }, { passive: true });
 addEventListener("resize", () => { if (RD && !HELD) paint(); });
 document.addEventListener("pointerover", (e) => { if (HELD || e.buttons) return; const k = e.target.closest?.("#board [data-k]")?.getAttribute("data-k") ?? null; if (k !== hv) { hv = k; relight(k); } });
 let down = null;
@@ -405,7 +467,7 @@ function renderPanel() {
       html += `<h3>span</h3>` + M.spanOptions(r.text, u.c, W0).map((o) => act(o.ok ? M.replaceConst(st, u.c.at, { constant: o.words, type: o.type, at: o.at }) : st, `${o.label} → “${o.words}”`, o.why + (o.ok ? " ≈" : ""), o.ok)).join("");
     } else {
       const id = st.order.find((o) => st.ops[o].phrase === u.phrase);
-      html += id != null ? row("tagged", link(`op-${id}`, `${st.ops[id].fn} ${id}`) + ` <span class="chip">${esc(flagText(st.ops[id]))}</span>`) : row("tagged", esc(ph.unresolved ? `unresolved · ${ph.unresolved.reason}` : "quoted"));
+      html += id != null ? row("tagged", link(`op-${id}`, `${st.ops[id].fn} ${id}`) + ` <span class="chip">${esc(flagText(st.ops[id]))}</span>`) : row("tagged", esc(ph.un.length ? `unresolved · ${ph.un.map((x) => x.reason).join(", ")}` : "quoted"));
       if (id != null) html += `<h3>the model's reading</h3>` + (r.decisions.filter((d) => String(d.operation) === id && d.path == null && Object.keys(d.asked ?? {}).length).slice(0, 1).map((d) => decRows(d)).join("") || `<div class="why">none recorded</div>`);
       if (/[A-Za-z]/.test(u.text)) {
         const sums = Object.entries(W0.types).filter(([, t]) => t.sum).map(([n]) => n);
@@ -454,15 +516,18 @@ function renderPanel() {
     html += `<div class="row"><b>${esc(n)}</b></div>` + row("asks", esc(f.asks)) + row("takes", f.parameters.map(([p, tr]) => `${esc(p)}: ${tlink(M.nameOf(tr))}`).join(", ")) + row("gives", tlink(M.nameOf(f.result)));
     html += row("used by", st.order.filter((o) => st.ops[o].fn === n).map((o) => link(`op-${o}`, o)).join(" ") || "no operation");
     html += `<h3>apply to</h3>` + moveButtons({ k: "fn", name: n }) + `<div class="prov">≈ the engine builds the new operation</div>`;
+  } else if (k.startsWith("ex-")) {
+    const nm = k.slice(3), [, c, ty] = /^(\w+)\[(.*)\]$/.exec(nm), d = wx.W.constructors[c], tk = Object.keys(F).flatMap((f) => F[f].parameters.filter(([, tr]) => M.nameOf(tr) === nm).map(([p]) => [f, p])), gv = Object.keys(F).filter((f) => M.nameOf(F[f].result) === nm);
+    html += `<div class="row"><b>${esc(nm)}</b> <span class="chip">${esc(wx.W.types[ty]?.kind ?? "*")}</span></div>` + row("made of", `${link(`ct-${c}`, c)} applied to ${tlink(ty)}`) + row("means", esc(d.describes)) + row("taken by", tk.map(([f, p]) => link(`pt-${f}-${p}`, `${f}.${p}`)).join(" ") || "no function") + row("given by", gv.map((f) => link(`fn-${f}`, f)).join(" ") || "no function") + `<div class="why">a type expression: nothing is changed</div>`;
   } else if (k.startsWith("ct-")) {
     const c = k.slice(3), d = wx.W.constructors[c];
-    html += `<div class="row"><b>${esc(c)}</b> : ${esc(d.kind)}</div>` + row("means", esc(d.describes));
+    html += `<div class="row"><b>${esc(c)}</b> : ${esc(d.kind)}</div>` + row("means", esc(d.describes)) + row("used in", Object.keys(F).flatMap((f) => F[f].parameters.filter(([, tr]) => M.ctorOf(tr) === c).map(([p, tr]) => link(`pt-${f}-${p}`, `${f}.${p} : ${M.nameOf(tr)}`))).join(" ") || "no parameter") + `<div class="why">drag it onto a type to see what takes ${esc(c)}[type]</div>`;
   } else if (k.startsWith("lb-")) {
     const [, op, name] = k.split("-"), pl = M.places(wx, st).find((p) => p.op === op && p.path.split(".")[0] === name);
     html += `<div class="row"><b>${esc(op)}.${esc(name)}</b> : ${tlink(M.nameOf(M.ctorOf(pl.tree) ? pl.tree.of : pl.tree))}</div>` + row("function", link(`fn-${st.ops[op].fn}`, st.ops[op].fn)) + `<h3>what fits</h3>` + moveButtons({ k: "hole", place: pl });
   } else if (k.startsWith("rs-")) { const o = st.ops[k.slice(3)]; html += `<div class="row"><b>${esc(o.type)}</b></div>` + row("of", link(`op-${o.id}`, `${o.fn} ${o.id}`)) + structOf(M.resultName(o).replace(/^(Many|Maybe)\[(.*)\]$/, "$2")); }
   else if (k.startsWith("st-")) { const o = st.ops[k.slice(3)]; html += `<div class="row"><b>${esc(flag(o))}</b> ${link(`op-${o.id}`, o.fn + " " + o.id)}</div>` + row("flags", judgText(o)); }
-  else if (k.startsWith("un-")) { const p = r.phrases[Number(k.slice(3))]; html += `<div class="row"><b>unresolved</b></div>` + row("reason", esc(p.unresolved.reason)) + row("id", esc(String(p.unresolved.id))) + row("text", esc(r.text.slice(p.start, p.end))) + `<div class="why">owed work: no operation is known for this request</div>`; }
+  else if (k.startsWith("un-")) { const [, pi, ix] = k.split("-"), p = r.phrases[Number(pi)], u = p.un[Number(ix)]; html += `<div class="row"><b>unresolved</b></div>` + row("reason", esc(u.reason)) + row("id", esc(String(u.id))) + (u.place != null ? row("place", esc(String(u.place))) : "") + row("text", esc(r.text.slice(p.start, p.end))) + `<div class="why">owed work: no operation is known for this request</div>`; }
   else if (k.startsWith("qt-")) { const p = r.phrases[Number(k.slice(3))]; html += `<div class="row"><b>quote ${esc(String(p.quotes))}</b></div>` + row("text", esc(r.text.slice(p.start, p.end))); }
   const closed = /^(type|retag|span|add as a value|rebind to|decided)$/;
   html = html.replace(/<h3>(.*?)<\/h3>([\s\S]*?)(?=<h3>|$)/g, (_, t, body) => `<details${closed.test(t) ? "" : " open"}><summary>${t}</summary>${body}</details>`);
@@ -477,14 +542,14 @@ function decKey(d) { if (d.operation != null && d.path) return `pl-${d.operation
 function placeCard() {
   const c = $("sel"), st = $("stage");
   if (!SEL || HELD) { c.style.display = "none"; return; }
-  setTimeout(() => { const el = document.querySelector(`#board [data-k="${SEL}"]`); if (!el || !SEL) { c.style.display = "none"; return; }
+  setTimeout(() => { const sk = /^ex-\w+\[(.*)\]$/.exec(SEL), el = document.querySelector(`#board [data-k="${sk ? "ty-" + sk[1] : SEL}"]`); if (!el || !SEL) { c.style.display = "none"; return; }
     const r = el.getBoundingClientRect(), sr = st.getBoundingClientRect(); c.style.display = "block";
     const w = c.offsetWidth, left = Math.max(0, Math.min(r.left - sr.left, sr.width - w)), below = r.bottom - sr.top + 10;
     c.style.left = left + "px"; c.style.top = below + "px"; }, 150);
 }
 function renderDecisions() {
   const ds = RD.r.decisions, n = ds.length; if (STEP != null) STEP = Math.min(STEP, n - 1);
-  let html = `<div class="row"><button class="act" data-step="-1">‹</button><span class="chip">${STEP == null ? "–" : STEP + 1} / ${n}</span><button class="act" data-step="1">›</button></div>`;
+  let html = `<div class="row"><button class="act" data-step="-1">‹</button><span class="chip">${STEP == null ? "–" : STEP + 1} / ${n}</span><button class="act" data-step="1">›</button>${V >= 15 ? `<button class="act" data-play="1">${PLAY ? "Stop" : "Replay"}</button>${STEP != null ? `<button class="act" data-step="0">Show all</button>` : ""}` : ""}</div>`;
   if (STEP != null) {
     const d = ds[STEP];
     html += `<div class="row"><span class="chip">${esc(d.by)}</span><span class="why">${esc(d.state)}</span></div>`;
@@ -500,17 +565,37 @@ function renderDecisions() {
   if (kept.length) html += `<h3>corrections</h3>` + kept.map((c) => `<div class="row"><span class="chip">${esc(c.operation)}${c.path ? "." + esc(c.path) : ""}</span><span>${esc(c.value)}</span><span class="prov">${esc(c.status)}</span></div>`).join("");
   $("dec").innerHTML = html;
 }
-$("dec").addEventListener("click", (e) => { const b = e.target.closest("[data-step]"); if (!b) return; const n = RD.r.decisions.length, dlt = Number(b.getAttribute("data-step")); STEP = STEP == null ? (dlt > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, STEP + dlt)); const d = RD.r.decisions[STEP], key = decKey(d); renderDecisions(); if (key && LASTL?.box[key]) { SEL = key; NAV = []; LIT = litFrom(key, LASTL.rel); paint(); renderPanel(); renderDecisions(); } else { const u = d.state ? RD.units.find((x) => RD.r.phrases[x.phrase] && RD.r.text.slice(RD.r.phrases[x.phrase].start, RD.r.phrases[x.phrase].end).trim().startsWith(d.state.slice(0, 6))) : null; if (u) { LIT = new Set(RD.units.filter((x) => x.phrase === u.phrase).map((x) => x.id)); paint(); } } });
+$("dec").addEventListener("click", (e) => { const b = e.target.closest("[data-step]"); if (!b) return; const n = RD.r.decisions.length, dlt = Number(b.getAttribute("data-step")); if (dlt === 0) { STEP = null; stopPlay(); paint(); return renderDecisions(); } STEP = STEP == null ? (dlt > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, STEP + dlt)); const d = RD.r.decisions[STEP], key = decKey(d); renderDecisions(); paint(); if (key && LASTL?.box[key]) { SEL = key; NAV = []; LIT = litFrom(key, LASTL.rel); paint(); renderPanel(); renderDecisions(); } else { const u = d.state ? RD.units.find((x) => RD.r.phrases[x.phrase] && RD.r.text.slice(RD.r.phrases[x.phrase].start, RD.r.phrases[x.phrase].end).trim().startsWith(d.state.slice(0, 6))) : null; if (u) { LIT = new Set(RD.units.filter((x) => x.phrase === u.phrase).map((x) => x.id)); paint(); } } });
+function stopPlay() { if (PLAY) { clearInterval(PLAY); PLAY = null; } }
+$("dec").addEventListener("click", (e) => { if (!e.target.closest("[data-play]")) return; if (PLAY) { stopPlay(); return renderDecisions(); } STEP = -1; const n = RD.r.decisions.length;   // the recorded decisions, one by one, in the order the engine took them
+  PLAY = setInterval(() => { STEP++; if (STEP >= n) { stopPlay(); STEP = null; paint(); return renderDecisions(); } const d = RD.r.decisions[STEP], key = decKey(d); renderDecisions(); if (key && LASTL?.box[key]) { LIT = litFrom(key, LASTL.rel); } paint(); }, 1100); STEP = 0; renderDecisions(); paint(); });
 $("undo").onclick = undo; $("redo").onclick = redo; $("reset").onclick = revert;
 document.addEventListener("keydown", (k) => { if ((k.metaKey || k.ctrlKey) && k.key.toLowerCase() === "z") { k.preventDefault(); k.shiftKey ? redo() : undo(); } });
 
+// A long message with markdown structure, built only from the engine's own readings of one world (texts, phrases, constants and operations are theirs, shifted and renumbered).
+function stressReading() {
+  const src = READINGS.filter((r) => r.world === "567ca7e6e8bd3b95" && r.phrases.some((p) => p.terms.length) && r.decisions.length), out = { ...structuredClone(src[0]), id: "stress", case: "STRESS long markdown, built from engine readings", phrases: [], constants: [], decisions: [], corrections: [] };
+  let text = "# Notes for the next session\n\n", next = 0;
+  const shift = (v, by, idm) => { if (Array.isArray(v)) return v.map((x) => shift(x, by, idm)); if (v && typeof v === "object") { const o = {}; for (const [k, x] of Object.entries(v)) o[k] = k === "at" && Array.isArray(x) ? [x[0] + by, x[1] + by] : k === "ref" ? idm[x] ?? x : k === "id" && v.function ? idm[x] : shift(x, by, idm); return o; } return v; };
+  src.forEach((r, k) => {
+    const head = k % 4 === 0 ? `${k ? "\n" : ""}## Part ${k / 4 + 1}\n\n` : "", lead = head + (k % 4 ? "- " : "- "); text += lead; const base = text.length, idm = {};
+    for (const p of r.phrases) for (const t of p.terms) { idm[t.id] = String(next++); const walk = (v) => { if (v && v.function && v.id != null) { idm[v.id] ??= String(next++); Object.values(v.arguments).forEach(walk); } else if (v && typeof v === "object") Object.values(v).forEach(walk); }; walk(t.arguments); }
+    r.phrases.forEach((p, pi) => { const q = shift(structuredClone(p), base, idm); q.start = pi === 0 ? base - lead.length : p.start + base; q.end = p.end + base; q.un = undefined; q.terms = q.terms.map((t) => t); q.unresolved = (q.unresolved ?? []).map((u) => ({ ...u, id: idm[u.id] ?? String(next++) })); out.phrases.push(q); });
+    out.constants.push(...shift(structuredClone(r.constants), base, idm)); text += r.text + "\n";
+  });
+  out.text = text; out.phrases.forEach((p, i) => { p.end = i + 1 < out.phrases.length ? out.phrases[i + 1].start : text.length; });
+  for (const p of out.phrases) p.un = p.unresolved;
+  return out;
+}
 // ---------- boot: the engine's own files
 (async () => {
   const get = async (u) => M.parseEngine(await (await fetch(u)).text());
   [READINGS, WORLDS] = await Promise.all([get("engine/readings.json"), get("engine/worlds.json")]);
+  for (const r of READINGS) for (const p of r.phrases) p.un = Array.isArray(p.unresolved) ? p.unresolved : p.unresolved ? [p.unresolved] : [];   // the engine writes a list of unresolved requests per phrase
+  if (/[?&]stress/.test(location.search) || /[?&]audit/.test(location.search)) READINGS.push(stressReading());
   $("pick").innerHTML = READINGS.map((r, i) => `<option value="${i}">${esc(r.case)} · ${esc(r.text.length > 80 ? r.text.slice(0, 79) + "…" : r.text)}</option>`).join("");
   $("pick").onchange = () => open(Number($("pick").value));
-  window.BOARD = { READINGS, WORLDS, open, get RD() { return RD; }, get L() { return LASTL; }, select, paint, get HELD() { return HELD; } };
+  window.BOARD = { V, READINGS, WORLDS, open, get RD() { return RD; }, get L() { return LASTL; }, select, paint, get HELD() { return HELD; } };
   open(0);
   window.dispatchEvent(new Event("board-ready"));
 })();

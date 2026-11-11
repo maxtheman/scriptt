@@ -182,6 +182,11 @@
         done(s, `${t.name}(${slot[0]})`, x.target, `new operation ${nid}: ${t.name} with ${thingName(x.th)} in ${slot[0]}`);
       }
     }
+    if (t.k === "ctor") {   // a constructor is applied to a type: Many[Surface]. Kinds decide what fits: * -> * takes a type of kind *.
+      const def = wx.W.constructors[t.name], want = def.kind.split("->")[0].trim();
+      for (const [n, ty] of Object.entries(wx.W.types)) { if (ty.kind === want) ok.push({ target: `ty-${n}`, state: { ...st, probe: { ctor: t.name, type: n } }, label: `${t.name}[${n}]`, why: `${t.name} : ${def.kind} takes a type of kind ${want}; ${n} : ${ty.kind}` }); else no.push({ target: `ty-${n}`, reason: `${t.name} takes kind ${want}, ${n} is ${ty.kind}` }); }
+      for (const c of Object.keys(wx.W.constructors)) no.push({ target: `ct-${c}`, reason: `${t.name}[${c}] needs a type of kind ${want}, ${c} is ${wx.W.constructors[c].kind}: apply it to a type first` });
+    }
     return { ok, no };
   }
 

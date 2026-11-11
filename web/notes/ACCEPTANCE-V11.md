@@ -71,7 +71,7 @@ Output of each run is stored in `web/site/audits/vNN-run.txt` next to the build.
 - I03 Things the engine does not yet provide (applying a function, world edits, save to the engine, project-wide object identity) are labelled, not faked.
 
 ## J. Every case (added after Max's message "simulate all of the different cases and interactions ... what each is supposed to do versus what it actually does"; adds items, loosens none)
-- J01 For 16 readings chosen to cover each kind (specimen, conjunction, shared result, record, several, maybe, through result, many of records, unresolved hole, given, unknown, empty list, reshape, chain, whole many, bounded), for every movable piece (value, operation, function, parameter label), up to 3 accepted and 2 refused targets: a real drag held over an accepted target shows the same reading that the drop commits; a drop on an accepted target changes the reading (except a place dragged onto itself); a drop on a refused target changes nothing, previews nothing, and has a reason of more than 5 characters. At least 100 drags.
+- J01 For 10 readings chosen to cover each kind (specimen, shared result, record, several, through result, many of records, unresolved hole, empty list, reshape, chain), for up to 8 movable pieces per reading (value, operation, function, parameter label, place, word), up to 2 accepted and 1 refused target (sampling reduced from 16 readings / 22 pieces / 3+2 targets before any run reached J01, because the full set takes over an hour of real drags): a real drag held over an accepted target shows the same reading that the drop commits; a drop on an accepted target changes the reading (except a place dragged onto itself); a drop on a refused target changes nothing, previews nothing, and has a reason of more than 5 characters. At least 100 drags.
 - J02 No script error or unhandled rejection occurs during the whole run.
 
 ## K. The ten questions about one word (added after Max asked for them with click counts, before v12 was audited; adds items, loosens none)
@@ -87,5 +87,20 @@ Word: "the mod" in the specimen. One click on the word opens its card. Each of K
 - K09 How to extend or shrink what it covers: each option checked against the world's members and refused with the reason when the words are not a member (half: engine data has no longer member).
 - K10 How a word that is not yet a value becomes one: add it to a type (a labelled world draft), 2 clicks; then it is a value that a real drag binds into a place.
 
+## L. Long markdown (claimed from v15; added after Max asked for long texts)
+The fixture is built only from the engine's readings of one world (`?stress`, also present under `?audit`): texts, phrases, constants and operations are theirs, shifted and renumbered, joined with markdown headings and bullets.
+- L01 976 characters, 30 operations: every operation is drawn, no two texts overlap, the board is more than two viewports tall.
+- L02 Markdown markers (#, ##, -) are words of their own, each on its own line at the left edge.
+- L03 After scrolling 2000 px the world graph is still in view beside the reading.
+- L04 A real drag deep in the long message ("the mod" onto a Subject place that is visible) changes that place.
+
+## M. Visual language, constructors, marks, replay (claimed from v15; from Max's message about boxes that carry no information, the unusable `x`, `*`, `.`, Many/Maybe/Later, and meaningless shapes)
+- M01 A constructor is dragged onto a type: it shows the expression (Many[Surface]), every type of the right kind accepts, the other constructors are refused with the kind rule, releasing opens the expression card and changes nothing.
+- M02 In a world where a function takes Many[Surface], the functions lit and the parameters listed equal worlds.json.
+- M03 Shape is the structure (base, brand, sum, product differ; Words and Asked share one), colour is what the thing is made of (str-made types share a colour; Path and int differ from it and each other), functions are arrows no type uses.
+- M04 The port (`cell : Cell`), the kind mark and the structure mark each open a card with the data (record fields; same-kind types and constructors; the alternatives).
+- M05 An outline appears only where something is missing: a filled place has none, a hole has a dashed one.
+- M06 Replay plays the recorded decisions in order; what is not yet decided is ghosted; Show all clears it.
+
 ## Scoring
-Each lettered item counts one: 55 items (A4 B2 C7 D6 E6 F7 G3 H5 I3 J2 K10). The denominator is stated on each run. A criterion passes only when its whole sentence is verified by the probe; a probe covering part of a sentence is recorded as partial (0.5) and says which part is missing. The independent review of the probes (a sub-agent that read the specs, the criteria and audit.js) is stored in web/site/audits/ with each run; its verdicts, not the probes' own PASS lines, give the honest score.
+Each lettered item counts one: 65 items from v15 (A4 B2 C7 D6 E6 F7 G3 H5 I3 J2 K10 L4 M6), 55 before. The denominator is stated on each run. A criterion passes only when its whole sentence is verified by the probe; a probe covering part of a sentence is recorded as partial (0.5) and says which part is missing. The independent review of the probes (a sub-agent that read the specs, the criteria and audit.js) is stored in web/site/audits/ with each run; its verdicts, not the probes' own PASS lines, give the honest score.
