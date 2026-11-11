@@ -413,17 +413,24 @@ function spec1(th, d) {
   const fb = far(th), farState = fb ? stateFor(fb, { pull: true }) : base();
   // the targets are built again once the engine has answered for every place (d.reactTo): refused places stop being targets
   const build = () => {
-    draggable({ state: start, d, draggedId: null }); // DRAWN must be the state the drag starts from: a link opened by the same press reflows the text
+    const drawnNow = idsOf(draggable({ state: start, d, draggedId: null })); // DRAWN must be the state the drag starts from: a link opened by the same press, or a staged change, reflows the text
     delete th.rail; th.rail = railItems();
     RAIL_IDS = new Set(th.rail.filter((r) => !r.info).map((r) => r.id));
     const segs = (o) => (o.target.startsWith("pc-") ? [...DRAWN.entries()].filter(([, b]) => b.seg && "pc-" + b.start === o.target).map(([id]) => ({ ...o, target: id })) : [o]);
     const railTop = th.rail.length ? Math.min(...th.rail.map((r) => r.y)) - 8 : Infinity; // what lies under the rail is hidden, so not a target
     const clear = (id) => { const b = DRAWN.get(id); return b && b.y + (b.h || 0) < railTop; };
     const opts = [...th.rail.filter((r) => !r.info).map((r) => ({ ...r.o, target: r.id })), ...places.filter((o) => clear(o.target) && vOf(o.body) !== "no"), ...out.flatMap(segs).filter((o) => (o.target.startsWith("pt-") ? clear(o.target) : visible(o.target)))];
-    const targets = opts.map((o) => d.dropTarget(o.target, o.body ? stateFor(o.body, { target: o.target }) : base(), { boundsState: start }));
+    // a target missing from the start drawing would stop the renderer: only targets drawn now
+    const targets = opts.filter((o) => drawnNow.has(o.target)).map((o) => d.dropTarget(o.target, o.body ? stateFor(o.body, { target: o.target }) : base(), { boundsState: start }));
     return targets.length ? d.closest(targets).whenFar(farState) : d.fixed(farState);
   };
   return d.reactTo(() => known(th), build).with(drafted()).withFloating();
+}
+function idsOf(el, out = new Set()) { // every id in a drawing (a React element tree)
+  if (!el || typeof el !== "object") return out;
+  if (Array.isArray(el)) { for (const c of el) idsOf(c, out); return out; }
+  if (el.props) { if (el.props.id != null) out.add(el.props.id); idsOf(el.props.children, out); }
+  return out;
 }
 // widen or narrow a link: the handle snaps to each word boundary near it; each boundary is a retag
 function handleStates(p, side) {
@@ -480,7 +487,7 @@ function keyAll(el) {
 const txt = (x, y, s, f, fill, extra = {}) => h("text", { transform: translate(x, y), style: { font: f }, fill, ...extra }, s);
 let FOC = [];
 function draggable({ state: st, d, draggedId }) {
-  const display = !st.change && !st.prop && !st.refused && !st.pull;
+  const display = (!st.change || st.staged) && !st.prop && !st.refused && !st.pull; // the base, or the staged change: what is on screen
   const rec = st.r, L = layout(rec), scroll = st.scroll ?? S.scroll, n = visLines();
   const first = Math.max(0, Math.floor(scroll)), last = Math.min(L.lines.length - 1, first + n);
   const Y = (li) => TOP + (li - scroll) * LH;
