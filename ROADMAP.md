@@ -9,6 +9,7 @@
   - Direct weight manipulation.
 - **UI and UX improvements:**
   - A prompt builder.
+  - A data and prompt viewer: every question d1 was asked, its options and scores, and the saved readings.
   - Sum and product types.
   - Nested functions with folding and unfolding.
 - **Basic information retrieval:**
