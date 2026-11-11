@@ -45,6 +45,7 @@ A step is a dict. A step has only the keys that its action produces:
                      "draft": text,                               # the proposal, as the engine returns it
                      "active_world": text}                        # the source of the active world after the step
     "record":      dict                # a save: the JSON it wrote, parsed and not projected (RECORD)
+    "rendered":    text                # a reload or restyle: the reading as the renderer displays it
     "model_calls": int                 # requests sent to d1 during this step
     "writes":      int                 # successful writes to the store during this step
     "error":       None | exception class name
@@ -55,7 +56,8 @@ supplies it, and a predicate that needs it fails.
 An obligation is one operation instance that the source asks for, including an
 operation nested inside another term. Obligations are listed in the order of
 their phrase in the message; within one phrase, an operation whose result
-another operation of the phrase consumes comes first. A binding value is one of:
+another operation of the phrase consumes comes first, and otherwise the order
+in which the phrase asks for them. A binding value is one of:
 
 * ``Lit(type, value)``: a literal. ``value`` is the member's words, an int, or a path as text.
 * ``Ref(i)``: the result of obligation ``i``: the engine holds a reference to
@@ -414,7 +416,17 @@ def observe(inputs: Inputs) -> dict:
       for each name in ``files``. Report the loader's hard faults as
       ``(declaration name, rule)`` with a rule from ``RULES``, and the loaded
       function names, sorted.
-    * Stand-in d1: answer by meaning, from ``inputs.script``. Before it answers,
+    * Stand-in d1: answer by meaning, from ``inputs.script``, and choose only by
+      what d1 receives. It may learn from a question which operation and path
+      it is about; it chooses an option only by its description, with
+      ``option_for`` (an operation by its docstring in the world source, a
+      literal by its words, a reference by the rendering of the obligation
+      that ``script["refers"]`` names, a new application by its unbound
+      rendering) and a yes/no candidate with ``option_for(..., whole=False)``
+      on the question. ABSTAIN, NO_REQUEST, REJECT and ABSENT pick the options
+      the engine declares for them. A scripted value that no description says
+      gets an out-of-set answer, so a blank or swapped description fails the
+      case. Before it answers,
       it appends every question it received, exactly as received, to the
       step's ``requests`` as ``Request(state, instructions, options)``, options
       being the option descriptions in order (``()`` for a yes/no question).
@@ -430,10 +442,10 @@ def observe(inputs: Inputs) -> dict:
       answer as above, or for a yes/no-per-candidate Many question, yes exactly
       for the members of the tuple. An absence question (an absence option, or
       a yes/no "deliberately absent?") gets the absence answer exactly when the
-      script says ABSENT. A phrase is looked up by its exact text, stripped;
-      else by the longest scripted phrase inside it; else by the shortest
-      scripted phrase that holds it. Unscripted, or when no offered option
-      equals the scripted value: an operation question gets NO_REQUEST, a
+      script says ABSENT; REJECT for a yes/no Many is no to every candidate.
+      A phrase is looked up by its exact text, stripped; else by the longest
+      scripted phrase inside it; else by the shortest scripted phrase that
+      holds it. Unscripted: an operation question gets NO_REQUEST, a
       binding question REJECT, a yes/no question about a reply
       ``script.get("judge", 0.1)``. The chosen option gets share 0.9 and the
       others share the rest equally. One request to d1 is one model call,
@@ -451,11 +463,18 @@ def observe(inputs: Inputs) -> dict:
       World)`` (read again with the new world), ``("restyle",)`` (reload with
       the display renderer scoped-monkeypatched to another format),
       ``("check", reply, artifacts, criteria)``, ``("propose_world", World,
-      script)`` (the messages read so far are the accepted corpus).
+      script)`` (the messages read so far are the accepted corpus, read again
+      under the active world), ``("load", kind)`` (save the reading, change the
+      written JSON with ``mutated(record, kind)``, and load it). The restyle
+      patches the function that the reading's display actually calls, and
+      both reload and restyle report ``rendered``.
     * Each step reports what the engine produced, projected from its own data
       structures, never parsed from ``say()`` text, never recomputed or
       supplied by the adapter (``status``, ``complete``, ``ready`` and ``Ref``
-      come from the engine's own judgments and object identity). A save
+      come from the engine's own judgments and object identity; a decision's
+      ``chosen`` is the candidate the engine stored, never rebuilt from the
+      bindings; automatic decisions, such as a record built from its fields or
+      a hole with no candidate, are listed with ``by="rule"`` and their rule). A save
       reports the JSON it wrote as ``record``. ``model_calls`` and ``writes``
       count what happened during that step only. An exception is reported as
       ``error`` and the run goes on.
@@ -532,7 +551,7 @@ RECORD = {"R1": ("A save writes one JSON object per reading: {\"phrases\": [{\"s
 # Each change to this oracle after its first review. Version 1 is commit 5b524a0.
 # Every observed result must be judged again against the version that holds it;
 # no result had been produced against version 1.
-ORACLE_VERSION = 5
+ORACLE_VERSION = 6
 CORRECTIONS = (
     ("E1", 2, "status could be recomputed by the adapter from the projected bindings, making C10 circular, and was not transitive through a pending operation's non-Later result",
      "observe() now takes status from the engine's own dependency judgment and defines it transitively; run C10 through_result", ("C10", "C15", "C18", "C19")),
@@ -581,6 +600,19 @@ CORRECTIONS = (
     ("E36", 4, "the saved record that the interface loads had no contract", "requirement R1 and its structural check on the JSON that save wrote", ("C10", "C15", "C16", "C17")),
     ("E37", 4, "fixtures could replace text that the base world does not contain, silently", "world_source builds every world from the base frozen at the snapshot commit; the self-test requires each replaced text to exist", ()),
     ("E38", 5, "runs later_removed and relabelled made the obligations available with dataclasses.replace but kept ready=False, computed while they were pending; by the oracle's own rule an available, complete, valid obligation is ready", "ready follows from complete and available in those runs", ("C20",)),
+    ("E39", 6, "a Many with one candidate was never tested, so binding a singleton collection without asking passed", "run singleton_many: d1 is asked", ("C04",)),
+    ("E40", 6, "a Many whose every candidate d1 rejects was untested; it could become an explicit empty collection", "run all_rejected: a rejected hole; a d1 rejection never yields a value", ("C06",)),
+    ("E41", 6, "one phrase with an unknown and a known operation was untested", "run unknown_and_known: UNRESOLVED and redesign both kept; within a phrase, the asked order", ("C16",)),
+    ("E42", 6, "a phrase asking for more operations than Limits.operations was untested", "run too_many_operations: the extra request is UNRESOLVED with reason bounded, and recorded", ("C14",)),
+    ("E43", 6, "the gate was never shown an added obligation, a second proposal after an activation, or a changed hole reason", "runs added, second_proposal and reason_changed: each is a regression; reasons are meaning", ("C02",)),
+    ("E44", 6, "invalidation on rerun was tested only for a removed member, and a reason was accepted if non-empty", "runs function_changed and reference_target_changed; a reason must name the operation or path; an invalidated reference is not re-pointed", ("C19",)),
+    ("E45", 6, "an edit after a correction at the same place was untested", "run edit_after_correction: the later edit replaces the correction, and a rerun keeps it", ("C19",)),
+    ("E46", 6, "a record inside a collection was never read, judged or gated", "run many_of_records: no step fails", ("C10",)),
+    ("E47", 6, "loading never met a broken saved line", "run loads: a wrong-type binding, a dangling reference and a missing argument load with their exact diagnostics, and the affected obligation is not complete or ready", ("C11",)),
+    ("E48", 6, "a kind fault reported as a type fault was not caught", "control C11h; edits set values, not types, so the edit level has no kind rule to report", ("C11",)),
+    ("E49", 6, "a decision's chosen candidate could be rebuilt by the adapter, and automatic decisions could be missing", "chosen must be one of the offered candidates; automatic decisions (a record from its fields, a hole with no candidate, a bounded request) are expected with by rule", ("C06", "C11", "C14")),
+    ("E50", 6, "a restyle that changed nothing the display uses passed C22", "reload and restyle report the rendered reading, and the restyle must change it", ("C22",)),
+    ("E51", 6, "the stand-in chose candidates from engine terms, so a blank or swapped option description passed", "the stand-in chooses only by descriptions with option_for, and answers out of set when none says the scripted value; scripts name what a reference renders as (refers)", tuple(f"C{n:02}" for n in range(1, 23))),
 )
 
 
@@ -605,9 +637,9 @@ def ob(span, operation, bindings=None, status=AVAILABLE, reason=None, complete=N
     return Obligation(span, operation, bindings, None if unresolved else status, reason, complete=None if unresolved else complete, ready=None if unresolved else ready)
 
 
-def script(ops, binds=None, judge=None):
-    """Returns the answers of the stand-in d1 for a run."""
-    found = {"ops": ops, "binds": binds or {}}
+def script(ops, binds=None, judge=None, refers=None):
+    """Returns the answers of the stand-in d1 for a run; ``refers`` says what each referenced obligation renders as."""
+    found = {"ops": ops, "binds": binds or {}, "refers": refers or {}}
     return found | ({"judge": judge} if judge is not None else {})
 
 
@@ -620,7 +652,54 @@ def told(obligations: list, judge=None) -> dict:
     for one in obligations:
         ops[one.span] = ops.get(one.span, ()) + (ABSTAIN if one.operation == UNRESOLVED else one.operation,)
         binds |= {(one.span, one.operation, path): value for path, value in one.bindings.items() if not isinstance(value, Hole) and value not in (EMPTY, EMPTY_LIST)}
-    return script({span: names[0] if len(names) == 1 else names for span, names in ops.items()}, binds, judge)
+    return script({span: names[0] if len(names) == 1 else names for span, names in ops.items()}, binds, judge, refers_of(obligations))
+
+
+def refers_of(obligations: list) -> dict:
+    """Returns, for each obligation, its function and the words of its literals: what a reference to it renders as."""
+    return {index: (one.operation, tuple(str(value.value) for value in values_of(one.bindings) if isinstance(value, Lit))) for index, one in enumerate(obligations)}
+
+
+@functools.cache
+def docstrings(world: World) -> dict:
+    """Returns the docstring of each function of a world, white space collapsed: how d1 sees an operation."""
+    return {node.name: " ".join(ast.get_docstring(node).split()) for node in ast.parse(world_source(world)).body if isinstance(node, ast.FunctionDef) and ast.get_docstring(node)}
+
+
+def option_for(want, descriptions: tuple, refers: dict | None = None, world: World | None = None, whole: bool = True) -> int | None:
+    """Returns the index of the one description that says ``want``, or None: how the stand-in chooses.
+
+    An operation name is said by its docstring; a literal by its words, quoted or not; a reference by
+    the referenced obligation's function and its literals' quoted words; a new application by its
+    function with nothing bound. With ``whole`` False, a description need only hold the saying (a yes/no question).
+    """
+    def says(text: str) -> bool:
+        text = " ".join(str(text).split())
+        if isinstance(want, str) and world is not None and want in docstrings(world):
+            return text == docstrings(world)[want] if whole else docstrings(world)[want] in text
+        if isinstance(want, Lit):
+            return text.strip("'\"") == str(want.value) if whole else f"'{want.value}'" in text
+        if isinstance(want, Ref):
+            function, words = (refers or {}).get(want.obligation, ("", ()))
+            return bool(function) and (text.startswith(function + "(") if whole else function + "(" in text) and all(f"'{one}'" in text for one in words)
+        if isinstance(want, New):
+            return text.startswith(want.operation + "(") and "'" not in text if whole else want.operation + "(" in text
+        return False
+    found = [index for index, text in enumerate(descriptions) if says(text)]
+    return found[0] if len(found) == 1 else None
+
+
+def mutated(record: dict, kind: str) -> dict:
+    """Returns a saved record of "Redesign the mod. Then show it." broken one way: wrong_type, dangling or missing."""
+    broken = copy.deepcopy(record)
+    applications = {term["function"]: term for phrase in broken["phrases"] for term in phrase["terms"]}
+    if kind == "wrong_type":
+        applications["redesign"]["arguments"]["surface"] = {"constant": 3, "type": "int"}
+    elif kind == "dangling":
+        applications["show"]["arguments"]["subject"] = {"ref": "no such application"}
+    else:
+        del applications["redesign"]["arguments"]["surface"]
+    return broken
 
 
 READ = ("read",)
@@ -687,6 +766,7 @@ EDITED = [ob("Redesign the mod.", "redesign", {"surface": PAGE}, PENDING), REDES
 PAINT_WORLD = World(extra='\ndef paint(surface: Surface) -> Observed:\n    "paint it"\n')
 BROKEN_WORLD = World(extra="\ntype Broken = Many | int\n")
 TOKEN_WORLD = World(extra='\nToken = typing.NewType("Token", str)\n\ndef make_token(surface: Surface) -> Token:\n    "make a token"\n\ndef use_token(token: Token) -> Observed:\n    "use a token"\n')
+BOXES = '\ndef tag(boxes: Many[Box]) -> Written:\n    "tag several boxes"\n'
 BOX_WORLD = World(extra='\n@dataclasses.dataclass\nclass Box:\n    "a box"\n    surface: Surface\n\ndef pack(box: Box) -> Written:\n    "pack a box"\n\ndef describe(surface: Maybe[Surface]) -> Written:\n    "describe a surface"\n')
 MAYBE_SURFACE = World(replace=(("Maybe[Words]", "Maybe[Surface]"),))
 TWO = ("Redesign the mod.", "Show the page.")
@@ -767,8 +847,22 @@ CASES = (
                    ("weakened", World(replace=(('    PAGE: Asked = "the page"\n', ""),)), TWO_SCRIPT, FAIL, [(1, 0)]),
                    ("invalid_world", BROKEN_WORLD, TWO_SCRIPT, FAIL, []),
                    ("empty_corpus", PAINT_WORLD, script({}), UNVERIFIED, []),
-                   ("harmless", PAINT_WORLD, TWO_SCRIPT, PASS, []))),
-         interpretation="A regression is a (message, obligation) of the accepted corpus whose operation or bindings change or disappear; run weakened removes the page member, so show's binding weakens to a hole. A world with an invalid kind cannot activate (the brief's state machine). An unverified world change does not activate. A rejected change returns its draft equal to the proposal built from the inputs, with its regressions or faults, and the active world keeps every declaration: types and signatures, not only names."),
+                   ("harmless", PAINT_WORLD, TWO_SCRIPT, PASS, [])))
+         + (run("added", False, World(), ("Redesign the mod.",), told(REDESIGN_SHOW[:1]),
+                (("read", READ, {}),
+                 ("proposed", ("propose_world", PAINT_WORLD, script({"Redesign the mod.": ("redesign", "paint")}, {("Redesign the mod.", "redesign", "surface"): MOD, ("Redesign the mod.", "paint", "surface"): MOD})),
+                  {"world_change": {"activated": False, "verdict": FAIL, "regressions": [(0, 1)], "faults": [], "active_world": World()}}))),
+            run("second_proposal", False, World(), TWO, TWO_SCRIPT,
+                (("read", READ, {}),
+                 ("proposed", ("propose_world", PAINT_WORLD, TWO_SCRIPT), {"world_change": {"activated": True, "verdict": PASS, "regressions": [], "faults": [], "active_world": PAINT_WORLD}}),
+                 ("proposed_again", ("propose_world", World(replace=(("def redesign(", "def destroy("),), extra=PAINT_WORLD.extra),
+                                     script({"Redesign the mod.": NO_REQUEST, "Show the page.": "show"}, {("Show the page.", "show", "subject"): PAGE})),
+                  {"world_change": {"activated": False, "verdict": FAIL, "regressions": [(0, 0)], "faults": [], "active_world": PAINT_WORLD}}))),
+            run("reason_changed", False, World(), ("Redesign the mod.",), script({"Redesign the mod.": "redesign"}, {("Redesign the mod.", "redesign", "surface"): REJECT}),
+                (("read", READ, {}),
+                 ("proposed", ("propose_world", PAINT_WORLD, script({"Redesign the mod.": "redesign"}, {("Redesign the mod.", "redesign", "surface"): Malformed("out_of_set")})),
+                  {"world_change": {"activated": False, "verdict": FAIL, "regressions": [(0, 0)], "faults": [], "active_world": World()}})))),
+         interpretation="A regression is a (message, obligation) of the accepted corpus whose operation or bindings change or disappear; run weakened removes the page member, so show's binding weakens to a hole. A world with an invalid kind cannot activate (the brief's state machine). An unverified world change does not activate. A rejected change returns its draft equal to the proposal built from the inputs, with its regressions or faults, and the active world keeps every declaration: types and signatures, not only names. An obligation added to an accepted message is a regression at its index in the new reading (run added). After an activation, the corpus is read again under the active world and the next proposal is judged against it (run second_proposal). A hole whose reason changes from rejected to invalid answer has changed meaning (run reason_changed)."),
     Case("C03", "“Compare the mod, not the page”",
          "With controlled semantic selection, include mod and exclude page. Assert the binding, not merely rendered text. d1 must be given the relevant choice.",
          "solve(Many) takes every local term without asking d1 (probe many_negated_literal_is_included).",
@@ -793,8 +887,10 @@ CASES = (
                                "decisions": [Decision(0, "surface", "model", (MOD,), REJECT)]}),)),
           run("accepted", True, World(), ("Redesign the mod.",), script({"Redesign the mod.": "redesign"}, {("Redesign the mod.", "redesign", "surface"): MOD}),
               (("read", READ, {"obligations": [ob("Redesign the mod.", "redesign", {"surface": MOD}, PENDING)],
-                               "decisions": [Decision(0, "surface", "model", (MOD,), MOD)]}),))),
-         interpretation="The obligation keeps its operation; the rejected argument becomes Hole(Surface, rejected). d1 is offered the singleton with a reject option. A declared automatic default that a correction can undo would not satisfy this case."),
+                               "decisions": [Decision(0, "surface", "model", (MOD,), MOD)]}),)),
+          run("singleton_many", False, World(), ("Compare the mod.",), told([ob("Compare the mod.", "compare", {"surfaces": (MOD,)})]),
+              (("read", READ, {"obligations": [ob("Compare the mod.", "compare", {"surfaces": (MOD,)})], "decisions": [Decision(0, "surfaces", "model", (MOD,), (MOD,))]}),))),
+         interpretation="The obligation keeps its operation; the rejected argument becomes Hole(Surface, rejected). d1 is offered the singleton with a reject option. A declared automatic default that a correction can undo would not satisfy this case. A Many with one candidate is no exception: d1 is asked (run singleton_many)."),
     Case("C05", "Optional value: absent versus rejected/unknown",
          "Explicit absence produces Empty; unresolved selection remains unresolved; both survive save/load.",
          "A rejected or unresolved optional becomes Empty (probe optional_abstention_becomes_empty_rather_than_unresolved).",
@@ -816,7 +912,8 @@ CASES = (
          "Empty collection and typed hole remain distinguishable; selection can exclude local terms and include relevant earlier ones.",
          "An unknown Many becomes an empty collection, or local terms are always taken (scriptt16.solve, Many branch).",
          (run("unknown", False, World(), ("Compare them.",), script({"Compare them.": "compare"}),
-              (("read", READ, {"obligations": [ob("Compare them.", "compare", {"surfaces": Hole(("Many[Surface]", "Surface"), (NO_CANDIDATE, REJECTED))})]}),
+              (("read", READ, {"obligations": [ob("Compare them.", "compare", {"surfaces": Hole(("Many[Surface]", "Surface"), (NO_CANDIDATE, REJECTED))})],
+                               "decisions": [Decision(0, "surfaces", ("rule", "model"), ())]}),
                ("saved", SAVE, {}),
                ("reloaded", RELOAD, {"obligations": [ob("Compare them.", "compare", {"surfaces": Hole(("Many[Surface]", "Surface"), (NO_CANDIDATE, REJECTED))})]}),
                ("checked", ("check", "I compared them.", (worked("compare", {"surfaces": (MOD, PAGE)}),), EVIDENCE_CRITERIA),
@@ -830,8 +927,12 @@ CASES = (
               script({"I like the page.": NO_REQUEST, "Compare it, not the mod.": "compare"}, {("Compare it, not the mod.", "compare", "surfaces"): (PAGE,)}),
               (("read", READ, {"obligations": [ob("Compare it, not the mod.", "compare", {"surfaces": (PAGE,)})],
                                "passages": [Passage("I like the page.", "Asked", "user", "context")],
-                               "decisions": [Decision(0, "surfaces", "model", (MOD, PAGE), (PAGE,))]}),))),
-         interpretation="The explicit empty collection comes from an explicit edit; zero members is a valid Many. The hole of an unknown Many may be typed Many[Surface] or Surface, with reason no candidate or rejected (if the engine offers d1 an empty choice). Passage relations are compared only for being present and not none/nothing."),
+                               "decisions": [Decision(0, "surfaces", "model", (MOD, PAGE), (PAGE,))]}),)),
+          run("all_rejected", False, World(), ("Compare the page and the mod.",),
+              script({"Compare the page and the mod.": "compare"}, {("Compare the page and the mod.", "compare", "surfaces"): REJECT}),
+              (("read", READ, {"obligations": [ob("Compare the page and the mod.", "compare", {"surfaces": Hole(("Many[Surface]", "Surface"), REJECTED)})],
+                               "decisions": [Decision(0, "surfaces", "model", (PAGE, MOD), frozenset({REJECT, ()}))]}),))),
+         interpretation="When d1 rejects every candidate of a Many, the result is a rejected hole, not an explicit empty collection (run all_rejected). The hole with no candidate is an automatic decision, recorded. The explicit empty collection comes from an explicit edit; zero members is a valid Many. The hole of an unknown Many may be typed Many[Surface] or Surface, with reason no candidate or rejected (if the engine offers d1 an empty choice). Passage relations are compared only for being present and not none/nothing."),
     Case("C07", "Reshape a Cell, then open that Cell",
          "Reuse the structured result, not a fresh record reconstructed from old fields. Retain pending dependency.",
          "Product synthesis rebuilds Cell from fields (probe product_result_is_reconstructed_from_original_fields).",
@@ -856,7 +957,7 @@ CASES = (
          (run("chain", False, TOKEN_WORLD,
               ("Make a token for the mod. Use that token.",),
               script({"Make a token for the mod.": "make_token", "Use that token.": "use_token"},
-                     {("Make a token for the mod.", "make_token", "surface"): MOD, ("Use that token.", "use_token", "token"): Ref(0)}),
+                     {("Make a token for the mod.", "make_token", "surface"): MOD, ("Use that token.", "use_token", "token"): Ref(0)}, refers={0: ("make_token", ("the mod",))}),
               (("read", READ, {"obligations": [ob("Make a token for the mod.", "make_token", {"surface": MOD}), ob("Use that token.", "use_token", {"token": Ref(0)})]}),)),
           run("contrast", True, TOKEN_WORLD,
               ("Use a token.",), script({"Use a token.": "use_token"}, {("Use a token.", "use_token", "token"): REJECT}),
@@ -872,13 +973,18 @@ CASES = (
                    ("several", [REDESIGN_SHOW[0], ob("Compare it with the page.", "compare", {"surfaces": (Ref(0), PAGE)}, PENDING)]),
                    ("maybe", [REDESIGN_SHOW[0], ob("Describe it.", "describe", {"surface": Ref(0)}, PENDING)]),
                    ("through_result", [REDESIGN_SHOW[0], ob("Pack it in a box.", "pack", {"box.surface": Ref(0)}, PENDING), ob("Explain that.", "explain", {"subject": Ref(1)}, PENDING)]),
-                   ("plain", [ob("Pack the mod in a box.", "pack", {"box.surface": MOD})]))),
-         interpretation="Run through_result: explain consumes the Written result of a pack that waits on the redesign, so it is pending although no Later appears in its own argument."),
+                   ("plain", [ob("Pack the mod in a box.", "pack", {"box.surface": MOD})])))
+         + (run("many_of_records", False, World(extra=BOX_WORLD.extra + BOXES), ("Tag the mod in a box.",), script({"Tag the mod in a box.": "tag"}),
+                (("read", READ, {}),
+                 ("checked", ("check", "I tagged it.", (), EVIDENCE_CRITERIA), {"verdict": (UNVERIFIED, FAIL)}),
+                 ("proposed", ("propose_world", World(extra=BOX_WORLD.extra + BOXES + PAINT_WORLD.extra), script({"Tag the mod in a box.": "tag"})),
+                  {"world_change": {"activated": True, "verdict": PASS, "regressions": [], "faults": [], "active_world": World(extra=BOX_WORLD.extra + BOXES + PAINT_WORLD.extra)}}))),),
+         interpretation="Run through_result: explain consumes the Written result of a pack that waits on the redesign, so it is pending although no Later appears in its own argument. Run many_of_records only requires that reading, checking and gating a record inside a collection work: no step reports an error."),
     Case("C11", "Invalid union kind, wrong child type, missing/extra argument or field, invalid reference",
          "Validation rejects each precisely. A deliberately typed hole remains a valid partial term.",
          "Kind checking accepts Many | int (probe unapplied_constructor_is_accepted_inside_union); Application and Record take any dict.",
          (run("edits", False, CELL_WORLD, ("Redesign the mod. Open cell 3 of notes.md.",), told(CELL_BASE),
-              (("read", READ, {"obligations": CELL_BASE}),
+              (("read", READ, {"obligations": CELL_BASE, "decisions": [Decision(1, "cell", "rule")]}),
                ("wrong_child", ("preview", Edit("set", 0, "surface", NOTES)), rejected_edit((0, "surface", "type"))),
                ("missing_argument", ("preview", Edit("remove", 0, "surface")), rejected_edit((0, "surface", "missing"))),
                ("extra_argument", ("preview", Edit("set", 0, "colour", PAGE)), rejected_edit((0, "colour", "extra"))),
@@ -890,9 +996,15 @@ CASES = (
                ("self_reference", ("preview", Edit("set", 0, "surface", Ref(0))), rejected_edit((0, "surface", "reference"))),
                ("typed_hole", ("preview", Edit("clear", 0, "surface")),
                 {"accepted": True, "diagnostics": [], "obligations": [ob("Redesign the mod.", "redesign", {"surface": Hole("Surface", CLEARED)}, PENDING), CELL_BASE[1]]}))),
+          run("loads", False, World(), ("Redesign the mod. Then show it.",), told(REDESIGN_SHOW),
+              (("read", READ, {"obligations": REDESIGN_SHOW}),
+               ("saved", SAVE, {}),
+               ("load_wrong_type", ("load", "wrong_type"), {"diagnostics": [(0, "surface", "type")], "model_calls": 0}),
+               ("load_dangling", ("load", "dangling"), {"diagnostics": [(1, "subject", "reference")], "model_calls": 0}),
+               ("load_missing", ("load", "missing"), {"diagnostics": [(0, "surface", "missing")], "model_calls": 0}))),
           run("invalid_kind", False, BROKEN_WORLD, (), script({}), ()),
           run("valid_world", True, World(), (), script({}), ())),
-         interpretation="Each preview starts from the reading of step read. A reference to its own obligation is an unsupported cycle. A rejected preview reports the unchanged base as its obligations and exactly the one diagnostic named: a validator that reports extra rules is not precise. A hole is valid only at its own type."),
+         interpretation="Each preview starts from the reading of step read. A reference to its own obligation is an unsupported cycle. A rejected preview reports the unchanged base as its obligations and exactly the one diagnostic named: a validator that reports extra rules is not precise. A hole is valid only at its own type. The record built from the cell's fields is an automatic decision, recorded. Loading validates too: a saved line with a wrong-type binding, a dangling reference or a missing argument loads with exactly its diagnostic, and the obligation it breaks is reported neither complete nor ready (run loads). A kind fault is reported as kind, never type; edits set values, not types, so only the world reports kinds."),
     Case("C12", "Two legitimate same-signature operations; one-use domain type",
          "Both are allowed. No extra dummy operation or wrapper type is introduced.",
          "agree.duplicates and agree.single_use make these hard faults (test_world_rules asserts them).",
@@ -925,8 +1037,15 @@ CASES = (
          + (run("bounded", False, World("next"), (BOUNDED_TEXT,), script({BOUNDED_TEXT: "show"}, {(BOUNDED_TEXT, "show", "subject"): REJECT}),
                 (("read", READ, {"obligations": [ob(BOUNDED_TEXT, "show", {"subject": Hole("Subject", (REJECTED, BOUNDED))})],
                                  "decisions": [Decision(0, "subject", "model", NINE[:8], REJECT, NINE[8:])]}),)),
+            run("too_many_operations", False, World(), ('Redesign the mod, show it, compare it with the page and explain it.',),
+                script({'Redesign the mod, show it, compare it with the page and explain it.': ("redesign", "show", "compare", "explain")},
+                       {('Redesign the mod, show it, compare it with the page and explain it.', "redesign", "surface"): MOD, ('Redesign the mod, show it, compare it with the page and explain it.', "show", "subject"): Ref(0), ('Redesign the mod, show it, compare it with the page and explain it.', "compare", "surfaces"): (Ref(0), PAGE)},
+                       refers={0: ("redesign", ("the mod",))}),
+                (("read", READ, {"obligations": [ob(Inside('Redesign the mod, show it, compare it with the page and explain it.'), "redesign", {"surface": MOD}, PENDING), ob(Inside('Redesign the mod, show it, compare it with the page and explain it.'), "show", {"subject": Ref(0)}, PENDING),
+                                                 ob(Inside('Redesign the mod, show it, compare it with the page and explain it.'), "compare", {"surfaces": (Ref(0), PAGE)}, PENDING), ob(Inside('Redesign the mod, show it, compare it with the page and explain it.'), UNRESOLVED, reason=BOUNDED)],
+                                 "decisions": [Decision(3, None, ("rule", "model"))]}),)),
             run("well_formed", True, World(), ("Redesign the mod.",), told(REDESIGN_SHOW[:1]), (("read", READ, {"obligations": REDESIGN_SHOW[:1]}),))),
-         interpretation="A world that declares `none` may either be refused with fault (none, name) or load with the abstention kept apart; either way the request stays one UNRESOLVED obligation (unless the whole world is refused and the read reports an error), and an application of none fails. The bound is Limits.offered = 8 candidates per hole; the excess must be recorded as cut, and offered plus cut must hold all nine named values. The bounded message asks to show one unknown item, so d1's rejection is its meaning; the hole may say rejected or bounded, since d1 never saw the cut candidates."),
+         interpretation="A world that declares `none` may either be refused with fault (none, name) or load with the abstention kept apart; either way the request stays one UNRESOLVED obligation (unless the whole world is refused and the read reports an error), and an application of none fails. The bound is Limits.offered = 8 candidates per hole; the excess must be recorded as cut, and offered plus cut must hold all nine named values. The bounded message asks to show one unknown item, so d1's rejection is its meaning; the hole may say rejected or bounded, since d1 never saw the cut candidates. A phrase that asks for more operations than Limits.operations = 3 keeps the extra request as an UNRESOLVED obligation with reason bounded, and records the decision (run too_many_operations)."),
     Case("C15", "“Redesign the mod. Then show it. Test the search too.”",
          "Three obligations; original mod and redesign result are separately selectable; result binding and dependency survive record/reload. Rebinding show to the original does not erase redesign or request it twice.",
          "The saved record duplicates the shared tree (probe in_memory_shared_result_becomes_duplicated_saved_tree); a rebind drops or repeats redesign.",
@@ -944,10 +1063,14 @@ CASES = (
          (run("conjunction", False, World(), ("Redesign the mod and show it.",),
               script({"Redesign the mod and show it.": ("redesign", "show"), "Redesign the mod": "redesign", "show it.": "show"},
                      {(span, operation, path): value for span in ("Redesign the mod and show it.", "Redesign the mod", "show it.")
-                      for operation, path, value in (("redesign", "surface", MOD), ("show", "subject", Ref(0)))}),
+                      for operation, path, value in (("redesign", "surface", MOD), ("show", "subject", Ref(0)))}, refers={0: ("redesign", ("the mod",))}),
               (("read", READ, {"obligations": [ob(Inside("Redesign the mod and show it."), "redesign", {"surface": MOD}, PENDING),
                                                ob(Inside("Redesign the mod and show it."), "show", {"subject": Ref(0)}, PENDING)]}),
                ("saved", SAVE, {"record": [("redesign", {}), ("show", {"subject": 0})]}))),
+          run("unknown_and_known", False, World(), ('Frobnicate the widget and redesign the mod.',),
+              script({'Frobnicate the widget and redesign the mod.': (ABSTAIN, "redesign"), "Frobnicate the widget": ABSTAIN, "redesign the mod.": "redesign"},
+                     {('Frobnicate the widget and redesign the mod.', "redesign", "surface"): MOD, ("redesign the mod.", "redesign", "surface"): MOD}),
+              (("read", READ, {"obligations": [ob(Inside('Frobnicate the widget and redesign the mod.'), UNRESOLVED, reason=REJECTED), ob(Inside('Frobnicate the widget and redesign the mod.'), "redesign", {"surface": MOD}, PENDING)]}),)),
           run("compare_conjunction", True, World(), ("Compare the page and the mod.",), told([ob("Compare the page and the mod.", "compare", {"surfaces": (PAGE, MOD)})]),
               (("read", READ, {"obligations": [ob(Inside("Compare the page and the mod."), "compare", {"surfaces": (PAGE, MOD)})]}),)),
           run("nested", True, World(), ("Show me the mod, redesigned.",),
@@ -955,7 +1078,7 @@ CASES = (
                      {("Show me the mod, redesigned.", "show", "subject"): New("redesign"), ("Show me the mod, redesigned.", "redesign", "surface"): MOD}),
               (("read", READ, {"obligations": [ob(Inside("Show me the mod, redesigned."), "redesign", {"surface": MOD}, PENDING),
                                                ob(Inside("Show me the mod, redesigned."), "show", {"subject": Ref(0)}, PENDING)]}),))),
-         interpretation="Both obligations must exist; each span is the phrase or a part of it, so the two may share the phrase or split it (E20). A split must still cover every word, the conjunction included, in some span or passage (I1). The stand-in names both operations of the phrase and each operation of its parts; how the engine asks for a second operation is the implementer's choice. Splitting is not splitting every 'and': 'Compare the page and the mod.' stays one compare of both (E33).",
+         interpretation="Both obligations must exist; each span is the phrase or a part of it, so the two may share the phrase or split it (E20). A split must still cover every word, the conjunction included, in some span or passage (I1). The stand-in names both operations of the phrase and each operation of its parts; how the engine asks for a second operation is the implementer's choice. Splitting is not splitting every 'and': 'Compare the page and the mod.' stays one compare of both (E33). An unknown operation beside a known one keeps both: UNRESOLVED, then redesign, in the order asked (run unknown_and_known).",
          real_d1="Whether real d1 finds both operations in one sentence is effectiveness, unverified here."),
     Case("C17", "Two identical-looking requested operations versus two references to one result",
          "Preserve the distinction across serialization. Display equality must not merge them.",
@@ -1000,16 +1123,37 @@ CASES = (
                ("corrected", ("correct", Edit("set", 1, "subject", MOD)), {"accepted": True}),
                ("saved", SAVE, {}),
                ("changed", ("change_world", World(replace=(('    MOD: Asked = "the mod"\n', ""),))),
-                {"obligations": [ob("Redesign the mod.", "redesign", {"surface": Hole("Surface", (REJECTED, NO_CANDIDATE))}, PENDING),
-                                 ob("Then show it.", "show", {"subject": frozenset({Ref(0), Hole("Subject", (REJECTED, NO_CANDIDATE, CLEARED))})}, (PENDING, AVAILABLE), complete=False)],
-                 "corrections": [Correction(1, "subject", MOD, INVALIDATED, "the mod is no member of Surface")]}))),
+                {"obligations": [ob("Redesign the mod.", "redesign", {"surface": Hole("Surface", (REJECTED, NO_CANDIDATE, INVALID_ANSWER))}, PENDING),
+                                 ob("Then show it.", "show", {"subject": frozenset({Ref(0), Hole("Subject", (REJECTED, NO_CANDIDATE, CLEARED, INVALID_ANSWER))})}, (PENDING, AVAILABLE), complete=False)],
+                 "corrections": [Correction(1, "subject", MOD, INVALIDATED, "subject: the mod is no member of Surface")]}))),
           run("unrelated_change", True, World(), ("Redesign the mod. Then show it.",), told(REDESIGN_SHOW),
               (("read", READ, {"obligations": REDESIGN_SHOW}),
                ("corrected", ("correct", Edit("set", 1, "subject", MOD)), {"accepted": True}),
                ("saved", SAVE, {}),
                ("changed", ("change_world", PAINT_WORLD),
-                {"obligations": REBOUND, "corrections": [Correction(1, "subject", MOD, RETAINED)]})))),
-         interpretation="The invalidating world change removes the member that the correction names; the predicate requires status invalidated, a non-empty reason, both obligations still present, and that the invalid value is no longer bound. Show may then hold the model's Ref(0) or a hole: with the invalidation reported, neither is silent. The reason text is not compared."),
+                {"obligations": REBOUND, "corrections": [Correction(1, "subject", MOD, RETAINED)]}))),
+          run("function_changed", False, World(), ("Redesign the mod. Then show it.",), told(REDESIGN_SHOW),
+              (("read", READ, {"obligations": REDESIGN_SHOW}),
+               ("corrected", ("correct", Edit("set", 1, "subject", MOD)), {"accepted": True}),
+               ("saved", SAVE, {}),
+               ("changed", ("change_world", World(replace=(("def show(", "def present("),))),
+                {"obligations": [REDESIGN_SHOW[0], ob("Then show it.", "present", {"subject": Hole("Subject", (REJECTED, NO_CANDIDATE, CLEARED, INVALID_ANSWER))})],
+                 "corrections": [Correction(1, "subject", MOD, INVALIDATED, "show became present, so the correction of subject no longer applies")]}))),
+          run("reference_target_changed", False, World(), ("Redesign the mod. Then show it.",), told(REBOUND),
+              (("read", READ, {"obligations": REBOUND}),
+               ("corrected", ("correct", Edit("set", 1, "subject", Ref(0))), {"accepted": True, "obligations": REDESIGN_SHOW}),
+               ("saved", SAVE, {}),
+               ("changed", ("change_world", World(replace=(('    MOD: Asked = "the mod"\n', ""),))),
+                {"obligations": [ob("Redesign the mod.", "redesign", {"surface": Hole("Surface", (REJECTED, NO_CANDIDATE, INVALID_ANSWER))}, PENDING),
+                                 ob("Then show it.", "show", {"subject": Hole("Subject", (REJECTED, NO_CANDIDATE, CLEARED, INVALID_ANSWER))})],
+                 "corrections": [Correction(1, "subject", Ref(0), INVALIDATED, "subject referred to redesign, whose surface changed")]}))),
+          run("edit_after_correction", True, World(), ("Redesign the mod. Then show it.",), told(REDESIGN_SHOW),
+              (("read", READ, {"obligations": REDESIGN_SHOW}),
+               ("corrected", ("correct", Edit("set", 1, "subject", MOD)), {"accepted": True, "obligations": REBOUND}),
+               ("edited", ("stage", Edit("clear", 1, "subject")), {"accepted": True, "obligations": CLEARED_SHOW}),
+               ("saved", SAVE, {}),
+               ("rerun", ("rerun",), {"obligations": CLEARED_SHOW, "corrections": [Correction(1, "subject", Hole("Subject", CLEARED), RETAINED)]})))),
+         interpretation="The invalidating world change removes the member that the correction names; the predicate requires status invalidated, a non-empty reason, both obligations still present, and that the invalid value is no longer bound. Show may then hold the model's Ref(0) or a hole: with the invalidation reported, neither is silent. A reason must name its cause: the operation or the path (E44). A correction is also invalidated when its operation's function changes (run function_changed), and a correction that names an earlier result is invalidated, not re-pointed, when that result's meaning changes (run reference_target_changed). A later edit at the same place replaces the correction, and a rerun keeps it (run edit_after_correction)."),
     Case("C20", "“Redesign mod. Redesign page,” reply/evidence for mod only",
          "Mod and page get separate criterion outcomes. The page obligation cannot pass from the mod's evidence. Explicit refusal is not PROMISED.",
          "check() asks the same argument-blind question twice (probe argument_blind_duplicate_checks); Later makes a refusal PROMISED (probe refusal_becomes_promised).",
@@ -1051,7 +1195,7 @@ CASES = (
                ("reloaded", RELOAD, {"model_calls": 0}),
                ("restyled", ("restyle",), {"model_calls": 0}),
                ("other_world", ("reload", PAINT_WORLD), {"diagnostics": [(None, None, "identity")], "model_calls": 0}))),),
-         interpretation="The predicate compares the reloaded and restyled steps with the edited step, field by field, including every decision's state, instructions, offered, chosen and scores; it requires state, instructions and scores for model decisions, the phrase in the state, and d1's own choice of the mod kept beside the edit to the page. Loading the saved reading under another world reports the mismatch (the brief's state machine)."),
+         interpretation="The predicate compares the reloaded and restyled steps with the edited step, field by field, including every decision's state, instructions, offered, chosen and scores; it requires state, instructions and scores for model decisions, the phrase in the state, and d1's own choice of the mod kept beside the edit to the page. Loading the saved reading under another world reports the mismatch (the brief's state machine). The restyle changes the renderer that the display uses, so its rendered text must differ from the reload's while the meaning stays (E50)."),
 )
 
 CASE = {case.id: case for case in CASES}
@@ -1116,7 +1260,7 @@ def forbidden_diagnostics(where: str, step: dict, message: str | None) -> list[s
     obligation or passage covers.
     """
     found: list[str] = []
-    obligations = step.get("obligations", [])
+    obligations = step.get("obligations") or []
     for index, one in enumerate(obligations):
         if one.operation in ("none", "nothing"):
             found.append(f"{where}: obligation {index} has the terminal answer {one.operation!r}; it must be UNRESOLVED")
@@ -1135,13 +1279,13 @@ def forbidden_diagnostics(where: str, step: dict, message: str | None) -> list[s
                 found.append(f"{where}: obligation {index} has an untyped hole {value!r}")
             if isinstance(value, Ref) and not 0 <= value.obligation < index:
                 found.append(f"{where}: obligation {index} refers to obligation {value.obligation}, which is not an earlier obligation")
-    for passage in step.get("passages", []):
+    for passage in step.get("passages") or []:
         if plain(passage.relation).lower() in ("", "none", "nothing"):
             found.append(f"{where}: passage {passage.text!r} has no relationship (relation {passage.relation!r})")
-    if message is None or "obligations" not in step:
+    if message is None or step.get("obligations") is None:
         return found
     covered: set[int] = set()
-    for text, at in [(one.span, one.at) for one in obligations] + [(one.text, one.at) for one in step.get("passages", [])]:
+    for text, at in [(one.span, one.at) for one in obligations] + [(one.text, one.at) for one in step.get("passages") or []]:
         if not (isinstance(at, tuple) and len(at) == 2 and 0 <= at[0] < at[1] <= len(message)):
             found.append(f"{where}: {text!r} has no place in the message (at {at!r})")
         elif plain(message[at[0]:at[1]]) != plain(text):
@@ -1268,6 +1412,8 @@ def inventory_diagnostics(where: str, observation: dict, label: str) -> list[str
     asked = collections.Counter((one.state, one.instructions, tuple(one.options)) for one in requests)
     saved = collections.Counter((one.state, instructions, tuple(options)) for one in decisions if one.by == "model" for instructions, options in one.questions)
     found = [f"{where}: decision by rule names no declared rule: {one}" for one in decisions if one.by == "rule" and not one.rule]
+    found += [f"{where}: the chosen candidate was not offered: {one}" for one in decisions if one.by == "model" and one.chosen not in (REJECT, ABSENT, INVALID, ABSTAIN, NO_REQUEST)
+              and not all(member in one.offered for member in (one.chosen if isinstance(one.chosen, tuple) else (one.chosen,)))]
     if asked != saved:
         found.append(f"{where}: decisions differ from the requests d1 received: missing {list((asked - saved).elements())}, not asked {list((saved - asked).elements())}")
     return found
@@ -1282,7 +1428,7 @@ def absence_diagnostics(where: str, step: dict) -> list[str]:
             decision = decided.get((index, path))
             if (value == EMPTY) != (decision is not None and decision.chosen == ABSENT):
                 found.append(f"{where}: obligation {index} {path} is {value!r} with decision {decision}: Empty exactly when absence was decided")
-            if decision is not None and decision.by == "model" and decision.chosen in (REJECT, INVALID) and not isinstance(value, Hole):
+            if decision is not None and decision.by == "model" and decision.chosen in (REJECT, INVALID, ()) and not isinstance(value, Hole):
                 found.append(f"{where}: obligation {index} {path} is bound to {value!r} although d1's answer was {decision.chosen}")
     return found
 
@@ -1368,7 +1514,7 @@ def asked_diagnostics(case: Case, observed: dict, labels: tuple = ()) -> list[st
                 missing = [one for one in want.offered + want.cut if one not in pool]
                 if missing:
                     found.append(f"{where}: candidates not offered to d1{' nor recorded as cut' if want.cut else ''}: {missing}")
-                if not value_fits(want.chosen, got.chosen):
+                if want.chosen is not None and not value_fits(want.chosen, got.chosen):
                     found.append(f"{where}: the choice is recorded as {got.chosen!r}, expected {want.chosen!r}")
                 obligations = observation.get("steps", {}).get(label, {}).get("obligations") or previous_obligations(observation, label)
                 span = obligations[want.obligation].span if want.obligation < len(obligations) else ""
@@ -1396,12 +1542,20 @@ def c09(observed: dict) -> list[str]:
 
 
 def c11(observed: dict) -> list[str]:
-    """The malformed world is refused for its kind, and the valid one is not."""
+    """The malformed world is refused for its kind, the valid one is not, and a broken saved line loads with the obligation it breaks neither complete nor ready."""
     found = []
     if ("Broken", "kind") not in observed.get("invalid_kind", {}).get("world_faults", []):
         found.append(f"C11 invalid_kind: expected world fault ('Broken', 'kind'), observed {observed.get('invalid_kind', {}).get('world_faults')}")
     if observed.get("valid_world", {}).get("world_faults"):
         found.append(f"C11 valid_world: unexpected faults {observed['valid_world']['world_faults']}")
+    for label, _, want in steps_of(CASE["C11"].runs[1]):
+        if label.startswith("load_"):
+            obligations = observed.get("loads", {}).get("steps", {}).get(label, {}).get("obligations")
+            index = want["diagnostics"][0][0]
+            if not obligations or index >= len(obligations):
+                found.append(f"C11 loads/{label}: the loaded reading reports no obligation {index}")
+            elif obligations[index].complete is True or obligations[index].ready is True:
+                found.append(f"C11 loads/{label}: the broken obligation {index} is reported complete={obligations[index].complete} ready={obligations[index].ready}")
     return found
 
 
@@ -1448,24 +1602,31 @@ def c18(observed: dict) -> list[str]:
 
 
 def c19(observed: dict) -> list[str]:
-    """A correction is retained, or invalidated with a reason; never silently replaced."""
+    """A correction is retained, replaced by a later edit, or invalidated with a reason that names its cause; never silently replaced or re-pointed."""
     found = []
-    for run, status in (("rerun", RETAINED), ("world_change", INVALIDATED), ("unrelated_change", RETAINED)):
-        step = (list(observed.get(run, {}).get("steps", {}).values())[-1:] or [{}])[0]
-        corrections = [one for one in step.get("corrections", []) if (one.obligation, one.path) == (1, "subject")]
-        if not corrections:
-            found.append(f"C19 {run}: the correction of show.subject is not reported")
-            continue
-        if corrections[0].status != status:
-            found.append(f"C19 {run}: correction status expected {status}, observed {corrections[0].status}")
-        if status == INVALIDATED:
+    for run in CASE["C19"].runs:
+        label, _, want = list(steps_of(run))[-1]
+        step = observed.get(run.label, {}).get("steps", {}).get(label, {})
+        for expected in want.get("corrections", []):
+            where = f"C19 {run.label}/{label} correction of {expected.obligation}.{expected.path}"
+            got = [one for one in step.get("corrections", []) if (one.obligation, one.path) == (expected.obligation, expected.path)]
+            if len(got) != 1:
+                found.append(f"{where}: expected one correction there, observed {got}")
+                continue
+            got = got[0]
+            if got.status != expected.status or not value_fits(expected.value, got.value):
+                found.append(f"{where}: expected {expected.status} {expected.value!r}, observed {got.status} {got.value!r}")
+            if expected.status != INVALIDATED:
+                continue
             obligations = step.get("obligations", [])
-            if not plain(corrections[0].reason):
-                found.append(f"C19 {run}: correction invalidated with no reason")
-            if [one.operation for one in obligations] != ["redesign", "show"]:
-                found.append(f"C19 {run}: the world change lost an obligation: {[one.operation for one in obligations]}")
-            elif obligations[1].bindings.get("subject") == MOD:
-                found.append(f"C19 {run}: an invalidated correction is still bound")
+            names = {expected.path, expected.path.split(".")[-1], *(one.operation for one in obligations), *(one.operation for one in run.expect[run.actions[0][0]].get("obligations", []))}
+            reason = plain(got.reason).lower()
+            if reason in ("", "none", "nothing"):
+                found.append(f"{where}: invalidated with no reason")
+            elif not any(name.lower() in reason for name in names if name and name != UNRESOLVED):
+                found.append(f"{where}: the reason {got.reason!r} names neither the operation nor the path")
+            if expected.obligation < len(obligations) and obligations[expected.obligation].bindings.get(expected.path) == expected.value:
+                found.append(f"{where}: an invalidated correction is still bound")
     return found
 
 
@@ -1492,6 +1653,8 @@ def c22(observed: dict) -> list[str]:
             found += [f"C22 {label}: {key} differ from the edited reading: {step.get(key)} != {edited.get(key)}" for key in ("obligations", "decisions") if step.get(key) != edited.get(key)]
         found += [f"C22 {label}: decision on obligation {one.obligation} path {one.path} lost its state, instructions or scores"
                   for one in step.get("decisions", []) if one.by == "model" and not (one.state and one.questions and one.scores)]
+        if label == "restyled" and not (step.get("rendered") and steps.get("reloaded", {}).get("rendered") and step["rendered"] != steps["reloaded"]["rendered"]):
+            found.append("C22 restyled: the restyle did not change the rendered reading, so it changed nothing the display uses")
         original = decision_for(observed.get("saved_reading", {}), label, 0, "surface")
         if original is None or (original.by, original.chosen) != ("model", MOD):
             found.append(f"C22 {label}: d1's own choice of the mod is not kept beside the edit (decision {original})")
@@ -1499,7 +1662,7 @@ def c22(observed: dict) -> list[str]:
 
 
 EXTRA = {"C01": c01, "C09": c09, "C13": c13, "C11": c11, "C12": c12, "C14": c14, "C18": c18, "C19": c19, "C21": c21, "C22": c22}
-STEP_LABELS = {"C11": ("edits",), "C14": ("out_of_set", "missing", "not_numbers", "bounded", "well_formed")}
+STEP_LABELS = {"C11": ("edits", "loads"), "C14": ("out_of_set", "missing", "not_numbers", "bounded", "too_many_operations", "well_formed")}
 
 
 def predicate(case_id: str):
@@ -1644,7 +1807,13 @@ def expected_observation(case: Case, run: Run) -> dict:
         decisions += [with_context(Decision(0, "surface", "model", (MOD,), MOD), EDITED), with_context(SHOW_DECISION, EDITED)]
         for label in ("read", "edited", "reloaded", "restyled"):
             steps[label] |= {"decisions": decisions} | ({} if label == "read" else {"obligations": [concrete(one) for one in EDITED]})
-    for label, action, _ in steps_of(run):
+    if case.id == "C22":
+        steps["reloaded"]["rendered"], steps["restyled"]["rendered"] = "redesign(surface='the page')", "redesign ← surface: the page"
+    for label, action, expected in steps_of(run):
+        if action[0] == "load":
+            broken = expected["diagnostics"][0][0]
+            steps[label]["obligations"] = [dataclasses.replace(one, complete=False, ready=False) if index == broken or Ref(broken) in values_of(one.bindings) else one
+                                           for index, one in enumerate(concrete(one) for one in REDESIGN_SHOW)]
         if action[0] in ("read", "rerun", "change_world") and steps[label].get("decisions"):
             steps[label]["requests"] = [Request(one.state, instructions, options) for one in steps[label]["decisions"] if one.by == "model" for instructions, options in one.questions]
     return observation
@@ -1878,7 +2047,7 @@ NEGATIVE_CONTROLS = (
     ("C18f", "cancel restores the bindings but drops d1's decisions", "C18", lambda e: changed(e, "transitions", "cancelled", decisions=[]), "decisions differ"),
     ("C18g", "inspecting a binding asks d1", "C18", lambda e: changed(e, "transitions", "inspected", model_calls=1), "model_calls expected 0"),
     ("C19c", "a world change invalidates the correction and drops the show obligation", "C19",
-     lambda e: changed(e, "world_change", "changed", obligations=[ob("Redesign the mod.", "redesign", {"surface": Hole("Surface", REJECTED)}, PENDING)]), "lost an obligation"),
+     lambda e: changed(e, "world_change", "changed", obligations=[ob("Redesign the mod.", "redesign", {"surface": Hole("Surface", REJECTED)}, PENDING)]), "expected 2 obligations"),
     ("C20c", "removing Later turns a reply's claim into a pass", "C20",
      lambda e: changed(e, "later_removed", "checked", checks=[Check(0, None, "evidence", PASS), Check(1, None, "evidence", PASS)], verdict=PASS), "verdict expected"),
     ("C22d", "the edit rewrites d1's recorded choice instead of keeping it beside the correction", "C22",
@@ -1948,6 +2117,41 @@ NEGATIVE_CONTROLS = (
      lambda e: changed(e, "conjunction", "saved", record=record_of([("show", {})])), "record applications"),
     ("C17f", "a member of several saved as a copied constant instead of a reference", "C17",
      lambda e: changed(e, "shared_result", "saved", record=record_of([("redesign", {}), ("show", {"subject": 0}), ("compare", {})])), "record application 2 references"),
+    # Version 6 (CORRECTIONS E39 to E51).
+    ("C04z", "a singleton Many bound without asking d1", "C04", lambda e: no_decision(e, "singleton_many", "read", "surfaces"), "no recorded decision"),
+    ("C06g", "every candidate rejected becomes an explicit empty collection", "C06",
+     lambda e: changed_ob(e, "all_rejected", "read", 0, bindings={"surfaces": EMPTY_LIST}, complete=True, ready=True), "binding surfaces"),
+    ("C06h", "the hole with no candidate is not recorded as an automatic decision", "C06", lambda e: changed(e, "unknown", "read", decisions=[]), "no recorded decision"),
+    ("C16f", "the unknown operation of a phrase dropped beside the known one", "C16",
+     lambda e: changed(e, "unknown_and_known", "read", obligations=e["unknown_and_known"]["steps"]["read"]["obligations"][1:]), "expected 2 obligations"),
+    ("C14e", "the request beyond the bound vanishes", "C14",
+     lambda e: changed(e, "too_many_operations", "read", obligations=e["too_many_operations"]["steps"]["read"]["obligations"][:3], decisions=[]), "expected 4 obligations"),
+    ("C14f", "the request beyond the bound is unresolved for another reason", "C14", lambda e: changed_ob(e, "too_many_operations", "read", 3, reason=REJECTED), "reason"),
+    ("C02k", "an added obligation is accepted", "C02", lambda e: changed_change(e, "added", activated=True, verdict=PASS, regressions=[]), "world change expected"),
+    ("C02l", "the second proposal after an activation is accepted", "C02",
+     lambda e: changed(e, "second_proposal", "proposed_again", world_change=e["second_proposal"]["steps"]["proposed_again"]["world_change"] | {"activated": True, "verdict": PASS, "regressions": []}), "world change expected"),
+    ("C02m", "the second proposal crashes", "C02", lambda e: changed(e, "second_proposal", "proposed_again", error="KeyError", world_change=None), "error KeyError"),
+    ("C02n", "a rejected hole that becomes an invalid-answer hole is accepted", "C02", lambda e: changed_change(e, "reason_changed", activated=True, verdict=PASS, regressions=[]), "world change expected"),
+    ("C19e", "a correction kept after its operation's function changed", "C19",
+     lambda e: changed(e, "function_changed", "changed", corrections=[Correction(1, "subject", MOD, RETAINED)]), "expected invalidated"),
+    ("C19f", "a reference correction silently re-pointed after its target changed", "C19",
+     lambda e: changed(changed_ob(e, "reference_target_changed", "changed", 1, bindings={"subject": Ref(0)}, status=PENDING), "reference_target_changed", "changed",
+                       corrections=[Correction(1, "subject", Ref(0), RETAINED)]), "expected invalidated"),
+    ("C19g", "an invalidation reason that names no cause", "C19",
+     lambda e: changed(e, "function_changed", "changed", corrections=[Correction(1, "subject", MOD, INVALIDATED, "changed")]), "names neither the operation nor the path"),
+    ("C19h", "a rerun restores the correction over the later edit", "C19",
+     lambda e: changed(e, "edit_after_correction", "rerun", obligations=[concrete(one) for one in REBOUND], corrections=[Correction(1, "subject", MOD, RETAINED)]), "binding subject"),
+    ("C10x", "reading a record inside a collection crashes", "C10", lambda e: changed(e, "many_of_records", "read", error="AttributeError"), "error AttributeError"),
+    ("C10y", "checking a record inside a collection crashes", "C10", lambda e: changed(e, "many_of_records", "checked", error="TypeError"), "error TypeError"),
+    ("C11i", "a saved wrong-type binding loads with no diagnostic", "C11", lambda e: changed(e, "loads", "load_wrong_type", diagnostics=[]), "diagnostics expected exactly"),
+    ("C11j", "a saved dangling reference fails to load", "C11", lambda e: {**e, "loads": {**e["loads"], "steps": e["loads"]["steps"] | {"load_dangling": {"error": "KeyError", "model_calls": 0}}}}, "error KeyError"),
+    ("C11k", "a saved line with a missing argument loads as complete", "C11", lambda e: changed_ob(e, "loads", "load_missing", 0, complete=True), "is reported complete=True"),
+    ("C11h", "a kind fault reported as a type fault", "C11", lambda e: {**e, "invalid_kind": {**e["invalid_kind"], "world_faults": [("Broken", "type")]}}, "expected world fault ('Broken', 'kind')"),
+    ("C11l", "the record built from the cell's fields is not recorded as an automatic decision", "C11", lambda e: changed(e, "edits", "read", decisions=[]), "no recorded decision"),
+    ("C04w", "a chosen candidate rebuilt rather than one that was offered", "C04",
+     lambda e: changed(e, "accepted", "read", decisions=[dataclasses.replace(one, chosen=PAGE) for one in e["accepted"]["steps"]["read"]["decisions"]]), "was not offered"),
+    ("C22g", "a restyle that changes nothing the display uses", "C22",
+     lambda e: changed(e, "saved_reading", "restyled", rendered=e["saved_reading"]["steps"]["reloaded"]["rendered"]), "changed nothing the display uses"),
     ("C22f", "an unresolved request saved with a guessed goal type", "C22",
      lambda e: changed_ob(e, "saved_reading", "reloaded", 2, bindings={"": Hole("Later[Observed]", NO_CANDIDATE)}), "guessed goal"),
 )
@@ -1964,6 +2168,11 @@ def static_controls(right: dict, delivered: dict) -> tuple:
         ("L4", "the delivered engine differs from the tested one", lambda: l4(right | {"files": right["files"] | {"next/scriptt16.py": "0" * 64}}, delivered), "L4: next/scriptt16.py"),
         ("L5", "a change made elsewhere and not transferred", lambda: l5(right | {"elsewhere": [{"path": str(elsewhere), "transferred": False}]}), "L5:"),
         ("L6", "location decided by asking d1", lambda: l6(right | {"method": "d1"}), "L6:"),
+        ("S1", "a blank option description is chosen", lambda: [] if option_for(MOD, ("", "")) is None else ["S1: a blank description was chosen"], "S1"),
+        ("S2", "the option is chosen by place rather than by its description", lambda: [] if option_for(MOD, ("'the page'", "'the mod'")) == 1 else ["S2: not chosen by description"], "S2"),
+        ("S3", "a reference chosen by a rendering of another function", lambda: [] if option_for(Ref(0), ("show(subject='the mod')",), {0: ("redesign", ("the mod",))}) is None else ["S3: wrong function accepted"], "S3"),
+        ("S4", "an operation chosen with a blank docstring", lambda: [] if option_for("redesign", ("", "show it"), world=World()) is None else ["S4: a blank docstring was chosen"], "S4"),
+        ("S5", "two descriptions that both say the value", lambda: [] if option_for(MOD, ("'the mod'", "the mod")) is None else ["S5: an ambiguous choice was made"], "S5"),
         ("C21b", "a verify operation in the production world", lambda: production_world_diagnostics((HERE / "world.py").read_text() + '\ndef verify(subject: Subject) -> Observed:\n    "verify it"\n'), "declares ['verify']"),
     )
 
@@ -2007,7 +2216,14 @@ def self_test() -> None:
         failures += [f"{key} ({words}) rejected: {line}" for line in found]
         print(f"{key:<5} {case_id} {'accepted' if not found else 'REJECTED'}: {words}")
     wrongs = [(key, f"{case_id} {words}", lambda wrong=wrong, case_id=case_id: PREDICATES[case_id](wrong(expected[case_id])), diagnostic) for key, words, case_id, wrong, diagnostic in NEGATIVE_CONTROLS]
-    wrongs += static_controls(provenance, delivered)
+    wrongs += [one for one in static_controls(provenance, delivered) if not one[0].startswith("S")]
+    for key, words, check, _ in [one for one in static_controls(provenance, delivered) if one[0].startswith("S")]:
+        found = check()
+        failures += [f"{key} ({words}): {line}" for line in found]
+        print(f"{key:<5} {'refused' if not found else 'ACCEPTED'}: {words}")
+    unrendered = [(run.label, value) for case in CASES for run in case.runs for value in values_of(dict(enumerate(run.script.get("binds", {}).values())))
+                  if isinstance(value, Ref) and value.obligation not in run.script.get("refers", {})]
+    failures += [f"a script binds a reference without saying what it renders as: {one}" for one in unrendered]
     for key, words, wrong, diagnostic in wrongs:
         found = wrong()
         caught = [line for line in found if diagnostic in line]
@@ -2015,7 +2231,7 @@ def self_test() -> None:
         print(f"{key:<5} {'caught' if caught else 'MISSED'}: {words} -> {(caught[0] if caught else str(found))[:160]}")
     assert not failures, "\n".join(failures)
     print(f"self-test passed: 22 cases pass on EXPECTED; {len(RIGHT_ALTERNATIVES)} allowed variants accepted; {len(NEGATIVE_CONTROLS)} wrong projections and "
-          f"{len(wrongs) - len(NEGATIVE_CONTROLS)} wrong locations or worlds rejected. This shows that the comparisons discriminate; it checks no engine. "
+          f"{len(wrongs) - len(NEGATIVE_CONTROLS)} wrong locations or worlds rejected; 5 wrong stand-in choices refused. This shows that the comparisons discriminate; it checks no engine. "
           "The engine is checked only when observe() runs it and these predicates judge its output.")
 
 
