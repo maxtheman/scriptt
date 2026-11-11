@@ -1,0 +1,9 @@
+Board 4 audit run 1 (builder), web/site/audit.js audit4(), page on lab server :2791, viewport 1400x900.
+Events: pointerdown/move/up and keydown dispatched at real coordinates (elementsFromPoint picks the target); headline flows also done by real left_click_drag/key in the built-in browser (screenshots web/notes/screens/v4-*).
+10 real prompts: a580dbc9 1636ch, adf412fe 2355, a32bfced 2175, ffe36f28 13727, 2086c1e0 8825, 8c7eae08 1844, 12390a7d 1758, 8b96c19d 1669, 0bba97d2 1611, 44ad24e3 1190 (350c3a80 975 also run).
+Per reading: text equals source; gutter tick per op/hole/unresolved; ] and u jump; click selects a word, end handle widens the span; click open place shows d1 question+options+candidates;
+words dragged into up to 3 open places (/edit with span+place, staged or refused with engine diagnostic, cancel restores text); member PAGE dropped with no span (at [-1,-1]); result dropped as {ref};
+retag place->place; function dropped on a phrase (/edit number null, "explain.parameter"); keyboard: Shift+arrows, Space, o, Enter, Esc; Escape mid-hold.
+Result: 11 of 12 readings with no failure. a32bfced: E1/E2/F2 failed in the batch run; by hand on the same reading the result drop is answered (refused by engine, rule "type", shown in the dock), so this looks like the audit picking a target, not a page fault; not re-run clean.
+Accept (/accept) done by hand by real click on ffe36f28 (build#13.code <- "the hook"): saved, correction mark shown, then restored. /rerun not exercised by this audit.
+Known gaps: viewing an older snapshot still goes through Restore (writes); span/world edits beyond what /edit supports not offered; "record built from fields": the world has no record types.
