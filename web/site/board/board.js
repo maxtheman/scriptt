@@ -266,7 +266,8 @@ function measureOp(c, rec) {
     else p.w = tw(p.str, p.f);
     p.x = x; x += p.w + (p.k === "path" ? 3 : p.k === "slot" ? 6 : 0);
   }
-  c.w = x + 6;
+  const j = c.t.judgments || {};
+  c.w = x + 6; c.glyph = j.pending || j.deferred ? 14 : 0; c.w += c.glyph; // room for ⧗ / ⏲ after the chip
 }
 
 // ---------- the states ----------
@@ -486,7 +487,8 @@ function keyAll(el) {
 }
 const txt = (x, y, s, f, fill, extra = {}) => h("text", { transform: translate(x, y), style: { font: f }, fill, ...extra }, s);
 let FOC = [];
-function draggable({ state: st, d, draggedId }) {
+function draggable({ state: st, d, draggedId, setState }) {
+  if (setState) SETSTATE = setState;
   const display = (!st.change || st.staged) && !st.prop && !st.refused && !st.pull; // the base, or the staged change: what is on screen
   const rec = st.r, L = layout(rec), scroll = st.scroll ?? S.scroll, n = visLines();
   const first = Math.max(0, Math.floor(scroll)), last = Math.min(L.lines.length - 1, first + n);
@@ -501,8 +503,8 @@ function draggable({ state: st, d, draggedId }) {
     const line = L.lines[li], y = Y(li);
     for (const it of line.items) {
       if (it.k === "w") {
-        if (it.st) bg.push(h("rect", { transform: translate(X0 + it.x - 3, y + 12), width: it.w + 6 + 4, height: 26, fill: C.paste }));
-        words.push(txt(X0 + it.x, y + 31, it.str, it.f, C.ink, { "data-s": it.s, "data-e": it.e, className: "w" }));
+        if (it.st) bg.push(h("rect", { dragologyKey: "p" + it.s, transform: translate(X0 + it.x - 3, y + 12), width: it.w + 6 + 4, height: 26, fill: C.paste }));
+        words.push(txt(X0 + it.x, y + 31, it.str, it.f, C.ink, { dragologyKey: "w" + it.s, "data-s": it.s, "data-e": it.e, className: "w" })); // a word is paired with itself across states, never with another
         if (it.piece) { const k = it.piece.start; const a = segs.get(k) || { p: it.piece, parts: [] }; const lp = a.parts[a.parts.length - 1]; if (lp && lp.li === li) lp.x1 = X0 + it.x + it.w; else a.parts.push({ li, y, x0: X0 + it.x, x1: X0 + it.x + it.w }); segs.set(k, a); }
       }
     }
@@ -514,7 +516,7 @@ function draggable({ state: st, d, draggedId }) {
     const kids = [];
     a.parts.forEach((s, i) => { kids.push(h("rect", { id: `pt-${k}-${i}`, transform: translate(s.x0 - 2, s.y + 2), width: s.x1 - s.x0 + 4, height: 38, fill: "transparent", pointerEvents: "none" })); drawn.set(`pt-${k}-${i}`, { seg: true, start: k, x: s.x0, y: s.y, w: s.x1 - s.x0, h: 40 }); });
     for (const s of a.parts) {
-      if (ch) bg.push(h("rect", { transform: translate(s.x0 - 3, s.y + 12), width: s.x1 - s.x0 + 6, height: 26, rx: 3, fill: C.accBg }));
+      if (ch) bg.push(h("rect", { dragologyKey: `c${p.start}-${s.li}`, transform: translate(s.x0 - 3, s.y + 12), width: s.x1 - s.x0 + 6, height: 26, rx: 3, fill: C.accBg }));
       kids.push(h("rect", { transform: translate(s.x0 - 2, s.y + 2), width: s.x1 - s.x0 + 4, height: 38, fill: "transparent" }));
       if (c !== "none") kids.push(h("rect", { transform: translate(s.x0, s.y + 35), width: s.x1 - s.x0, height: p.sure || p.by === "user" ? 2 : 1.25, fill: ch ? C.acc : col, opacity: c === "null" ? 0.9 : 1, ...(c === "con" || c === "null" ? { style: { strokeDasharray: "3 2" } } : {}) }));
       else kids.push(h("rect", { transform: translate(s.x0, s.y + 36), width: s.x1 - s.x0, height: 0.75, fill: C.faint, opacity: 0.6 }));
@@ -576,8 +578,8 @@ function draggable({ state: st, d, draggedId }) {
       const ws = L.lines[li].items.filter((x) => x.k === "w" && x.s >= p.start && x.e <= p.end);
       if (!ws.length) continue;
       const a = X0 + ws[0].x, b = X0 + ws[ws.length - 1].x + ws[ws.length - 1].w, y = Y(li) + 41;
-      bg.push(h("rect", { transform: translate(a, y), width: b - a, height: 1.5, fill: C.fn, opacity: 0.55 }));
-      if (ws[0].s <= p.start + 2) bg.push(h("rect", { transform: translate(a, y - 4), width: 1.5, height: 5.5, fill: C.fn, opacity: 0.55 }));
+      bg.push(h("rect", { dragologyKey: `b${t.id}-${li}`, transform: translate(a, y), width: b - a, height: 1.5, fill: C.fn, opacity: 0.55 }));
+      if (ws[0].s <= p.start + 2) bg.push(h("rect", { dragologyKey: `bt${t.id}`, transform: translate(a, y - 4), width: 1.5, height: 5.5, fill: C.fn, opacity: 0.55 }));
     }
   }
   // the page of the open thing, or the world
@@ -622,7 +624,7 @@ function draggable({ state: st, d, draggedId }) {
 function pageKey() { const o = S.open; if (!o) return "world"; return o.t + "-" + (o.p ? o.p.start + "-" + o.p.end : o.name || (o.term ? o.term.id : "") || (o.pl ? pkey(o.pl.t, o.pl.path) : "") || (o.u ? o.u.id : "")).toString().replace(/\W/g, "_"); }
 function drawOp(c, x, y, rec, d, draggedId, drawn, foc, li) {
   const t = c.t, id = "op-" + t.id, kids = [], j = t.judgments || {};
-  kids.push(h("rect", { width: c.w, height: 26, rx: 4, fill: C.fnBg, opacity: 0.6 }));
+  kids.push(h("rect", { width: c.w - c.glyph, height: 26, rx: 4, fill: C.fnBg, opacity: 0.6 }));
   for (const p of c.parts) {
     if (p.k === "slot") {
       const pid = "pl-" + pkey(t, p.pl.path), sl = p.sl, hole = sl.tone === "hole" || sl.tone === "no";
@@ -640,8 +642,8 @@ function drawOp(c, x, y, rec, d, draggedId, drawn, foc, li) {
     } else kids.push(txt(p.x, 17, p.str, p.f, p.k === "name" ? C.fn : C.mute));
   }
   kids.unshift(h("title", null, `${t.function} #${t.id} → ${t.type}` + (j.complete === false ? " ● complete ✕" : "")));
-  if (j.pending || j.deferred) kids.push(txt(c.w + 3, 10, j.pending ? "⧗" : "⏲", F.small, C.mute));
-  if (j.complete === false) kids.push(h("circle", { transform: translate(c.w - 2, 2), r: 3, fill: C.no }));
+  if (j.pending || j.deferred) kids.push(txt(c.w - c.glyph + 3, 10, j.pending ? "⧗" : "⏲", F.small, C.mute));
+  if (j.complete === false) kids.push(h("circle", { transform: translate(c.w - c.glyph - 2, 2), r: 3, fill: C.no }));
   if (draggedId === id) { // held: the result itself, not the whole operation
     const lab = `↩ ${t.function}`, w = tw(lab, F.monoB) + 14;
     return h("g", { id, transform: translate(x, y + 14), className: "op", role: "button", "data-label": t.function, "data-op": t.id, dragologyOnDrag: () => spec({ t: "op", term: t }, d), dragologyZIndex: "/1" },
@@ -897,6 +899,7 @@ function stageBody(body) {
   paint();
 }
 function dropped(next) {
+  if (INSTANT) return; // our own scroll, set through setState
   DRAGGING = false; HELD = null; LIVE = null; RAIL_IDS = new Set();
   if (next && next.scroll != null && next.scroll !== S.scroll && !next.change) S.scroll = next.scroll;
   if (next && next.refused) { S.note = { refused: next.refused }; S.staged = null; }
@@ -1035,10 +1038,14 @@ function display() {
   SHOWN = { k, st };
   return st;
 }
+let SETSTATE = null, INSTANT = false, PAINTED = null;
 function paint() {
   if (!S.base) return;
   sizes();
   const st = display();
+  const view = `${S.id}|${S.scroll}|${S.pscroll}`;
+  if (SETSTATE && PAINTED && PAINTED !== view && PAINTED.split("|")[0] === S.id && !DRAGGING && !PENDING) { INSTANT = true; try { SETSTATE(st, { transition: false }); } finally { INSTANT = false; } } // a scroll is not blended: the text jumps to its new place
+  PAINTED = view;
   root ??= createRoot($("board"));
   root.render(h(DraggableRenderer, { key: S.id, draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragStatus: status }));
   if (S.pendingFocus) { requestAnimationFrame(() => { const zone = FOC.filter((f) => f.zone === "text"); if (zone.length && S.pendingFocus) { S.focus = (S.pendingFocus > 0 ? zone[zone.length - 1] : zone[0]).id; S.pendingFocus = 0; paint(); } }); }
