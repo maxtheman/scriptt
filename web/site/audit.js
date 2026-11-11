@@ -9,12 +9,14 @@ window.audit4 = async function (prefixes, opts = {}) {
   const ev = (type, x, y, target, extra = {}) => (target || document).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1, pointerId: 1, isPrimary: true, ...extra }));
   const key = (target, k, extra = {}) => { target.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true, ...extra })); };
   const drag = async (src, dst, bail) => {
+    cache.clear();
     dst.scrollIntoView({ block: "center" }); await sleep(30);
     const [sx, sy] = center(src), [dx, dy] = center(dst);
     ev("pointerdown", sx, sy, src); ev("pointermove", sx + 8, sy + 8, src); ev("pointermove", (sx + dx) / 2, (sy + dy) / 2, document.body); ev("pointermove", dx, dy, dst);
     await sleep(250);
     const mid = document.querySelector("#dock").innerText;
     if (bail) { key(document.body, "Escape"); await settle(); return { mid, held: true }; }
+    window.__lastDrag = { dst: dst.dataset.place || dst.className, hover: S.hover && S.hover.key, d: [dx, dy], now: center(dst), conn: dst.isConnected, held: S.held && S.held.label };
     ev("pointerup", dx, dy, dst); await settle();
     return { mid };
   };
@@ -46,9 +48,9 @@ window.audit4 = async function (prefixes, opts = {}) {
     if (hole) {
       hole.scrollIntoView({ block: "center" }); hole.click(); await sleep(80);
       const insp = document.querySelector("#insp");
-      ok(!insp.hidden && /open:/i.test(insp.innerText), "A1 click on an open place opens it with its reason");
-      ok(/what d1 was asked here/i.test(insp.innerText) && insp.querySelectorAll(".opt").length > 0, "A2 shows d1's question and options");
-      ok(/put something here/i.test(insp.innerText) && insp.querySelectorAll("button.chip").length > 0, "A3 offers values to put there");
+      ok(!insp.hidden && /open ·/i.test(insp.innerText), "A1 click on an open place opens it with its reason");
+      ok(/\bd1\b/i.test(insp.innerText) && insp.querySelectorAll(".opt").length > 0, "A2 shows d1's question and options");
+      ok(/put here/i.test(insp.innerText) && insp.querySelectorAll("button.chip").length > 0, "A3 offers values to put there");
       row.did.push("clicked open place " + hole.dataset.place);
       // A4: choose a candidate in the inspector: engine preview, staged or refused, never silent
       const n0 = window.__net.length; const c = insp.querySelector("button.chip"); if (c) { c.click(); await answered(); ok(S.pending || S.refused, "A4 candidate click answers (staged or refused)"); key(document.body, "Escape"); key(document.body, "Escape"); S.refused = null; if (S.pending) cancel(); S.sel = null; render(); }
@@ -71,7 +73,7 @@ window.audit4 = async function (prefixes, opts = {}) {
       const was = window.__net.filter(n => n.path === "/edit").at(-1);
       ok(was && was.body.path === h.dataset.path && was.body.number === +h.dataset.op && was.body.value.constant !== undefined && was.body.value.at[0] >= 0, "B2 the drop sent /edit with the span and its place");
       const verdictNow = S.pending ? "staged" : S.refused ? "refused" : "?";
-      if (S.pending) { staged++; ok(document.querySelector("#accept"), "B3 staged shows Accept"); cancel(); } else if (S.refused) { refused++; ok(/engine|rule|type/i.test(document.querySelector("#dock").innerText), "B4 refusal says why"); S.refused = null; paintDock(); }
+      if (S.pending) { staged++; ok(document.querySelector("#accept"), "B3 staged shows Accept"); cancel(); } else if (S.refused) { refused++; ok(/✕/.test(document.querySelector("#dock").innerText), "B4 refusal says why"); S.refused = null; paintDock(); }
       else fail("B5 drop neither staged nor refused: held=" + !!S.held + " hover=" + JSON.stringify(S.hover && { k: S.hover.key, r: !!S.hover.res }) + " dock=" + document.querySelector("#dock").innerText.slice(0, 120));
       ok(textNow() === before, "B6 text unchanged after cancel");
       row.did.push(`span→${hk}: ${verdictNow}`);
@@ -84,7 +86,7 @@ window.audit4 = async function (prefixes, opts = {}) {
       const res = await drag(mem, filledSurface);
       const was = window.__net.filter(n => n.path === "/edit").at(-1);
       ok(was && was.body.value.at[0] === -1 && was.body.value.constant === "the page", "C1 member dropped with no span");
-      ok(S.pending ? /the page/.test(document.querySelector("#dock").innerText) : (!!S.refused || /already/.test(document.querySelector("#dock").innerText)), "C2 member drop answered");
+      ok(S.pending ? /the page/.test(document.querySelector("#dock").innerText) : (!!S.refused || /^=$/m.test(document.querySelector("#dock").innerText)), "C2 member drop answered");
       row.did.push(`member the page→${filledSurface.dataset.place}: ${S.pending ? "staged" : "refused"}`);
       if (S.pending) cancel(); S.refused = null; paintDock();
       mem = document.querySelector('[data-pick=member][data-member="PAGE"]');
@@ -92,19 +94,19 @@ window.audit4 = async function (prefixes, opts = {}) {
     // D: member into a place of another type: refused with the engine's reason
     document.querySelector("#world details[data-k=members]").open = true; mem = document.querySelector('[data-pick=member][data-member="PAGE"]');
     const anyHole = document.querySelector(".pl.hole") || document.querySelector(".pl");
-    if (mem && anyHole) { await drag(mem, anyHole); ok(S.pending || S.refused, "D1 any drop is answered"); if (S.refused) ok(/\[\[/.test(document.querySelector("#dock").innerText), "D2 refusal shows the engine's diagnostics"); if (S.pending) cancel(); S.refused = null; paintDock(); }
+    if (mem && anyHole) { await drag(mem, anyHole); ok(S.pending || S.refused, "D1 any drop is answered"); if (S.refused) ok(/·/.test(document.querySelector("#dock").innerText), "D2 refusal shows the engine's diagnostics"); if (S.pending) cancel(); S.refused = null; paintDock(); }
     // E: a result (synthesized) into a place
     let ops = [...document.querySelectorAll(".op[data-op]")];
     if (ops.length >= 2) {
       const src = ops[0], target = [...document.querySelectorAll(".pl")].find(p => p.dataset.op !== src.dataset.op);
-      if (target) { await drag(src, target); const was = window.__net.filter(n => n.path === "/edit").at(-1); ok(was && was.body.value.ref === src.dataset.op, "E1 result dropped as {ref}"); ok(S.pending || S.refused || /already/.test(document.querySelector("#dock").innerText), "E2 answered"); row.did.push(`result ${src.dataset.op}→${target.dataset.place}: ${S.pending ? "staged" : "refused"}`); if (S.pending) cancel(); S.refused = null; paintDock(); }
+      if (target) { await drag(src, target); const was = window.__net.filter(n => n.path === "/edit").at(-1); ok(was && was.body.value.ref === src.dataset.op, "E1 result dropped as {ref}"); ok(S.pending || S.refused || /^=$/m.test(document.querySelector("#dock").innerText), "E2 answered"); row.did.push(`result ${src.dataset.op}→${target.dataset.place}: ${S.pending ? "staged" : "refused"}`); if (S.pending) cancel(); S.refused = null; paintDock(); }
     }
     // F: retag: a filled place's value onto another place
     ops = [...document.querySelectorAll(".op[data-op]")];
     const filled = [...document.querySelectorAll(".pl.filled")];
     if (filled.length >= 1) {
       const src = filled[0], target = [...document.querySelectorAll(".pl")].find(p => p !== src);
-      if (target) { await drag(src, target); const was = window.__net.filter(n => n.path === "/edit").at(-1); ok(was && was.body.value.constant !== undefined, "F1 retag sends the place's value"); ok(S.pending || S.refused || /already/.test(document.querySelector("#dock").innerText), "F2 answered"); row.did.push(`retag ${src.dataset.place}→${target.dataset.place}: ${S.pending ? "staged" : "refused"}`); if (S.pending) cancel(); S.refused = null; paintDock(); }
+      if (target) { await drag(src, target); const was = window.__net.filter(n => n.path === "/edit").at(-1); ok(was && was.body.value.constant !== undefined, "F1 retag sends the place's value"); ok(S.pending || S.refused || /^=$/m.test(document.querySelector("#dock").innerText), "F2 answered"); row.did.push(`retag ${src.dataset.place}→${target.dataset.place}: ${S.pending ? "staged" : "refused"}`); if (S.pending) cancel(); S.refused = null; paintDock(); }
     }
     // G: a function onto a request-free phrase
     ops = [...document.querySelectorAll(".op[data-op]")];
@@ -114,7 +116,7 @@ window.audit4 = async function (prefixes, opts = {}) {
       const w = none.querySelector(".w"); const res = await drag(fn, w);
       const was = window.__net.filter(n => n.path === "/edit").at(-1);
       ok(was && was.body.number === null && /^explain\./.test(was.body.path), "G1 function dropped on a phrase sends number null and function.parameter");
-      ok(S.pending ? /new operation explain/.test(document.querySelector("#dock").innerText) : !!S.refused, "G2 answered");
+      ok(S.pending ? /\+ explain/.test(document.querySelector("#dock").innerText) : !!S.refused, "G2 answered");
       row.did.push(`explain→phrase ${none.dataset.ph}: ${S.pending ? "staged" : "refused"}`);
       if (S.pending) cancel(); S.refused = null; paintDock();
     }
@@ -131,7 +133,7 @@ window.audit4 = async function (prefixes, opts = {}) {
       key(document.activeElement, "o"); await sleep(30);
       const f = document.activeElement; ok(f.classList.contains("pl") && f.classList.contains("hole"), "H4 'o' jumps to an open place");
       await sleep(250);
-      ok(/Fits|Refused/.test(document.querySelector("#dock").innerText), "H5 focus previews through the engine");
+      ok(/✓|✕/.test(document.querySelector("#dock").innerText), "H5 focus previews through the engine");
       key(f, "Enter"); await settle();
       const was = window.__net.filter(n => n.path === "/edit").at(-1);
       ok(was && was.body.path === f.dataset.path && was.body.value.constant !== undefined, "H6 Enter dropped (same /edit body shape as the pointer)");
