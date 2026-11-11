@@ -12,6 +12,7 @@ the engine, and the location checks. It exits non-zero on any failure.
 """
 
 import contextlib
+import copy
 import dataclasses
 import hashlib
 import json
@@ -159,7 +160,7 @@ def project_decisions(reading) -> list[X.Decision]:
         for key, question in asked.items():
             if question["type"] == "boolean":
                 share = scriptt16.answer(scriptt16.YesNo(question["instructions"]), answers.get(key))
-                scores += ((offered[int(key)] if offered else key, share),)
+                scores += ((offered[int(key)] if key.isdigit() else X.ABSENT if key == "absent" else key, share),)
             else:
                 choice = scriptt16.answer(scriptt16.OneOf(question["instructions"], {one["id"]: one["description"] for one in question["options"]}), answers.get(key))
                 named = lambda key: offered[int(key)] if key.isdigit() else ({"none": X.REJECT, "absent": X.ABSENT} if decision["function"] else TAGS).get(key, key)
@@ -220,7 +221,7 @@ class Standin:
     """
 
     def __init__(self, script: dict, world: X.World, current: agree.World | None = None):
-        self.script, self.world, self.calls, self.requests, self.asked = script, world, 0, [], {}
+        self.script, self.world, self.calls, self.requests, self.asked, self.responses = script, world, 0, [], {}, []
         self.current = current  # the engine's world now: a question's operation is named by its docstring there
 
     def phrase(self, state: str) -> str:
@@ -254,12 +255,16 @@ class Standin:
             else:
                 about = instructions.removeprefix("The text asks the reader to ").removeprefix("The message asks the reader to ")
                 function = next((name for text, name in functions.items() if about.startswith(text + ".")), None)
-                role = instructions.partition(". Which ")[2].removesuffix(" does the text name for that?") or instructions.rpartition('" the ')[2].removesuffix(" for that?")
+                left_out = instructions.partition(". Does the text leave out the ")[2].removesuffix(" on purpose?")
+                role = instructions.partition(". Which ")[2].removesuffix(" does the text name for that?") or left_out or instructions.rpartition('" the ')[2].removesuffix(" for that?")
                 path = next((path for (_, name, path) in self.script["binds"] if name == function and path.rsplit(".", 1)[-1].replace("_", " ") == role), role)
                 if function is None:  # a question about a reply, or about two sentences
                     answers[key] = {"p_true": self.script.get("judge", 0.1)}
                     continue
                 want = self.script["binds"].get((phrase, function, path), X.REJECT)
+                if question["type"] == "boolean" and left_out:  # the absence question of a Many
+                    answers[key] = {"p_true": 0.9 if want == X.ABSENT else 0.1}
+                    continue
                 if question["type"] == "boolean":
                     members = want if isinstance(want, tuple) else ()
                     answers[key] = {"p_true": 0.9 if any(X.option_for(one, (instructions,), self.script.get("refers"), self.world, whole=False) == 0 for one in members) else 0.1}
@@ -269,6 +274,7 @@ class Standin:
                 continue
             chosen = pick(want)
             answers[key] = self.shares(ids, chosen) if chosen is not None else {"probabilities": {"not offered": 1.0}}
+        self.responses.append(json.dumps([state, asked, answers], sort_keys=True))
         return answers
 
     @staticmethod
@@ -290,6 +296,17 @@ def world_from(spec: X.World, folder: pathlib.Path) -> tuple[agree.World, str]:
     for name in spec.files:
         (folder / name).write_text("")
     return world_of(source, folder), source
+
+
+def faithful(reading) -> list[str]:
+    """Returns each d1 decision of a reading as the stand-in would have captured it: the state, the questions and the answers."""
+    return [json.dumps([one["state"], one["asked"], one["answers"]], sort_keys=True) for one in reading.decisions if one["by"] == "model"]
+
+
+def fidelity(observed: dict) -> list[str]:
+    """Every saved d1 decision must be a request and response that the stand-in actually captured, scores included."""
+    return [f"{label}/{step_label}: a saved decision's answers differ from what d1 returned: {one[:160]}"
+            for label, observation in observed.items() for step_label, step in observation["steps"].items() for one in step.get("unfaithful", [])]
 
 
 def rendered(reading) -> str:
@@ -375,9 +392,9 @@ def observe(inputs: X.Inputs) -> dict:
                 elif kind in ("save", "save_fail"):
                     try:
                         with read_only(store) if kind == "save_fail" else contextlib.nullcontext():
-                            scriptt16.save(current, store)
+                            current = scriptt16.save(current, store)
                         step |= {"accepted": True, "record": scriptt16.saved(store)[-1]}
-                    except OSError:
+                    except (OSError, ValueError):
                         step["accepted"] = False
                 elif kind in ("reload", "restore"):
                     line = scriptt16.saved(store)[action[1] - 1 if kind == "restore" else -1]
@@ -386,7 +403,7 @@ def observe(inputs: X.Inputs) -> dict:
                     current = loaded or current
                     step["rendered"] = rendered(current)
                 elif kind == "load":
-                    scriptt16.save(current, store)
+                    current = scriptt16.save(current, store)
                     loaded, found = scriptt16.load(X.mutated(scriptt16.saved(store)[-1], action[1]), world)
                     step |= {"diagnostics": [(index_of(loaded).get(id(by_number(loaded, number))), path, rule) for number, path, rule in found]} | (
                         {key: value for key, value in projected(loaded).items() if key != "diagnostics"} if loaded else {})
@@ -439,6 +456,8 @@ def observe(inputs: X.Inputs) -> dict:
             except Exception as error:  # an exception is an observation; the run goes on
                 step["error"] = type(error).__name__
                 step["message"] = str(error)[:300]
+            if current is not None and "decisions" in step:
+                step["unfaithful"] = [one for one in faithful(current) if one not in model.responses]
             step["requests"] = model.requests[asked:]
             step["model_calls"] = model.calls - calls
             step["writes"] = len(scriptt16.saved(store)) - lines
@@ -469,10 +488,11 @@ def test_types():
     assert agree.is_subtype(asked, words) and agree.is_subtype(written, words)  # a brand is a subtype of what it wraps
     assert not agree.is_subtype(written, asked) and not agree.is_subtype(words, asked)  # two brands over one type are different types
     assert agree.is_subtype(surface, subject) and not agree.is_subtype(asked, subject)  # a sum takes each of its alternatives
-    assert agree.tree(world.functions["redesign"].result) == {"constructor": "Later", "of": {"sum": "Surface", "alternatives": [{"member": "PAGE", "words": "the page"}, {"member": "MOD", "words": "the mod"}]}}
+    assert agree.tree(world.functions["redesign"].result) == {"constructor": "Later", "of": {"sum": "Surface", "alternatives": [{"member": "PAGE", "words": "the page", "type": {"brand": "Asked", "of": {"brand": "Words", "of": {"base": "str"}}}}, {"member": "MOD", "words": "the mod", "type": {"brand": "Asked", "of": {"brand": "Words", "of": {"base": "str"}}}}]}}
     untyped = world_of('import enum, typing\nAsked = typing.NewType("Asked", str)\nclass Surface(enum.Enum):\n    "x"\n    PAGE = "the page"\n    MOD: Asked = "the mod"\n\ndef show(surface) -> Surface:\n    pass\n')
     assert [(name, rule) for name, rule, _ in untyped.faults] == [("Surface", "missing"), ("show", "missing"), ("show", "missing")], untyped.faults
     assert agree.identity(world) == agree.identity(world_of(WORLD)) != agree.identity(world_of(WORLD + X.PAINT_WORLD.extra))
+    assert agree.identity(world) != agree.identity(world_of(WORLD.replace('PAGE: Asked = "the page"', 'PAGE: Written = "the page"')))  # provenance of a member is part of the world
 
 
 def test_faults():
@@ -541,8 +561,13 @@ def test_record_shape():
         line = json.loads(json.dumps(scriptt16.record(reading)))
         [phrase] = line["phrases"]
         assert [term["function"] for term in phrase["terms"]] == ["redesign", "show"] and phrase["terms"][1]["arguments"]["subject"] == {"ref": "0"}
-        assert {"form", "id", "text", "world", "phrases", "constants", "decisions", "corrections"} == set(line)
-        assert all({"state", "asked", "answers", "function", "operation", "path", "offered", "cut"} <= set(one) for one in line["decisions"])
+        assert phrase["terms"][1]["parameters"] == {"subject": "Subject"} and phrase["terms"][0]["arguments"]["surface"]["type"] == "Surface"  # declared place apart from the value's type
+        assert phrase["terms"][1]["judgments"] == {"valid": True, "diagnostics": [], "complete": True, "pending": True, "ready": False}
+        exported = json.loads(json.dumps(agree.world_record(world)))
+        assert exported["identity"] == line["world"] and "show.subject" in exported["types"]["Surface"]["accepted_by"] and "redesign.surface" not in exported["types"]["Subject"]["accepted_by"]
+        assert exported["types"]["Surface"]["alternatives"][0]["type"]["brand"] == "Asked" and exported["functions"]["show"]["parameters"] == [["subject", agree.tree(world.types["Subject"])]]
+        assert {"form", "id", "text", "source", "world", "base", "phrases", "constants", "decisions", "corrections"} == set(line)
+        assert all({"by", "rule", "state", "asked", "answers", "function", "operation", "path", "offered", "cut", "chosen"} <= set(one) for one in line["decisions"])
         shared = X.CASE["C17"].runs[1]
         model = Standin(shared.script, shared.world)
         line = scriptt16.record(scriptt16.read(shared.messages[0], world, [], model, join=False))
@@ -568,7 +593,7 @@ def test_specimen():
         mod = next(one for one in reading.constants if lit(one) == X.MOD)
         draft, found = scriptt16.edit(reading, show.number, "subject", mod)
         assert found == [] and show.arguments["subject"] is redesign  # the base is untouched
-        scriptt16.save(draft, folder / "store.jsonl")
+        draft = scriptt16.save(draft, folder / "store.jsonl")
         calls = model.calls
         loaded, found = scriptt16.load(scriptt16.saved(folder / "store.jsonl")[-1], world)
         assert found == [] and scriptt16.diagnostics(loaded) == [] and scriptt16.meaning(loaded) == scriptt16.meaning(draft) and model.calls == calls
@@ -582,82 +607,158 @@ def test_specimen():
 UNIT_TESTS = [test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
 
 
-# ---- The requirement inventory, read and checked by the repaired machinery ---------------
-
-INVENTORY_WORLD = '''
-import typing
-Words = typing.NewType("Words", str)
-Asked = typing.NewType("Asked", Words)
-Written = typing.NewType("Written", Words)
-Observed = typing.NewType("Observed", Words)
-
-def meet(requirement: Asked) -> Observed:
-    "meet this requirement of the brief"
-'''
+# ---- Laws over the real next/world.py -------------------------------------------------
+#
+# Each law is a plain loop over what next/world.py declares. The right inhabitants are
+# generated from each declaration; the wrong ones contradict it. Nothing here asks d1
+# except through the stand-in, and nothing compares an engine judgment with itself.
 
 
-def meeting(state: str, asked: dict) -> dict:
-    """A stand-in d1 for the inventory: every sentence asks to meet a requirement, with its own words; nothing more."""
-    answers = {}
-    for key, question in asked.items():
-        ids = [one["id"] for one in question.get("options", [])]
-        pick = {"what": "meet", "also": scriptt16.NOTHING}.get(key, "0" if "0" in ids else ids[-1] if ids else None)
-        answers[key] = Standin.shares(ids, pick) if ids else {"p_true": 0.1}
-    return answers
+def inhabitants(kind, world: agree.World) -> list:
+    """Returns terms built from a declared type alone: each one is a value of that type."""
+    match kind:
+        case agree.Applied(constructor=constructor, argument=inner) if constructor == agree.MAYBE:
+            return [Empty(kind)] + inhabitants(inner, world)
+        case agree.Applied(constructor=constructor, argument=inner) if constructor == agree.MANY:
+            return [Several(inner, ()), *[Several(inner, (one,)) for one in inhabitants(inner, world)[:1]]]
+        case agree.Applied(argument=inner):
+            return inhabitants(inner, world)
+        case agree.Sum(alternatives=alternatives):
+            return [Constant(kind, one, -1, -1) for one in alternatives if isinstance(one, agree.Member)] + [found for one in alternatives if not isinstance(one, agree.Member) for found in inhabitants(one, world)]
+        case agree.Product(fields=fields):
+            return [Record(kind, {name: inhabitants(field, world)[0] for name, field in fields})]
+        case agree.Base(python=python) if python is int:
+            return [Constant(kind, 3, -1, -1)]
+        case agree.Base(python=python) if python is pathlib.Path:
+            return [Constant(kind, pathlib.Path("world.py"), -1, -1)]
+    return [Constant(kind, "some words", -1, -1)]
 
 
-def links(one: dict) -> list[str]:
-    """Returns the cases, wrong implementations and location checks that test a requirement, as the oracle links them."""
-    rows = {row["invariant"]: row["checks"] for row in X.INVARIANT_TABLE}
-    if one["kind"] == "invariant":
-        return rows[one["id"]]
-    if one["kind"] == "wrong implementation":
-        return [one["id"], one["case"]]
-    if one["kind"] in ("record", "process"):
-        return [key for key in one["checked_by"].split(", ") if key in X.CASE]
-    return [one["id"]]
+def enums_in(kind) -> set[str]:
+    """Returns the names of the enums that a declared type admits, read from its declaration."""
+    match kind:
+        case agree.Applied(argument=inner) | agree.Brand(of=inner):
+            return enums_in(inner)
+        case agree.Sum(name=name, alternatives=alternatives):
+            return ({name} if any(isinstance(one, agree.Member) for one in alternatives) else set()) | {found for one in alternatives if not isinstance(one, agree.Member) for found in enums_in(one)}
+    return set()
 
 
-def inventory(observed: dict[str, dict], engine: dict[str, dict], provenance: dict) -> list[tuple[str, str, str, int]]:
-    """Reads each requirement of expected.REQUIREMENTS as a message and checks its obligations against the run's evidence.
-
-    What this establishes: every requirement of the inventory is represented by
-    obligations of the reader (one per sentence; the inventory stand-in, not d1,
-    says each sentence asks to meet a requirement), and each obligation's
-    outcome comes from the oracle's own predicates, run here on this run's
-    observations: a linked case's predicate, a wrong implementation's case
-    predicate on the patched engine's observation, a location predicate on the
-    provenance. A missing observation gives no artifact (UNVERIFIED); a failing
-    predicate gives FAIL. What it does not establish: that the reader
-    understands the words of a requirement (the words decide only how many
-    obligations it has), or anything about a requirement that no case tests.
-
-    Returns:
-        (id, kind, verdict, number of obligations) for each requirement.
-    """
-    world = world_of(INVENTORY_WORLD)
-    controls = {key: (case_id, diagnostic) for key, _, case_id, _, _, diagnostic in ENGINE_CONTROLS}
+def law_values(world: agree.World) -> list[str]:
+    """Every generated value of a parameter's type validates there and survives record and load with its meaning;
+    a member of another enum, a non-member, and constructor values of another type are rejected."""
     found = []
-    for one in X.REQUIREMENTS:
-        reading = scriptt16.read(one["words"], world, [], meeting, join=False)
-        evidence: list[str] | None = []
-        for key in links(one):
-            if key in controls and key in engine:
-                lines = X.PREDICATES[controls[key][0]](engine[key])
-                evidence += [] if any(controls[key][1] in line for line in lines) else [f"{key} was not caught"]
-            elif key in X.CASE and key in observed:
-                evidence += X.PREDICATES[key](observed[key])
-            elif key in X.LOCATION_PREDICATES and key != "L4":
-                evidence += X.LOCATION_PREDICATES[key](provenance)
-            elif key == "L4":
-                evidence += X.l4(provenance, X.snapshot()["files"])
-            else:
-                evidence = None  # a link with no result in this run: no evidence at all
-                break
-        evidence = evidence if links(one) else None
-        artifacts = [scriptt16.Artifact("meet", scriptt16.bindings(term)) for _, term in scriptt16.obligations(reading)] if evidence is not None else []
-        _, verdict, _ = scriptt16.check(reading, "", artifacts, [("evidence", lambda term, artifact, evidence=evidence: evidence == [])], meeting)
-        found.append((one["id"], one["kind"], verdict, len(scriptt16.obligations(reading))))
+    enums = {name: one for name, one in world.types.items() if isinstance(one, agree.Sum) and any(isinstance(m, agree.Member) for m in one.alternatives)}
+    count = 0
+    for function in world.functions.values():
+        for name, kind in function.parameters:
+            rights = inhabitants(kind, world)
+            wrongs = [Constant(one, 99, -1, -1) for one in enums.values()]
+            wrongs += [scriptt16.members(one)[0] for other, one in enums.items() if other not in enums_in(kind)]
+            wrongs += [Empty(agree.Applied(agree.MAYBE, world.types["int"] if "int" in world.types else agree.Base("int", int)))]
+            wrongs += [Several(agree.Base("int", int), ())] + ([Several(world.types["Words"], (scriptt16.members(enums["Surface"])[0],))] if "Surface" in enums else [])
+            for value, right in [(one, True) for one in rights] + [(one, False) for one in wrongs if not (isinstance(kind, agree.Applied) and kind.constructor == agree.MANY and isinstance(one, Several) and not one.terms and agree.show(one.element) == agree.show(kind.argument))]:
+                count += 1
+                faults = [one for one in scriptt16.checked({name: value}, {name: kind}) if one[0] == name]
+                if bool(faults) == right:
+                    found.append(f"{function.name}.{name}: {scriptt16.say(value)} of {agree.show(scriptt16.type_of(value))} {'rejected' if right else 'accepted'}: {faults}")
+                elif right:
+                    record = json.loads(json.dumps(scriptt16.term_record(value, set())))
+                    if scriptt16.value_of(scriptt16.term_from(record, world, {}), {}) != scriptt16.value_of(value, {}):
+                        found.append(f"{function.name}.{name}: {scriptt16.say(value)} changed meaning through record and load")
+    return found + ([] if count > 50 else [f"only {count} values were tried"])
+
+
+def law_composition(world: agree.World) -> list[str]:
+    """An existing result of every function stays a candidate wherever its declared result type is wanted, whole collections and optionals included."""
+    found = []
+    extended = agree.loads((HERE / "world.py").read_text() + '\ndef summarize(findings: Many[Observed]) -> Written:\n    "summarize findings"\n'
+                           '\ndef keep(found: Maybe[Path]) -> Written:\n    "keep it"\n'.replace("Maybe[Path]", "Maybe[pathlib.Path]"), world.folder)
+    for producer in extended.functions.values():
+        result = Application(producer, {name: Hole(kind) for name, kind in producer.parameters}, 0)
+        for consumer in extended.functions.values():
+            for name, kind in consumer.parameters:
+                wanted = scriptt16.later(producer.result) and agree.show(producer.result.argument) == agree.show(kind) or agree.show(producer.result) == agree.show(kind)
+                if not wanted or consumer == producer:
+                    continue
+                search = scriptt16.Search("", extended, lambda state, asked: {}, scriptt16.Limits(), [], iter(range(1, 99)))
+                scriptt16.solve(kind, scriptt16.Environment((), (result,)), search, "", name, consumer, 1)
+                if not any(one is result for decision in search.decisions for one in decision["offered"]):
+                    found.append(f"{producer.name}'s result ({agree.show(producer.result)}) is not offered to {consumer.name}.{name}")
+    return found + ([] if "summarize" in extended.functions else ["the aggregate consumer did not load"])
+
+
+def law_identity(world: agree.World) -> list[str]:
+    """Evidence, corrections, readiness, the gate, d1's answers, the world, the source and the store keep identity."""
+    found = []
+    with tempfile.TemporaryDirectory() as name:
+        folder = pathlib.Path(name)
+        test = world_of(WORLD, folder)
+        twice = "Redesign the mod. Redesign the mod again."
+        model = Standin(X.script({"Redesign the mod.": "redesign", "Redesign the mod again.": "redesign"}, {("Redesign the mod.", "redesign", "surface"): X.MOD, ("Redesign the mod again.", "redesign", "surface"): X.MOD}), X.World(), test)
+        reading = scriptt16.read(twice, test, [], model, join=False)
+        first, second = [term for _, term in scriptt16.obligations(reading)]
+        mod = next(one for one in reading.constants if lit(one) == X.MOD)
+        always = [("evidence", lambda term, artifact: True)]
+        outcomes = [one.outcome for one in scriptt16.check(reading, "", [scriptt16.Artifact("redesign", {"surface": mod})], always, model)[0]]
+        if X.PASS in outcomes:
+            found.append(f"one artifact without an operation fulfilled two identical operations: {outcomes}")
+        outcomes = [one.outcome for one in scriptt16.check(reading, "", [scriptt16.Artifact("redesign", {"surface": mod}, second.number)], always, model)[0]]
+        if outcomes != [X.UNVERIFIED, X.PASS]:
+            found.append(f"an artifact naming the second operation gave {outcomes}")
+        # A correction keeps its source occurrence when a rerun adds an operation in an earlier phrase.
+        text = "Show the mod. Show the page."
+        binds = {("Show the mod.", "show", "subject"): X.MOD, ("Show the page.", "show", "subject"): X.PAGE}
+        model = Standin(X.script({"Show the mod.": "show", "Show the page.": "show"}, binds), X.World(), test)
+        reading = scriptt16.read(text, test, [], model, join=False)
+        _, page_show = [term for _, term in scriptt16.obligations(reading)]
+        draft, faults = scriptt16.edit(reading, page_show.number, "subject", mod, correction=True)
+        more = Standin(X.script({"Show the mod.": ("show", "show"), "Show the page.": "show"}, binds), X.World(), test)
+        again = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(draft))), test, more)
+        shown = [(again.text[phrase.start:phrase.end].strip(), scriptt16.say(term)) for phrase, term in scriptt16.obligations(again)]
+        if faults or shown[-1] != ("Show the page.", "show(subject='the mod')") or again.corrections[0]["status"] != "retained":
+            found.append(f"a correction moved after a rerun: {shown}, {again.corrections}")
+        # An invalid correction is not recorded; a correction of an unknown operation is refused.
+        if scriptt16.edit(reading, page_show.number, "subject", Hole(test.types["Cell"], "cleared"), correction=True)[0].corrections or scriptt16.edit(reading, 99, "subject", mod, correction=True)[1] != [(99, "subject", "reference")]:
+            found.append("an invalid correction was recorded")
+        # Readiness of a consumer needs a valid producer.
+        model = Standin(X.told(X.REDESIGN_SHOW), X.World(), test)
+        reading = scriptt16.read("Redesign the mod. Then show it.", test, [], model, join=False)
+        redesign, show = [term for _, term in scriptt16.obligations(reading)]
+        broken = copy.deepcopy(reading)
+        broken_redesign = [term for _, term in scriptt16.obligations(broken)][0]
+        broken_redesign.arguments["surface"] = Constant(test.types["Surface"], 99, -1, -1)
+        if scriptt16.sound(broken, [term for _, term in scriptt16.obligations(broken)][1]):
+            found.append("a consumer of an invalid producer is sound")
+        # The gate sees a change of result type and pending, unless the change is migrated.
+        line = json.loads(json.dumps(scriptt16.record(reading)))
+        later = WORLD.replace("def redesign(surface: Surface) -> Later[Surface]:", "def redesign(surface: Surface) -> Surface:")
+        proposer = Standin(X.told(X.REDESIGN_SHOW), X.World(), world_of(later, folder))
+        if scriptt16.gate(later, folder, [line], proposer, test, WORLD).activated or not scriptt16.gate(later, folder, [line], proposer, test, WORLD, migrations=((0, 0), (0, 1))).activated:
+            found.append("the gate let a Later result become plain without a migration, or refused the migration")
+        # d1's malformed shares are invalid answers.
+        question = scriptt16.OneOf("q", {"0": "a", "1": "b"})
+        for shares in ({"0": float("nan"), "1": 0.5}, {"0": float("inf"), "1": 0.0}, {"0": -0.5, "1": 1.5}, {"0": 0.5, "1": 0.2}):
+            if scriptt16.answer(question, {"probabilities": shares}).best is not None:
+                found.append(f"the shares {shares} were accepted")
+        if any(scriptt16.answer(scriptt16.YesNo("q"), {"p_true": value}) is not None for value in (1.5, -0.1, float("nan"))):
+            found.append("a p_true out of range was accepted")
+        # The world's identity holds the provenance of its members; a changed source text is reported; a stale draft is not saved.
+        if agree.identity(test) == agree.identity(world_of(WORLD.replace('MOD: Asked = "the mod"', 'MOD: Written = "the mod"'), folder)):
+            found.append("a member's provenance is not part of the world's identity")
+        tampered = dict(line, text=line["text"].replace("mod", "pod"))
+        if scriptt16.load(tampered, test)[1] != [(None, None, "identity")]:
+            found.append("a saved reading with another source text loaded as the same reading")
+        store = folder / "store.jsonl"
+        base = scriptt16.save(reading, store)
+        one, _ = scriptt16.edit(base, show.number, "subject", mod)
+        two, _ = scriptt16.edit(base, show.number, "subject", Hole(test.types["Subject"], "cleared"))
+        scriptt16.save(one, store)
+        try:
+            scriptt16.save(two, store)
+            found.append("a draft from a superseded snapshot was saved")
+        except ValueError:
+            pass
     return found
 
 
@@ -667,6 +768,41 @@ def head_hashes() -> dict[str, str | None]:
     for name in X.SNAPSHOT_FILES:
         blob = subprocess.run(["git", "-C", str(HERE.parent), "show", f"HEAD:{name}"], capture_output=True)
         found[name] = hashlib.sha256(blob.stdout).hexdigest() if blob.returncode == 0 else None
+    return found
+
+
+LAW_CONTROLS = (
+    ("values", "a constant of any value inhabits its type", "inhabits", lambda original: lambda value, kind: True),
+    ("composition", "a whole collection or optional is never a candidate", "candidates",
+     lambda original: lambda goal, *rest: [] if isinstance(goal, agree.Applied) and goal.constructor in (agree.MANY, agree.MAYBE) else original(goal, *rest)),
+    ("identity", "an artifact is about every operation with its function and arguments", "about", lambda original: lambda application, artifact, index: artifact.function == application.function.name),
+)
+
+LAWS = {"values": law_values, "composition": law_composition, "identity": law_identity}
+
+# What each law establishes, for the coverage report of the inventory.
+LAW_COVERS = {"values": ("I2", "I6", "C11"), "composition": ("I4", "C07", "C09"), "identity": ("I5", "I3", "I7", "I9", "C17", "C18", "C19", "C20", "C22", "R1")}
+
+
+def coverage(results: dict[str, list[str]]) -> list[tuple[str, str, list[str], list[str]]]:
+    """Returns, for each requirement of the inventory, the checks of this run that test it and the ones that failed.
+
+    This is accounting, not a verdict on the English requirement: a requirement is
+    established only as far as its linked cases, controls and laws test it.
+    """
+    rows = {row["invariant"]: row["checks"] for row in X.INVARIANT_TABLE}
+    found = []
+    for one in X.REQUIREMENTS:
+        if one["kind"] == "invariant":
+            linked = rows[one["id"]]
+        elif one["kind"] == "wrong implementation":
+            linked = [one["id"]]
+        elif one["kind"] in ("record", "process"):
+            linked = [key for key in one["checked_by"].split(", ") if key in X.CASE]
+        else:
+            linked = [one["id"]]
+        linked += [f"law {law}" for law, covers in LAW_COVERS.items() if one["id"] in covers]
+        found.append((one["id"], one["kind"], linked, [key for key in linked if results.get(key, ["not run"])]))
     return found
 
 
@@ -700,6 +836,8 @@ ENGINE_CONTROLS = (
     ("W3", "include every local Many item", "C03", "solve", every_local, "binding surfaces"),
     ("W4", "ignore nested pending dependencies", "C10", "pending", lambda original: lambda term: isinstance(term, Application) and scriptt16.later(term.function.result), "status: expected 'pending'"),
     ("W5", "duplicate a shared result", "C15", "term_record", lambda original: lambda term, written: original(term, set()), "expected 3 obligations"),
+    ("W7", "store answers other than d1's", "C22", "ask", lambda original: lambda *args: (lambda result: (result[1].__setitem__("answers", json.loads(json.dumps(result[1]["answers"]).replace("0.9", "0.8"))), result)[1])(original(*args)),
+     "answers differ from what d1 returned"),
     ("W6", "certify all repeated operations from one generic reply", "C20", "check", lambda original: lambda *args, **keys: (lambda found: (
         [dataclasses.replace(one, outcome=X.PASS) if (one.claim or 0) >= 0.5 else one for one in found[0]], X.PASS, found[2]))(original(*args, **keys)), "obligation 1 'evidence'"),
 )
@@ -743,7 +881,7 @@ def main() -> int:
     observed, results = {}, {}
     for case in X.CASES:
         observed[case.id] = observed_case(case)
-        found = results[case.id] = X.PREDICATES[case.id](observed[case.id])
+        found = results[case.id] = X.PREDICATES[case.id](observed[case.id]) + fidelity(observed[case.id])
         failures += found
         print(f"{case.id} {'pass' if not found else 'FAIL'}: {case.words}" + "".join(f"\n    {line}" for line in found))
 
@@ -755,9 +893,6 @@ def main() -> int:
         if key in NOT_APPLICABLE:
             print(f"  projection {key:<5} not applicable: {words} ({NOT_APPLICABLE[key]})")
             continue
-        if wrong_observation == observed[case_id]:
-            print(f"  projection {key:<5} not applicable: {words} (it leaves this engine's observation unchanged: an allowed variant)")
-            continue
         found = X.PREDICATES[case_id](wrong_observation) if wrong_observation is not None else found
         caught = [line for line in found if diagnostic in line]
         print(f"  projection {key:<5} {'caught' if caught else 'MISSED'}: {words} -> {(caught or found or [''])[0][:140]}")
@@ -767,7 +902,7 @@ def main() -> int:
     for key, words, case_id, name, value, diagnostic in ENGINE_CONTROLS:
         with patched(name, value):
             engine[key] = observed_case(X.CASE[case_id])
-        found = X.PREDICATES[case_id](engine[key])
+        found = X.PREDICATES[case_id](engine[key]) + fidelity(engine[key])
         caught = [line for line in found if diagnostic in line]
         results[key] = [] if caught else [f"{key} not caught"]
         print(f"  engine {key} {'caught' if caught else 'MISSED'}: {words} (scriptt16.{name} patched) -> {(caught or found or [''])[0][:160]}")
@@ -778,28 +913,28 @@ def main() -> int:
         failures += found
         print(f"{key} {'pass' if not found else found}")
 
-    judged = inventory(observed, engine, provenance)
-    print(f"requirement inventory: {len(judged)} items read by the reader (one obligation per sentence) and checked against the oracle's predicates on this run.")
-    print("  It shows each requirement is represented and its outcome comes from the cases that test it; it does not show the reader understands the words.")
-    for verdict in (X.PASS, X.FAIL, X.UNVERIFIED):
-        print(f"  {verdict}: {[f'{key} ({obligations})' for key, _, one, obligations in judged if one == verdict]}")
-    verdicts = {key: one for key, _, one, _ in judged}
-    dropped = inventory({key: one for key, one in observed.items() if key != "C03"}, engine, provenance)
-    fabricated = inventory({key: {} for key in observed}, {key: {} for key in engine}, provenance)
-    controls = [("a dropped case gives no PASS to what it tests", [key for key, _, one, _ in dropped if key in ("C03", "I3") and one == X.PASS]),
-                ("fabricated observations give no PASS to a case or invariant", [key for key, kind, one, _ in fabricated if kind in ("case", "invariant") and one == X.PASS]),
-                ("a requirement no case tests is never PASS", [key for key, kind, one, _ in judged if kind == "process" and not links(next(r for r in X.REQUIREMENTS if r["id"] == key)) and one == X.PASS])]
-    for words, wrong in controls:
-        print(f"  inventory control {'caught' if not wrong else 'MISSED'}: {words}{f' -> {wrong}' if wrong else ''}")
-        failures += [f"inventory control: {words}: {wrong}"] if wrong else []
-    failures += [f"inventory: {key} is {one}" for key, one in verdicts.items() if one == X.FAIL]
+    world = world_from(X.World("next"), HERE.parent)[0]
+    for law, check in LAWS.items():
+        found = results[f"law {law}"] = check(world)
+        failures += found
+        print(f"law {law}: {'holds' if not found else found}")
+
+    for law, words, name, value in LAW_CONTROLS:
+        with patched(name, value):
+            found = LAWS[law](world)
+        print(f"  law control {'caught' if found else 'MISSED'}: {words} (scriptt16.{name} patched) -> {(found or [''])[0][:140]}")
+        failures += [] if found else [f"law control {law}: {words} not caught"]
+
+    print("coverage of the requirement inventory: which checks of this run test each requirement (accounting, not a verdict on its words)")
+    for key, kind, linked, failed in coverage(results):
+        print(f"  {key:<4} {kind:<20} " + (f"tested by {', '.join(linked)}" + (f"; FAILED: {failed}" if failed else "") if linked else "not tested by this run: checked by the final report"))
     table = [row | {"observed": "pass: " + ", ".join(row["checks"]) if not any(results.get(key) for key in row["checks"]) else
                     {key: results[key][:2] for key in row["checks"] if results.get(key)}} for row in X.INVARIANT_TABLE]
     for row in table:
         print(f"  {row['invariant']}: {row['observed']}")
     print("INVARIANT_TABLE " + json.dumps(table))
 
-    print(f"{len(X.CASES)} cases, {len(X.NEGATIVE_CONTROLS)} projection controls, {len(ENGINE_CONTROLS)} engine controls, {len(UNIT_TESTS)} unit tests: "
+    print(f"{len(X.CASES)} cases, {len(X.NEGATIVE_CONTROLS)} projection controls, {len(ENGINE_CONTROLS)} engine controls, {len(UNIT_TESTS)} unit tests, {len(LAWS)} laws: "
           + ("all passed" if not failures else f"{len(failures)} FAILURES"))
     return 1 if failures else 0
 

@@ -133,7 +133,7 @@ def _():
 def _():
     """SAVE, RELOAD, VALIDATE AGAIN. The record is form 5: references are {"ref": id}, decisions keep their path. Reload asks d1 nothing."""
     store: pathlib.Path = pathlib.Path(tempfile.mkdtemp()) / "store.jsonl"
-    scriptt16.save(draft, store)
+    draft = scriptt16.save(draft, store)
     calls_before: int = d1.calls
     loaded, load_faults = scriptt16.load(scriptt16.saved(store)[-1], world)
     {"load diagnostics": load_faults, "diagnostics after reload": scriptt16.diagnostics(loaded), "same meaning": scriptt16.meaning(loaded) == scriptt16.meaning(draft),
