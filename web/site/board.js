@@ -88,7 +88,7 @@ function render() {
       const here = o.binds.filter(b => phrase && ownPhrase(b.op) === phrase && !b.inSeveral);
       const v = el("span", { class: "val", tabindex: 0, role: "button", "data-key": key.val(o.at), "data-kind": "value", "data-drag": 1,
         "aria-label": `“${o.constant}”, a ${o.type}. Enter to inspect, Space to pick up and use elsewhere.` }, el("span", { "data-text": 1 }, r.text.slice(o.at[0], o.at[1])));
-      for (const b of here) { v.append(placeLabel(b.op, b.path, "pl", changed, r, phrase.terms.length > 1)); labelled.add(key.place(b.op.id, b.path)); }
+      if (here.length) v.append(el("span", { class: "pls" }, here.map(b => { labelled.add(key.place(b.op.id, b.path)); return placeLabel(b.op, b.path, "pl", changed, r, phrase.terms.length > 1); })));
       parent.append(v);
       placed.add(key.val(o.at)); last = key.val(o.at);
       pos = o.at[1];
@@ -137,7 +137,7 @@ function opTag(op, r, changed) {
 function placeLabel(op, path, cls, changed, r, prefix) {
   const c = correctionAt(r, op.id, path), k = key.place(op.id, path);
   return el("span", { class: cls + (changed.has(k) ? " chg" : ""), tabindex: 0, role: "button", "data-place": k, "data-op": op.id, "data-path": path, "data-kind": "place", "data-key": k,
-    "aria-label": `place ${path} of ${op.function}, type ${op.parameters[path.split(".")[0]] || ""}${c ? ", corrected by you" : ""}. Enter to inspect.` }, (prefix ? op.function + "." : "") + path, c ? el("span", { class: "mark" }, c.status === "invalidated" ? "✎✕" : "✎") : null);
+    "aria-label": `place ${path} of ${op.function}, type ${op.parameters[path.split(".")[0]] || ""}${c ? ", corrected by you" : ""}. Enter to inspect.` }, (prefix ? `${op.function}#${op.id}.` : "") + path, c ? el("span", { class: "mark" }, c.status === "invalidated" ? "✎✕" : "✎") : null);
 }
 
 function socket(op, pl, r, changed, prefix, target) {
@@ -146,7 +146,7 @@ function socket(op, pl, r, changed, prefix, target) {
   const s = el("span", { class: "sock" + (v.hole ? " hole" : "") + (changed.has(k) ? " chg" : ""), tabindex: 0, role: "button", "data-place": k, "data-op": op.id, "data-path": pl.path, "data-kind": "place", "data-key": k,
     "data-target": v.ref !== undefined ? key.op(v.ref) : target,
     "aria-label": `place ${pl.path} of ${op.function}: ${say(v, r)}${c ? ", corrected by you" : ""}. Enter to inspect.` },
-    (prefix ? op.function + "." : "") + pl.path, " ", el("span", { class: "arrow" }, what[0]), what[1] ? " " + what[1] : "", c ? el("span", { class: "mark" }, c.status === "invalidated" ? "✎✕" : "✎") : null);
+    (prefix ? `${op.function}#${op.id}.` : "") + pl.path, " ", el("span", { class: "arrow" }, what[0]), what[1] ? " " + what[1] : "", c ? el("span", { class: "mark" }, c.status === "invalidated" ? "✎✕" : "✎") : null);
   return s;
 }
 
@@ -195,7 +195,17 @@ function diff(a, b) {
 }
 
 // ---- engine previews: one rule, the engine's ----
-const ask = async body => { const r = await api("/edit", body); return { body, draft: r.draft || null, diagnostics: r.diagnostics || [], error: r.error }; };
+// The lab server answers one request at a time with a short accept queue, so previews go two at a time and a reset is retried once.
+let slots = 2; const waiting = [];
+const turn = () => new Promise(go => { if (slots > 0) { slots--; go(); } else waiting.push(go); });
+const release = () => { const n = waiting.shift(); if (n) n(); else slots++; };
+const ask = async body => {
+  await turn();
+  try {
+    let r; for (let tries = 0; ; tries++) { try { r = await api("/edit", body); break; } catch (e) { if (tries) { r = { error: "the engine did not answer: " + e.message }; break; } } }
+    return { body, draft: r.draft || null, diagnostics: r.diagnostics || [], error: r.error };
+  } finally { release(); }
+};
 const okay = r => r.draft && !r.diagnostics.length && !r.error;
 const sourceOf = (el_) => {
   if (el_.dataset.kind === "value") { const o = S.occ.get(el_.dataset.key); return { key: el_.dataset.key, label: `“${o.constant}”`, value: o.term, from: o.binds.map(b => key.place(b.op.id, b.path)) }; }
@@ -208,10 +218,11 @@ function targetsOf(src) {
   return list;
 }
 function previewAll(src) {
-  const results = new Map();
-  const job = Promise.all(targetsOf(src).map(async tg => {
+  const results = new Map(), all = targetsOf(src);
+  const job = Promise.all(all.map(async tg => {
     if (src.from.includes(tg.k)) { results.set(tg.k, { here: true }); return; }
     results.set(tg.k, await ask({ reading: S.id, number: +tg.op.id, path: tg.p.path, value: src.value }));
+    if (S.carry && S.carry.src === src && !S.carry.done) { S.note = `Carrying ${src.label}: the engine has answered ${results.size} of ${all.length} places…`; msg(); }
   }));
   return { results, job, src };
 }
@@ -492,8 +503,10 @@ const stage = $("#stage");
 stage.addEventListener("pointerdown", e => {
   const d = e.target.closest("[data-drag]");
   if (!d || e.target.closest(".pl") || e.button !== 0 || S.pending) return;
+  e.preventDefault();  // no native text selection or drag image: the pointer is carrying a meaning, not selecting characters
   drag = { el: d, x: e.clientX, y: e.clientY, started: false };
 });
+addEventListener("pointercancel", () => { if (drag && drag.started) { drag.ghost.remove(); endCarry("Drag cancelled: nothing changed."); render(); } drag = null; });
 addEventListener("pointermove", e => {
   if (!drag) return;
   if (!drag.started) {

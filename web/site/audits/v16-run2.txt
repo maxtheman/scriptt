@@ -1,0 +1,16 @@
+Audit run 2 of build v16 (board 3): real pointer and keyboard events, built-in browser, lab engine on port 2781, 10 Nov 2026. Observed by the builder; see AUDIT-INDEPENDENT.txt for the check by a separate agent.
+Specimen "Redesign the mod. Then show it. Test the search too." (reading 2ed6b3):
+ L1 click on a value, a word, a place, an operation opens the card; Tab reaches "the mod" (4th Tab from the page body) and Enter opens it. observed
+ L2 pointer: drag "the mod" onto the show.subject socket -> pickup sent one /edit per place (2: show.subject, test.subject; redesign.surface is "here"), the drop sent no further request and showed the engine's draft.
+    keyboard: Space on "the mod", 3 Tabs to show.subject (data-fit=ok, title "fits"), Enter -> the same preview, identical body to the pointer one. observed
+ L3 preview listed 4 engine changes: show.subject result-of-redesign -> "the mod"; show pending true -> false; show ready false -> true; the earlier Stop check no longer applies.
+ L4 Cancel: text identical to base, msg "Cancelled", /readings still 2 lines for this reading, 0 /accept. observed
+ L5 Accept (Enter on the focused Accept): 1 POST /accept; /readings gained one snapshot with corrections=[{show.subject retained}]; page reloaded shows the same reading with the ✎ mark. observed
+ L6 Rerun (live d1 service): card "show.subject: retained". observed. One /rerun on reading c6e375 returned "TypeError: 'NoneType' object is not subscriptable" (the page showed it); three curl reruns of the same reading then succeeded: intermittent, engine-side.
+ L7 Earlier snapshots -> Restore #2 (the one with the Stop check) -> "Restored snapshot #2 as the latest", Stop badges (UNVERIFIED, UNVERIFIED, FAIL) appear on the operation tags. observed
+ L8 Preview open, a rerun made through curl, then Accept: nothing saved, the card says the store has a newer snapshot and keeps the draft. observed
+ Refusal: drag "the search" onto redesign.surface -> card "Refused by the engine / engine rule type", the text still shows the base (first build wrongly drew the invalid draft: fixed, base shown); Escape dismisses and focus returns to the place.
+ Word card: click "show" in "Then show it" -> "No meaning of its own is recorded for this word; the engine reads whole phrases", phrase "read as show"; decisions disclosure shows the recorded question and scores with a provenance line.
+Corpus readings (code fence, "> " pasted lines, multi-operation phrase, ambiguous duplicate operations): drag of "the mod" to show#6.subject on reading c6e375 previewed 1 change, accepted, saved with correction mark.
+Found and fixed during these runs: card closed itself on first click inside it (rebuild detached the target); drag left text selected and the page stuck "carrying" (now preventDefault + pointercancel); engine server resets with more than a few parallel /edit (now 2 at a time, one retry); refused draft was drawn in the text.
+Not exercised: several/fields/empty values (absent from this lab world), quoted-reply `quotes` markings (none produced by the engine for any corpus text), Stop check with prose judgments (needs a Written/Words obligation).
