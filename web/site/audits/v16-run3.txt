@@ -1,0 +1,5 @@
+Audit run 3 of build v16 (board 3), 10 Nov 2026, built-in browser (separate tab), lab on 2781, script site/audit.js, same checks as run 1.
+Corpus: the whole lab store: 95 readings, 52,779 characters, 311 operations, 169 unresolved requests; includes the lead's real prompts read with the live d1 (longest: 13,727 chars / 132 phrases / 49 ops / 12 unresolved; 8,825 chars / 91 phrases / 40 ops).
+Result: 0 failures (R1 text equals source, R2, R3, R4, R6, L2 hold for all 95). /edit calls 310 (previews only), /accept 0, storage writes 0, ~36 s for the run (the engine answers one preview at a time). No card above 40% of the viewport.
+Not exercised: no reading in the store has several/fields values or phrase quotes; clicks in the audit are synthetic, real events are in run 2.
+Visual note: line-height lowered (3.3 -> 2.5) afterwards, since long prose without operations was too airy.
