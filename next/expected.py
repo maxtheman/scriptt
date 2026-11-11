@@ -72,6 +72,10 @@ in which the phrase asks for them. A binding value is one of:
 * ``Hole(type, reason)``: a typed hole, with one of the reasons below.
 * a tuple of the above: the members of a ``Many``. Membership counts; order does not.
 * in EXPECTED only, a frozenset of the above: any one of them is acceptable.
+* in a tuple, a dict ``{field: value}``: a record that is a member of a Many;
+  a path inside it is ``path[].field``.
+* in an edit only, a ``Passage``: the words at that place of the message, with
+  the brand of their phrase (a quote's words are Written).
 * in edits and law inputs only, ``Nothing(type)`` and ``Members(type, values)``:
   an Empty or a Several whose own declared type is given, so that a constructor
   whose metadata contradicts its place can be proposed.
@@ -582,7 +586,7 @@ RECORD = {"R1": ("A save writes one JSON object per reading, as the engine's rec
 # Each change to this oracle after its first review. Version 1 is commit 5b524a0.
 # Every observed result must be judged again against the version that holds it;
 # no result had been produced against version 1.
-ORACLE_VERSION = 8
+ORACLE_VERSION = 9
 CORRECTIONS = (
     ("E1", 2, "status could be recomputed by the adapter from the projected bindings, making C10 circular, and was not transitive through a pending operation's non-Later result",
      "observe() now takes status from the engine's own dependency judgment and defines it transitively; run C10 through_result", ("C10", "C15", "C18", "C19")),
@@ -662,6 +666,12 @@ CORRECTIONS = (
     ("E67", 7, "applying a function to a thing was untested", "run apply: edit with no operation and path function.parameter; Obligation.number is the engine's stable operation number; runs apply and applied_rerun", ("C18", "C19")),
     ("E68", 7, "ready meant complete and available, so redesign(mod), whose own result is deferred, could not start", "ready is: valid, complete, and no input the result of a PENDING obligation; its own Later result is status, a separate judgment", ("C06", "C10", "C15", "C18", "C19", "C20", "C22")),
     ("E69", 8, "an applied operation was listed after all obligations with span '', which no phrase holds", "it belongs to the phrase of the thing it was applied to and follows that phrase's operations; numbers are compared by operation, not position; an unresolved obligation's correction keeps rule unresolved", ("C18", "C19")),
+    ("E70", 9, "the laws read next/world.py at SOURCE_COMMIT, not the file under test", "LAW_WORLD is the worktree's next/world.py; case fixtures stay frozen at SOURCE_COMMIT, and the self-test says which is which", ("LAW1", "LAW2", "LAW3", "LAW4", "LAW5")),
+    ("E71", 9, "next/world.py has no product or Many parameter, so LAW1 never validated a Record or a Several: a bare Record in Many[Cell] slipped through", "LAW1 and LAW2 also run over PRODUCT_WORLD: a product place, a Many of records and a Maybe, with a bare record, a wrong-element collection and records with a missing or extra field; a record in a collection is a dict, its paths path[].field", ("LAW1", "LAW2")),
+    ("E72", 9, "two unresolved operations of one phrase were untested through save and load", "run two_unresolved", ("C16",)),
+    ("E73", 9, "a docstring change passed the gate, since the stand-in reads the new docstring", "a changed declaration of an obligation's operation is a regression unless migrated; runs docstring_changed and docstring_migrated", ("C02",)),
+    ("E74", 9, "saving a restored snapshot was untested", "step restored_saved", ("C18",)),
+    ("E75", 9, "a function could be applied to a word inside a quote", "run apply_to_quote; a Passage as an edit value names words at their place", ("C13",)),
 )
 
 
@@ -829,6 +839,7 @@ BROKEN_WORLD = World(extra="\ntype Broken = Many | int\n")
 TOKEN_WORLD = World(extra='\nToken = typing.NewType("Token", str)\n\ndef make_token(surface: Surface) -> Token:\n    "make a token"\n\ndef use_token(token: Token) -> Observed:\n    "use a token"\n')
 AGGREGATES = World(extra='\ndef gather(surface: Surface) -> Many[Observed]:\n    "gather notes on it"\n\ndef summarize(notes: Many[Observed]) -> Written:\n    "summarize notes"\n'
                          '\ndef find(surface: Surface) -> Maybe[Observed]:\n    "find a note on it"\n\ndef keep(note: Maybe[Observed]) -> Written:\n    "keep a note"\n')
+DOCSTRING_CHANGED = World(replace=(('"change how it looks"', '"change how it reads"'),))
 PLACE_WORLD = World(extra='\ndef place(surface: Surface, subject: Subject) -> Written:\n    "place it beside something"\n')
 APPLIED = [ob("Redesign the mod.", "redesign", {"surface": MOD}, PENDING), ob("Redesign the mod.", "show", {"subject": Ref(0)}, PENDING),
            ob("Redesign the mod.", "place", {"surface": Ref(0), "subject": Hole("Subject", CLEARED)}, PENDING), ob("Redesign the mod.", "compare", {"surfaces": (MOD,)})]
@@ -849,7 +860,9 @@ SOURCE_COMMIT = "dcbce02"  # the snapshot of next that the worlds are built from
 
 @functools.cache
 def base_source(base: str) -> str:
-    """Returns next/world.py ("next") or the WORLD text of the test file ("test"), as they stood at SOURCE_COMMIT."""
+    """Returns next/world.py ("next") or the WORLD text of the test file ("test") as they stood at SOURCE_COMMIT, or ("worktree") next/world.py as it is now."""
+    if base == "worktree":
+        return (HERE / "world.py").read_text()
     path = "next/world.py" if base == "next" else "next/test_scriptt16.py"
     text = subprocess.run(["git", "-C", str(HERE), "show", f"{SOURCE_COMMIT}:{path}"], capture_output=True, text=True, check=True).stdout
     return text if base == "next" else next(node.value.value for node in ast.parse(text).body if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "WORLD")
@@ -940,8 +953,14 @@ CASES = (
                 (("read", READ, {}),
                  ("proposed", ("propose_world", World(replace=(("-> Later[Surface]:", "-> Surface:"),)), told(REDESIGN_SHOW[:1]), ((0, 0),)),
                   {"world_change": {"activated": True, "verdict": PASS, "regressions": [], "faults": [], "migrated": [(0, 0)],
-                                    "active_world": World(replace=(("-> Later[Surface]:", "-> Surface:"),))}})))),
-         interpretation="A regression is a (message, obligation) of the accepted corpus whose operation or bindings change or disappear; run weakened removes the page member, so show's binding weakens to a hole. A world with an invalid kind cannot activate (the brief's state machine). An unverified world change does not activate. A rejected change returns its draft equal to the proposal built from the inputs, with its regressions or faults, and the active world keeps every declaration: types and signatures, not only names. An obligation added to an accepted message is a regression at its index in the new reading (run added). After an activation, the corpus is read again under the active world and the next proposal is judged against it (run second_proposal). A hole whose reason changes from rejected to invalid answer has changed meaning (run reason_changed). A result type change from Later[Surface] to Surface changes status and readiness: a regression (run result_type_changed), unless the proposal supplies it as an explicit migration, which then activates and reports it as migrated (run migrated)."),
+                                    "active_world": World(replace=(("-> Later[Surface]:", "-> Surface:"),))}}))))
+         + tuple(run(label, label == "docstring_migrated", World(), ("Redesign the mod.",), told(REDESIGN_SHOW[:1]),
+                     (("read", READ, {}),
+                      ("proposed", ("propose_world", DOCSTRING_CHANGED, told(REDESIGN_SHOW[:1])) + migrations,
+                       {"world_change": {"activated": bool(migrations), "verdict": PASS if migrations else FAIL, "regressions": [] if migrations else [(0, 0)], "faults": [],
+                                         "active_world": DOCSTRING_CHANGED if migrations else World()} | ({"migrated": [(0, 0)]} if migrations else {})})))
+                 for label, migrations in (("docstring_changed", ()), ("docstring_migrated", (((0, 0),),)))),
+         interpretation="A regression is a (message, obligation) of the accepted corpus whose operation or bindings change or disappear; run weakened removes the page member, so show's binding weakens to a hole. A world with an invalid kind cannot activate (the brief's state machine). An unverified world change does not activate. A rejected change returns its draft equal to the proposal built from the inputs, with its regressions or faults, and the active world keeps every declaration: types and signatures, not only names. An obligation added to an accepted message is a regression at its index in the new reading (run added). After an activation, the corpus is read again under the active world and the next proposal is judged against it (run second_proposal). A hole whose reason changes from rejected to invalid answer has changed meaning (run reason_changed). A changed declaration of an obligation's operation, its docstring included, is a regression unless migrated (runs docstring_changed, docstring_migrated). A result type change from Later[Surface] to Surface changes status and readiness: a regression (run result_type_changed), unless the proposal supplies it as an explicit migration, which then activates and reports it as migrated (run migrated)."),
     Case("C03", "“Compare the mod, not the page”",
          "With controlled semantic selection, include mod and exclude page. Assert the binding, not merely rendered text. d1 must be given the relevant choice.",
          "solve(Many) takes every local term without asking d1 (probe many_negated_literal_is_included).",
@@ -1122,10 +1141,14 @@ CASES = (
               (("read", READ, {"obligations": [ob("Compare the page and the mod.", "compare", {"surfaces": (PAGE, MOD)})],
                                "passages": [Passage(f'"{QUOTED}"', "Written", "reply 0", "quote")],
                                "decisions": [Decision(0, "surfaces", "model", (PAGE, MOD), (PAGE, MOD))]}),), replies=(QUOTED,)),
+          run("apply_to_quote", False, World(), (f'"{QUOTED}" Redesign the mod.',), told(REDESIGN_SHOW[:1]),
+              (("read", READ, {"obligations": REDESIGN_SHOW[:1], "passages": [Passage(f'"{QUOTED}"', "Written", "reply 0", "quote")]}),
+               ("quoted_word", ("preview", Edit("set", None, "show.subject", Passage("the page", "Written", "reply 0", "quote", (1 + QUOTED.index("the page"), 1 + QUOTED.index("the page") + len("the page"))))),
+                rejected_edit((None, "subject", "type"), REDESIGN_SHOW[:1]))), replies=(QUOTED,)),
           run("quote_and_request", True, World(), (f'"{QUOTE}" Redesign the mod.',), script({"Redesign the mod.": "redesign"}, {("Redesign the mod.", "redesign", "surface"): MOD}),
               (("read", READ, {"error": None, "obligations": [ob("Redesign the mod.", "redesign", {"surface": MOD}, PENDING)],
                                "passages": [Passage(f'"{QUOTE}"', "Written", "reply 0", "quote")]}),), replies=(QUOTE,))),
-         interpretation="A quote is a passage of brand Written whose origin names the reply; its relation label is free but present. Its text is compared without the quote marks around it, which the span may or may not include. Member words inside a quoted reply are Written, not the user's Asked words: they ground no Surface and no candidate offered to d1 (run quoted_members); the same words in the user's own sentence do (run own_members)."),
+         interpretation="A quote is a passage of brand Written whose origin names the reply; its relation label is free but present. Its text is compared without the quote marks around it, which the span may or may not include. Member words inside a quoted reply are Written, not the user's Asked words: they ground no Surface and no candidate offered to d1 (run quoted_members); the same words in the user's own sentence do (run own_members). A function applied to a word inside a quote is refused: the quote's words are Written, not a value of the place (run apply_to_quote)."),
     Case("C14", "Model metadata and world declarations",
          "No name collision can turn an abstention into a function call. Malformed, missing or out-of-set model answers produce diagnostics, not silent acceptance. Enforce configured choice bounds.",
          "A world function named none hijacks abstention (probe reserved_none_function_hijacks_abstention); ask_all indexes answers unchecked; candidates past Limits.offered vanish unrecorded.",
@@ -1171,6 +1194,10 @@ CASES = (
               script({'Frobnicate the widget and redesign the mod.': (ABSTAIN, "redesign"), "Frobnicate the widget": ABSTAIN, "redesign the mod.": "redesign"},
                      {('Frobnicate the widget and redesign the mod.', "redesign", "surface"): MOD, ("redesign the mod.", "redesign", "surface"): MOD}),
               (("read", READ, {"obligations": [ob(Inside('Frobnicate the widget and redesign the mod.'), UNRESOLVED, reason=REJECTED), ob(Inside('Frobnicate the widget and redesign the mod.'), "redesign", {"surface": MOD}, PENDING)]}),)),
+          run("two_unresolved", False, World(), ('Frobnicate the widget and defenestrate the gadget.',),
+              script({'Frobnicate the widget and defenestrate the gadget.': (ABSTAIN, ABSTAIN), "Frobnicate the widget": ABSTAIN, "defenestrate the gadget.": ABSTAIN}),
+              (("read", READ, {"obligations": [ob(Inside('Frobnicate the widget and defenestrate the gadget.'), UNRESOLVED, reason=REJECTED)] * 2}), ("saved", SAVE, {}),
+               ("reloaded", RELOAD, {"obligations": [ob(Inside('Frobnicate the widget and defenestrate the gadget.'), UNRESOLVED, reason=REJECTED)] * 2, "model_calls": 0}))),
           run("compare_conjunction", True, World(), ("Compare the page and the mod.",), told([ob("Compare the page and the mod.", "compare", {"surfaces": (PAGE, MOD)})]),
               (("read", READ, {"obligations": [ob(Inside("Compare the page and the mod."), "compare", {"surfaces": (PAGE, MOD)})]}),)),
           run("nested", True, World(), ("Show me the mod, redesigned.",),
@@ -1178,7 +1205,7 @@ CASES = (
                      {("Show me the mod, redesigned.", "show", "subject"): New("redesign"), ("Show me the mod, redesigned.", "redesign", "surface"): MOD}),
               (("read", READ, {"obligations": [ob(Inside("Show me the mod, redesigned."), "redesign", {"surface": MOD}, PENDING),
                                                ob(Inside("Show me the mod, redesigned."), "show", {"subject": Ref(0)}, PENDING)]}),))),
-         interpretation="Both obligations must exist; each span is the phrase or a part of it, so the two may share the phrase or split it (E20). A split must still cover every word, the conjunction included, in some span or passage (I1). The stand-in names both operations of the phrase and each operation of its parts; how the engine asks for a second operation is the implementer's choice. Splitting is not splitting every 'and': 'Compare the page and the mod.' stays one compare of both (E33). An unknown operation beside a known one keeps both: UNRESOLVED, then redesign, in the order asked (run unknown_and_known).",
+         interpretation="Both obligations must exist; each span is the phrase or a part of it, so the two may share the phrase or split it (E20). A split must still cover every word, the conjunction included, in some span or passage (I1). The stand-in names both operations of the phrase and each operation of its parts; how the engine asks for a second operation is the implementer's choice. Splitting is not splitting every 'and': 'Compare the page and the mod.' stays one compare of both (E33). Two unknown operations of one phrase stay two UNRESOLVED obligations, in order, through save and load (run two_unresolved). An unknown operation beside a known one keeps both: UNRESOLVED, then redesign, in the order asked (run unknown_and_known).",
          real_d1="Whether real d1 finds both operations in one sentence is effectiveness, unverified here."),
     Case("C17", "Two identical-looking requested operations versus two references to one result",
          "Preserve the distinction across serialization. Display equality must not merge them.",
@@ -1213,6 +1240,7 @@ CASES = (
                ("save_failed", ("save_fail",), {"accepted": False, "obligations": CLEARED_SHOW, "writes": 0}),
                ("store_after_failure", RELOAD, {"obligations": REBOUND, "model_calls": 0}),
                ("restored", ("restore", 1), {"obligations": REDESIGN_SHOW, "decisions": [SHOW_DECISION], "model_calls": 0}),
+               ("restored_saved", SAVE, {"accepted": True, "writes": 1}),
                ("stale_draft", ("draft_from", 1, Edit("set", 1, "subject", MOD)), {"accepted": True, "obligations": REBOUND, "writes": 0}),
                ("stale_saved", SAVE, {"accepted": False, "diagnostics": [(None, None, "stale")], "writes": 0}))),
           run("apply", False, PLACE_WORLD, ("Redesign the mod.",), told(REDESIGN_SHOW[:1]),
@@ -1223,7 +1251,7 @@ CASES = (
                ("not_accepting", ("preview", Edit("set", None, "open_cell.cell", Ref(0))), rejected_edit((None, "cell", "type"), APPLIED)),
                ("no_such_operation", ("preview", Edit("set", None, "show.subject", Ref(7))), rejected_edit((None, "subject", "reference"), APPLIED)),
                ("later_operation", ("preview", Edit("set", None, "show.subject", Ref(4))), rejected_edit((None, "subject", "reference"), APPLIED)))),),
-         interpretation="'Previews perform no work' is observed as zero model calls and zero store writes during inspect, preview, cancel and stage. Cancel and restore return the decisions of the reading as well as its bindings. Reloading after a failed save reads the store, which still holds the last good save. A draft opened from an earlier snapshot cannot be saved over a later one: the save is refused as stale. Applying a function to a thing is an edit with no operation and the path function.parameter: it adds an application, in the phrase of the thing and after that phrase's operations, with the thing in that place, a single value as the collection of it in a Many place, and cleared holes elsewhere; existing operation numbers never change and the new one gets the next number. A place that does not accept the thing, or a reference to no earlier operation, is refused and the base is kept (run apply)."),
+         interpretation="'Previews perform no work' is observed as zero model calls and zero store writes during inspect, preview, cancel and stage. Cancel and restore return the decisions of the reading as well as its bindings. Reloading after a failed save reads the store, which still holds the last good save. A restored snapshot can be saved. A draft opened from an earlier snapshot cannot be saved over a later one: the save is refused as stale. Applying a function to a thing is an edit with no operation and the path function.parameter: it adds an application, in the phrase of the thing and after that phrase's operations, with the thing in that place, a single value as the collection of it in a Many place, and cleared holes elsewhere; existing operation numbers never change and the new one gets the next number. A place that does not accept the thing, or a reference to no earlier operation, is refused and the base is kept (run apply)."),
     Case("C19", "Accepted manual correction, then rerun or world change",
          "Correction is retained or explicitly invalidated with a reason; it is never silently overwritten by model preference.",
          "A rerun recomputes every binding from d1 and forgets the correction.",
@@ -1347,47 +1375,81 @@ CASES = (
 # and wrong ones, and for each producer and consumer, the compositions its
 # types allow. They are cases like the others, judged by the same predicates.
 
-LAW_WORLD = World("next")
+LAW_WORLD = World("worktree")  # the laws read next/world.py as it is in the worktree under test; case fixtures stay frozen at SOURCE_COMMIT
+PRODUCT_WORLD = World(extra='\ndef open_cells(cells: Many[Cell]) -> Observed:\n    "open several cells"\n', files=("notes.md",))
+PRODUCT_FUNCTIONS = ("open_cell", "open_cells", "compare", "explain")
 
 
 @functools.cache
-def declared() -> tuple:
-    """Returns the enums (member words), brands (parent), unions (alternatives) and functions ((params, result, line)) of next/world.py."""
-    source = world_source(LAW_WORLD)
-    enums, brands, unions, functions = {}, {}, {}, {}
+def declared(world: World = LAW_WORLD) -> tuple:
+    """Returns the enums (member words), brands (parent), unions (alternatives), functions ((params, result, line)) and products (fields) of a world."""
+    source = world_source(world)
+    enums, brands, unions, functions, products = {}, {}, {}, {}, {}
     for node in ast.parse(source).body:
         if isinstance(node, ast.ClassDef):
-            enums[node.name] = [statement.value.value for statement in node.body if isinstance(statement, ast.AnnAssign)]
+            fields = [statement for statement in node.body if isinstance(statement, ast.AnnAssign)]
+            if any(ast.unparse(base).endswith("Enum") for base in node.bases):
+                enums[node.name] = [statement.value.value for statement in fields]
+            else:
+                products[node.name] = [(statement.target.id, ast.unparse(statement.annotation)) for statement in fields]
         elif isinstance(node, ast.Assign) and ast.unparse(node.value).startswith("typing.NewType"):
             brands[node.targets[0].id] = ast.unparse(node.value.args[1])
         elif isinstance(node, ast.TypeAlias):
             unions[node.name.id] = ast.unparse(node.value).split(" | ")
         elif isinstance(node, ast.FunctionDef):
             functions[node.name] = ([(one.arg, ast.unparse(one.annotation)) for one in node.args.args], ast.unparse(node.returns), source.splitlines()[node.lineno - 1])
-    return enums, brands, unions, functions
+    return enums, brands, unions, functions, products
 
 
-def inhabitants(place: str) -> tuple[list, list]:
-    """Returns valid values of a place, and wrong ones with the rule that rejects each. A path place has none: paths need files."""
-    enums, brands, unions, _ = declared()
+def inhabitants(place: str, world: World = LAW_WORLD) -> tuple[list, list]:
+    """Returns valid values of a place that is no product, and wrong ones with the rule that rejects each."""
+    enums, brands, unions, _, _ = declared(world)
+    some_enum = next(iter(enums))
     if place.startswith("Maybe["):
-        valid, wrong = inhabitants(place[6:-1])
+        valid, wrong = inhabitants(place[6:-1], world)
         return [EMPTY] + valid[:1], [(Nothing("int"), "type")] + wrong[:1]
     if place in enums:
-        other = next(name for name in enums if name != place)
-        return [Lit(place, words) for words in enums[place]], [(Lit(place, 99), "type"), (Lit(other, enums[other][0]), "type")]
+        other = next(name for name in enums if name != place) if len(enums) > 1 else "int"
+        return [Lit(place, words) for words in enums[place]], [(Lit(place, 99), "type"), (Lit(other, enums[other][0]) if other in enums else Lit("int", 3), "type")]
     if place in unions:
-        return [one for alternative in unions[place] if alternative in enums for one in inhabitants(alternative)[0]], [(Lit("Words", "some words"), "type"), (Lit("int", 3), "type")]
+        return [one for alternative in unions[place] if alternative in enums for one in inhabitants(alternative, world)[0]], [(Lit("Words", "some words"), "type"), (Lit("int", 3), "type")]
     if place in brands:
-        some_enum = next(iter(enums))
         wrong = [(Lit(some_enum, enums[some_enum][0]), "type")] + ([(Lit(brands[place], "some words"), "type")] if brands[place] in brands else [])
         return [Lit(place, "some words")] + [Lit(child, "some words") for child, parent in brands.items() if parent == place], wrong
+    if place == "int":
+        return [Lit("int", 3)], [(Lit(some_enum, enums[some_enum][0]), "type")]
+    if place == "pathlib.Path" and world.files:
+        return [Lit("Path", world.files[0])], [(Lit("int", 3), "type")]
     return [], []
 
 
-def fits(result: str, place: str) -> bool:
-    """Decides whether a result type fills a place of next/world.py: through Later, Maybe, a union and brand parents."""
-    _, brands, unions, _ = declared()
+def variants(path: str, place: str, world: World) -> list[tuple[dict, tuple | None]]:
+    """Returns bindings for one place: each valid one with None, each wrong one with the diagnostic that rejects it."""
+    enums, _, _, _, products = declared(world)
+    first = lambda kind: next(iter(inhabitants(kind, world)[0]), None)
+    if place in products:
+        fields = products[place]
+        whole = {f"{path}.{name}": first(kind) for name, kind in fields}
+        wrong_field = next(iter(inhabitants(fields[0][1], world)[1]), (None, None))
+        return [(whole, None), ({key: value for key, value in whole.items() if key != f"{path}.{fields[-1][0]}"}, (f"{path}.{fields[-1][0]}", "missing")),
+                (whole | {f"{path}.colour": PAGE}, (f"{path}.colour", "extra")), (whole | {f"{path}.{fields[0][0]}": wrong_field[0]}, (f"{path}.{fields[0][0]}", wrong_field[1]))]
+    if place.startswith("Many[") and place[5:-1] in products:
+        fields = products[place[5:-1]]
+        member = {name: first(kind) for name, kind in fields}
+        return [({path: (member,)}, None), ({path: EMPTY_LIST}, None), ({path: member}, (path, "type")),
+                ({path: Members(next(iter(enums)), (Lit(next(iter(enums)), enums[next(iter(enums))][0]),))}, (path, "type")),
+                ({path: ({key: value for key, value in member.items() if key != fields[-1][0]},)}, (f"{path}[].{fields[-1][0]}", "missing")),
+                ({path: (member | {"colour": PAGE},)}, (f"{path}[].colour", "extra"))]
+    if place.startswith("Many["):
+        valid, _ = inhabitants(place[5:-1], world)
+        return [({path: (one,)}, None) for one in valid[:1]] + [({path: Members("int", (Lit("int", 3),))}, (path, "type"))] if valid else []
+    valid, wrong = inhabitants(place, world)
+    return [({path: one}, None) for one in valid] + [({path: one}, (path, rule)) for one, rule in wrong]
+
+
+def fits(result: str, place: str, world: World = LAW_WORLD) -> bool:
+    """Decides whether a result type fills a place: through Later, Maybe, a union and brand parents."""
+    _, brands, unions, _, _ = declared(world)
     result = result[6:-1] if result.startswith("Later[") else result
     place = place[6:-1] if place.startswith("Maybe[") else place
     while result:
@@ -1397,29 +1459,42 @@ def fits(result: str, place: str) -> bool:
     return False
 
 
-def status_of(function: str) -> str:
+def status_of(function: str, world: World = LAW_WORLD) -> str:
     """PENDING for a function whose result is Later, else AVAILABLE."""
-    return PENDING if declared()[3][function][1].startswith("Later[") else AVAILABLE
+    return PENDING if declared(world)[3][function][1].startswith("Later[") else AVAILABLE
+
+
+def validity_runs(world: World, names=None) -> tuple[list, list]:
+    """Returns the runs of LAW1 (each place's valid and wrong values) and LAW2 (missing and extra arguments) over the functions of a world."""
+    functions = declared(world)[3]
+    validity, arguments = [], []
+    for name in names or functions:
+        params = functions[name][0]
+        forms = {path: variants(path, place, world) for path, place in params}
+        if not all(forms.values()):
+            continue
+        full = {key: value for path in forms for key, value in forms[path][0][0].items()}
+        for path, cases in forms.items():
+            others = {key: value for key, value in full.items() if key.split(".")[0].split("[")[0] != path}
+            valid, wrong = [one for one, rule in cases if rule is None], [(one, rule) for one, rule in cases if rule is not None]
+            steps = [(f"valid_{index}", ("validate", name, others | bindings), {"diagnostics": [], "writes": 1, "obligations": [ob("", name, others | bindings, status_of(name, world))]})
+                     for index, bindings in enumerate(valid)]
+            steps += [(f"wrong_{index}", ("validate", name, others | bindings), {"diagnostics": [(0, *rule)], "writes": 0}) for index, (bindings, rule) in enumerate(wrong)]
+            validity.append(run(f"{name}.{path}", False, world, (), script({}), steps))
+        arguments.append(run(name, False, world, (), script({}),
+                             (("missing", ("validate", name, {}), {"diagnostics": [(0, path, "missing") for path, _ in params], "writes": 0}),
+                              ("extra", ("validate", name, full | {"colour": PAGE}), {"diagnostics": [(0, "colour", "extra")], "writes": 0}))))
+    return validity, arguments
 
 
 def law_runs() -> dict:
     """Returns the generated runs of each law."""
-    enums, _, _, functions = declared()
+    enums, _, _, functions, _ = declared()
     one_enum = {name: (params[0][0], params[0][1]) for name, (params, _, _) in functions.items() if len(params) == 1 and params[0][1] in enums}
     first = lambda place: next(iter(inhabitants(place)[0]), None)
-    validity, arguments, composition, identity, gate = [], [], [], [], []
-    for name, (params, result, line) in functions.items():
-        for path, place in params:
-            valid, wrong = inhabitants(place)
-            others = {other: first(kind) for other, kind in params if other != path and first(kind) is not None}
-            steps = [(f"valid_{index}", ("validate", name, others | {path: value}), {"diagnostics": [], "writes": 1, "obligations": [ob("", name, others | {path: value}, status_of(name))]})
-                     for index, value in enumerate(valid)]
-            steps += [(f"wrong_{index}", ("validate", name, others | {path: value}), {"diagnostics": [(0, path, rule)], "writes": 0}) for index, (value, rule) in enumerate(wrong)]
-            validity += [run(f"{name}.{path}", False, LAW_WORLD, (), script({}), steps)] if steps else []
-        full = {path: first(place) for path, place in params if first(place) is not None}
-        arguments.append(run(name, False, LAW_WORLD, (), script({}),
-                             (("missing", ("validate", name, {}), {"diagnostics": [(0, path, "missing") for path, _ in params], "writes": 0}),
-                              ("extra", ("validate", name, full | {"colour": PAGE}), {"diagnostics": [(0, "colour", "extra")], "writes": 0}))))
+    validity, arguments = validity_runs(LAW_WORLD)
+    product_validity, product_arguments = validity_runs(PRODUCT_WORLD, PRODUCT_FUNCTIONS)
+    composition, identity, gate = [], [], []
     for producer, (path, place) in one_enum.items():
         words, other = enums[place][0], enums[place][1]
         value = Lit(place, words)
@@ -1442,22 +1517,22 @@ def law_runs() -> dict:
         value = first(params[0][1]) if len(params) == 1 else None
         if isinstance(value, Lit):
             changed_result = result[6:-1] if result.startswith("Later[") else f"Later[{result}]"
-            proposal = World("next", replace=((line, line.replace(f"-> {result}:", f"-> {changed_result}:")),))
+            proposal = World("worktree", replace=((line, line.replace(f"-> {result}:", f"-> {changed_result}:")),))
             reading = [ob(f"Use {name} on {value.value}.", name, {params[0][0]: value}, status_of(name))]
             gate.append(run(f"{name}_result", False, LAW_WORLD, (reading[0].span,), told(reading),
                             (("read", READ, {}),
                              ("proposed", ("propose_world", proposal, told(reading)), {"world_change": {"activated": False, "verdict": FAIL, "regressions": [(0, 0)], "faults": [], "active_world": LAW_WORLD}}))))
-    return {"LAW1": validity, "LAW2": arguments, "LAW3": composition, "LAW4": identity, "LAW5": gate}
+    return {"LAW1": validity + product_validity, "LAW2": arguments + product_arguments, "LAW3": composition, "LAW4": identity, "LAW5": gate}
 
 
 LAW_WORDS = {
-    "LAW1": "Validation accepts each valid inhabitant of each argument place of next/world.py, with no diagnostic, and the accepted term survives save and load with equal meaning; it rejects each wrong one, a non-member literal and an Empty whose declared type contradicts its Maybe included, for its rule, and the refused term is not ready.",
+    "LAW1": "Validation accepts each valid inhabitant of each argument place of next/world.py, and of the product, Many[product] and Maybe places of a test world, with no diagnostic, and the accepted term survives save and load with equal meaning; it rejects each wrong one, a non-member literal, an Empty whose declared type contradicts its Maybe, a bare record or a collection of the wrong element in a Many of records, and a record with a missing or extra field included, for its rule, and the refused term is not ready.",
     "LAW2": "A missing or extra argument of each function of next/world.py is rejected for its rule; the term with a missing argument is invalid and incomplete, never complete or ready.",
     "LAW3": "An existing result of a type that a place of next/world.py requires is offered to d1 for that place.",
     "LAW4": "Evidence and corrections keep operation identity: an artifact for the second of two identical operations is evidence for it only, and a correction of the second stays on it through save and rerun.",
     "LAW5": "The gate compares complete meaning: changing a function's result type to or from Later is a regression of an accepted reading.",
 }
-LAWS = tuple(Case(key, LAW_WORDS[key], "generated from next/world.py at SOURCE_COMMIT", "the critics' counterexamples, for every type of the real world", tuple(runs))
+LAWS = tuple(Case(key, LAW_WORDS[key], "generated from next/world.py of the worktree under test, and LAW1 and LAW2 also from PRODUCT_WORLD", "the critics' counterexamples, for every type of the real world", tuple(runs))
              for key, runs in law_runs().items())
 
 CASE = {case.id: case for case in CASES + LAWS}
@@ -1874,6 +1949,13 @@ def c01(observed: dict) -> list[str]:
     return ["C01 unsupported/checked: the unresolved obligation passed"] if any(one.obligation == 0 and one.outcome == PASS for one in checks) else []
 
 
+def c16(observed: dict) -> list[str]:
+    """Two unresolved operations of one phrase keep their order through save and load."""
+    steps = observed.get("two_unresolved", {}).get("steps", {})
+    spans = [[(one.span, one.at) for one in steps.get(label, {}).get("obligations") or []] for label in ("read", "reloaded")]
+    return [] if [span for span, _ in spans[0]] == [span for span, _ in spans[1]] else [f"C16 two_unresolved/reloaded: order changed through save and load: {spans}"]
+
+
 def c09(observed: dict) -> list[str]:
     """Lexical absence is not a world fault."""
     return [f"C09 {run}: world faults {observed[run]['world_faults']}; lexical absence is not a world fault"
@@ -2011,7 +2093,7 @@ def laws_of_validation(observed: dict) -> list[str]:
     return found
 
 
-EXTRA = {"LAW1": laws_of_validation, "LAW2": laws_of_validation, "C01": c01, "C09": c09, "C13": c13, "C11": c11, "C12": c12, "C14": c14, "C18": c18, "C19": c19, "C21": c21, "C22": c22}
+EXTRA = {"LAW1": laws_of_validation, "LAW2": laws_of_validation, "C01": c01, "C09": c09, "C13": c13, "C11": c11, "C12": c12, "C14": c14, "C16": c16, "C18": c18, "C19": c19, "C21": c21, "C22": c22}
 STEP_LABELS = {"C11": ("edits", "loads", "inhabitants"), "C14": ("out_of_set", "missing", "not_numbers", "nan", "infinite", "negative", "out_of_range", "unnormalized", "bounded", "too_many_operations", "well_formed")}
 
 
@@ -2203,7 +2285,7 @@ def expected_observation(case: Case, run: Run) -> dict:
             steps[label]["requests"] = [Request(one.state, instructions, options, {"chosen": share for _, share in one.scores}) for one in steps[label]["decisions"] if one.by == "model" for instructions, options in one.questions]
         if action[0] == "validate" and expected.get("diagnostics"):
             missing = any(rule == "missing" for _, _, rule in expected["diagnostics"])
-            steps[label]["obligations"] = [dataclasses.replace(ob("", action[1], action[2], status_of(action[1])), complete=not missing, ready=False)]
+            steps[label]["obligations"] = [dataclasses.replace(ob("", action[1], action[2], status_of(action[1], run.world)), complete=not missing, ready=False)]
     return observation
 
 
@@ -2565,6 +2647,15 @@ NEGATIVE_CONTROLS = (
      lambda e: changed(e, "applied_rerun", "rerun", obligations=e["applied_rerun"]["steps"]["rerun"]["obligations"][:1]), "neither kept with its correction nor invalidated"),
     ("C10z", "a consumer of a pending result reported able to start", "C10", lambda e: changed_ob(e, "record", "read", 1, ready=True), "reported ready although it is waiting"),
     ("C10w", "an operation with a deferred result reported unable to start", "C10", lambda e: changed_ob(e, "record", "read", 0, ready=False), "ready: expected True"),
+    # Version 9 (CORRECTIONS E70 to E75).
+    ("LAW1d", "a bare record accepted in a Many of records", "LAW1", lambda e: changed(e, "open_cells.cells", "wrong_0", diagnostics=[], writes=1), "diagnostics expected exactly"),
+    ("LAW1e", "a record with a missing field accepted", "LAW1", lambda e: changed(e, "open_cell.cell", "wrong_0", diagnostics=[], writes=1), "diagnostics expected exactly"),
+    ("C16g", "two unresolved operations of one phrase reordered on reload", "C16",
+     lambda e: changed(e, "two_unresolved", "reloaded", obligations=[dataclasses.replace(one, span=text) for one, text in zip(e["two_unresolved"]["steps"]["reloaded"]["obligations"], ("defenestrate the gadget.", "Frobnicate the widget and"))]),
+     "order changed"),
+    ("C02q", "a docstring change accepted as preservation", "C02", lambda e: changed_change(e, "docstring_changed", activated=True, verdict=PASS, regressions=[]), "world change expected"),
+    ("C18r", "a restored snapshot cannot be saved", "C18", lambda e: changed(e, "transitions", "restored_saved", accepted=False, writes=0), "accepted expected True"),
+    ("C13d", "a function applied to a word inside a quote", "C13", lambda e: changed(e, "apply_to_quote", "quoted_word", accepted=True, diagnostics=[]), "accepted expected False"),
     ("C22f", "an unresolved request saved with a guessed goal type", "C22",
      lambda e: changed_ob(e, "saved_reading", "reloaded", 2, bindings={"": Hole("Later[Observed]", NO_CANDIDATE)}), "guessed goal"),
 )
@@ -2645,6 +2736,7 @@ def self_test() -> None:
     assert not failures, "\n".join(failures)
     report = inventory_report({case_id: PREDICATES[case_id](expected[case_id]) for case_id in CASE})
     failures += [f"{one['id']}: an invariant reported PASS" for one in report if one["id"] in INVARIANTS and one["status"] == "PASS"]
+    print(f"laws over the worktree's next/world.py (sha256 {hashlib.sha256(base_source('worktree').encode()).hexdigest()[:12]}) and PRODUCT_WORLD; case fixtures over next/world.py and the test WORLD at {SOURCE_COMMIT}")
     print(f"self-test passed: 22 cases and {len(LAWS)} laws pass on EXPECTED; {len(RIGHT_ALTERNATIVES)} allowed variants accepted; {len(NEGATIVE_CONTROLS)} wrong projections and "
           f"{len(wrongs) - len(NEGATIVE_CONTROLS)} wrong locations or worlds rejected; 5 wrong stand-in choices refused. This shows that the comparisons discriminate; it checks no engine. "
           "The engine is checked only when observe() runs it and these predicates judge its output.")
