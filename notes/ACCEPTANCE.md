@@ -24,7 +24,8 @@ on-screen coordinates of the element, `elementsFromPoint` deciding the target), 
   - B1 widen a link: drag its end handle over the next word(s); the speculative state under the pointer is the engine's
     `/edit {path:"kind", at, value}` draft.
   - B2 narrow a link the same way.
-  - B3 drop a world type (from the world column or a type page) onto words.
+  - B3 drop a world type onto words, picked up from the page of the thing in hand (brief change of 10 Nov: no permanent
+    world column; this replaces "from the world column or a type page", it does not loosen it).
   - B4 drop a constructed type (`Later[Surface]`, `Many[…]`, `Maybe[…]`) onto words.
   - B5 the whole consequence (every piece the retag cuts or adds) is drawn before release; after release: Accept /
     Cancel. Cancel restores the base exactly.
@@ -73,3 +74,33 @@ on-screen coordinates of the element, `elementsFromPoint` deciding the target), 
 - K2 `]`/`[` widen/narrow the end of the focused link, `}`/`{` its start, previewed then staged.
 - K3 a type, constructed type, member or function can be picked up from the keyboard and dropped on words / places.
 - K4 Accept and Undo by keyboard (`a`, `z`).
+
+## NEVER-AGAIN (`notes/NEVER-AGAIN.md`), folded in on 10 Nov after it arrived mid-build
+
+Added, never loosening anything above. How each applicable item is checked (audit id, or the independent review):
+
+- A1/A4/B1 every drag in the audit is trusted Chrome input (CDP `Input.dispatchMouseEvent`) through Dragology's handlers;
+  no probe calls page functions to move things (the page API is used only to wait and to name the reading).
+- A2/A3 targets are taken from what is drawn, re-found by id before each gesture; links are compared with the server's
+  `/readings` record of the snapshot the page names (A0, A2, B5, B6, E), never with the page's own copy; the rail's ✓/✕ is
+  compared with the engine's `/edit` answer asked by the audit itself (D1).
+- A5/A15/A16 criteria above are not loosened; the score reported is the independent review's verdicts, not the PASS count.
+- A6/A7 no page hook for the audit, no `?audit` mode. (The board renderer is keyed by reading only.)
+- A10/A23 the audit never touches browser storage; a save is proven by `/readings` after `/accept` (B6).
+- A12/A13 Max's real long prompts (1,844–13,727 chars) with `<pasted_content>` and code; no fixture.
+- A14 every run stored (`web/site/audits/board5/run*.json`, screenshots).
+- A20 untested branches are listed in the report.
+- A21 the only accept is undone by `/restore` in the same run (E); the store's latest is the pre-accept record.
+- B1 G2 (no own pointer/mouse/drag listener; source grep).
+- B3 pulling away (whenFar) unbinds; no trash target.
+- B9 the whole consequence before release (B5); B10/B16 the rail gathers every place of the reading on screen while held.
+- B12/B13 refusals show the engine's rule, the place and its declared type, and what was offered (`✕ type  f.p : T ⟵ v : U`).
+- B14 one `/edits` request for a held thing's places, not one `/edit` each.
+- B17 words carry their own kind as type when it is a world type, else the place's declared inner type; the engine decides.
+- C1 the message once; C2 no prose (F); C4/C5 every glyph in the header key and inspectable; C10 no permanent world panel:
+  the right column is empty until a thing is opened; C21 no text under 12 px; text colours ≥ 3:1 against the paper.
+- D1 nothing about fit, validity or readiness computed in the page; D10 viewing never writes; D11 options shown with their own
+  probabilities, never assumed equal; D19 world editing shown disabled (`＋ ⊘`); D20 a preview that refers to an incomplete
+  operation shows `● complete ✕`.
+- Not applicable / open: playback and search visualisation (C20, D12: not built); C24 (chips embedded in text vs. chain) is an
+  open decision for Max.

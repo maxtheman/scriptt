@@ -34,7 +34,15 @@ const bkey = (b) => S.base.snapshot + "|" + JSON.stringify(b);
 let HOLDN = 0;
 function newHold() { // verdicts still queued for an earlier hold are dropped (asked again if needed)
   HOLDN++;
-  Q = Q.filter((e) => { if (e.bg && e.hold !== HOLDN) { DRAFTS.delete(e.k); return false; } return true; });
+  Q = Q.filter((e) => !(e.batch && e.hold !== HOLDN));
+}
+// The engine's verdict for many places at once: POST /edits with drafts: false (diagnostics only), one loaded snapshot.
+const VERD = new Map();
+function verdicts(bodies) {
+  const todo = bodies.filter((b) => { const k = bkey(b), e = DRAFTS.get(k); return !(e && e.done) && !VERD.has(k); });
+  if (!todo.length) return;
+  Q.push({ batch: todo, snap: S.base.snapshot, hold: HOLDN });
+  pump();
 }
 function ask(body, front, bg) {
   const k = bkey(body);
@@ -50,7 +58,15 @@ async function pump() {
   BUSY = true;
   while (Q.length) {
     const e = Q.shift();
-    if (e.snap !== S.base.snapshot) { DRAFTS.delete(e.k); continue; }
+    if (e.snap !== S.base.snapshot) { if (e.k) DRAFTS.delete(e.k); continue; }
+    if (e.batch) {
+      const r = await post("/edits", { reading: S.id, edits: e.batch, drafts: false });
+      if (r.snapshot && r.snapshot !== S.base.snapshot) S.stale = r.snapshot; // the engine answered for a newer snapshot than the one drawn
+      else (r.results || []).forEach((x, i) => VERD.set(bkey(e.batch[i]), x.diagnostics || []));
+      DV++;
+      if (!DRAGGING && !PENDING) paint();
+      continue;
+    }
     const r = await post("/edit", { reading: S.id, ...e.body });
     Object.assign(e, { draft: r.draft || null, diag: r.diagnostics || [], error: r.error || null, done: true });
     DV++;
@@ -60,6 +76,7 @@ async function pump() {
 }
 const verdict = (e) => (!e || !e.done ? "wait" : e.error || (e.diag && e.diag.length) || !e.draft ? "no" : "ok");
 const peek = (body) => DRAFTS.get(bkey(body));
+const vOf = (body) => { const e = peek(body); if (e && e.done) return verdict(e); const v = VERD.get(bkey(body)); return v ? (v.length ? "no" : "ok") : "wait"; };
 const codes = (e) => (e.error ? [e.error.split(":")[0]] : (e.diag || []).map((d) => d.filter((x) => x != null).join(" · ")));
 
 // ---------- the world ----------
@@ -80,8 +97,10 @@ const cat = (k) => (k == null ? "null" : k === "(none)" ? "none" : isFn(k) ? "fn
 const inner = (n) => { let p = parseT(n); while (p) { n = p.arg; p = parseT(n); } return n; };
 const mentions = (t, name) => !!t && (tname(t) === name || mentions(t.of, name) || (t.alternatives || []).some((a) => !a.member && mentions(a, name)));
 function members(t) { return (t.alternatives || []).flatMap((a) => (a.member ? [{ ...a, of: t.sum }] : members(a))); }
-// d1 was given each type's docstring as the description of its option: the page shows it from there.
+// each type's docstring: world_record's `describes` (older worlds: the description d1 was given for its option)
 function docOf(name) {
+  const t = world().types[name];
+  if (t && t.describes != null) return t.describes || null;
   for (const d of S.base.decisions) if (d.path === "kind") for (const q of Object.values(d.asked || {})) for (const o of q.options || []) if (o.id === name) return o.description;
   return null;
 }
@@ -123,7 +142,7 @@ function kindWords(rec) { // the words of each kind question, found in order in 
 }
 
 // ---------- measures ----------
-const F = { text: '16px Georgia, "Iowan Old Style", serif', it: 'italic 16px Georgia, "Iowan Old Style", serif', code: '13.5px ui-monospace, "SF Mono", Menlo, monospace', mono: '12px ui-monospace, "SF Mono", Menlo, monospace', monoB: '600 12px ui-monospace, "SF Mono", Menlo, monospace', small: '10.5px ui-monospace, "SF Mono", Menlo, monospace', head: '600 13px system-ui, -apple-system, sans-serif' };
+const F = { text: '16px Georgia, "Iowan Old Style", serif', it: 'italic 16px Georgia, "Iowan Old Style", serif', code: '13.5px ui-monospace, "SF Mono", Menlo, monospace', mono: '12px ui-monospace, "SF Mono", Menlo, monospace', monoB: '600 12px ui-monospace, "SF Mono", Menlo, monospace', small: '12px ui-monospace, "SF Mono", Menlo, monospace', head: '600 13px system-ui, -apple-system, sans-serif' };
 const CTX = document.createElement("canvas").getContext("2d");
 const MW = new Map();
 const tw = (s, f) => { const k = f + "\u0000" + s; let w = MW.get(k); if (w == null) { CTX.font = f; w = CTX.measureText(s).width; MW.set(k, w); } return w; };
@@ -136,7 +155,7 @@ function sizes() {
   const cs = getComputedStyle(document.documentElement), v = (n) => cs.getPropertyValue(n).trim();
   C = { ink: v("--ink"), mute: v("--mute"), faint: v("--faint"), rule: v("--rule"), bg: v("--bg"), card: v("--card"), tint: v("--tint"), type: v("--type"), typeBg: v("--type-bg"), fn: v("--fn"), fnBg: v("--fn-bg"), con: v("--con"), conBg: v("--con-bg"), acc: v("--accent"), accBg: v("--accent-bg"), no: v("--no"), noBg: v("--no-bg"), paste: v("--paste") };
 }
-const colorOf = (k) => ({ type: C.type, con: C.con, fn: C.fn, none: C.faint, null: C.no })[cat(k)];
+const colorOf = (k) => ({ type: C.type, con: C.con, fn: C.fn, none: C.mute, null: C.no })[cat(k)];
 const visLines = () => Math.floor((BH - TOP - 52) / LH);
 
 // ---------- layout: words, then the function spans after their phrase, wrapped ----------
@@ -258,9 +277,11 @@ const cur = () => (S.staged ? { ...base(), r: S.staged.e.draft || S.base, change
 function stateFor(body, extra) { return { ...base(), change: body, ...extra }; }
 function withDraft(st) {
   if (!st.change) return st;
+  const pre = VERD.get(bkey(st.change));
+  if (pre && pre.length) return { ...st, r: S.base, change: null, refused: { body: st.change, codes: codes({ diag: pre }), diag: pre, target: st.target }, wait: false };
   const e = ask(st.change, false), v = verdict(e);
   if (v === "ok") return { ...st, r: e.draft, wait: false };
-  if (v === "no") return { ...st, r: S.base, change: null, refused: { body: st.change, codes: codes(e), target: st.target }, wait: false };
+  if (v === "no") return { ...st, r: S.base, change: null, refused: { body: st.change, codes: codes(e), diag: e.diag, error: e.error, target: st.target }, wait: false };
   return { ...st, wait: true };
 }
 // The modifier: whatever state the spec under it chose, draw the engine's draft for it, and redraw when an answer arrives.
@@ -277,7 +298,8 @@ class Drafted extends DG.Modifier {
       if (!c || c.dv !== DV) { c = { dv: DV, preview: DG.renderStateReadOnly(this.ctx, st) }; this.cache.set("·", c); }
       return { ...r, preview: () => c.preview };
     }
-    const e = ask(st.change, true);
+    const pre = VERD.get(bkey(st.change));
+    const e = pre && pre.length ? { k: bkey(st.change) } : ask(st.change, true);
     let c = this.cache.get(e.k);
     if (!c || c.dv !== DV) { const next = withDraft(st); c = { dv: DV, next, preview: DG.renderStateReadOnly(this.ctx, next) }; this.cache.set(e.k, c); }
     LIVE = c.next; paintDock(c.next);
@@ -343,7 +365,7 @@ function options(th) {
     case "val": places = placeOptions(() => th.pl.v, (pl) => pl.t.id === th.pl.t.id && pl.path === th.pl.path); break;
   }
   newHold();
-  for (const o of places.slice().sort((a, b) => (visible(b.target) - visible(a.target)) || (b.open - a.open)).slice(0, 60)) ask(o.body, false, true); // the engine's verdict for each place
+  verdicts(places.map((o) => o.body)); // the engine's verdict for every place, in one request
   return { out, places };
 }
 function far(th) {
@@ -356,11 +378,11 @@ let RAIL_IDS = new Set();
 function railItems() {
   const held = HELD || (S.hold && S.hold.th);
   if (!held || !held.places) return [];
-  if (held.rail) return held.rail.map((r) => ({ ...r, v: verdict(peek(r.o.body)) })); // frozen for the hold: places never move under the pointer
+  if (held.rail) return held.rail.map((r) => ({ ...r, v: vOf(r.o.body) })); // frozen for the hold: places never move under the pointer
   const out = [];
   let x = X0;
-  for (const o of held.places.slice().sort((a, b) => (verdict(peek(b.body)) === "ok") - (verdict(peek(a.body)) === "ok") || (b.open - a.open))) {
-    const v = verdict(peek(o.body));
+  for (const o of held.places.slice().sort((a, b) => (vOf(b.body) === "ok") - (vOf(a.body) === "ok") || (b.open - a.open))) {
+    const v = vOf(o.body);
     if (v === "no") continue;
     const label = `${o.pl.t.function}.${o.pl.path}`, w = tw("✓ " + label, F.mono) + 16;
     if (x + w > X0 + TW + 40) break;
@@ -615,7 +637,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
   const para = (s, col, f = F.mono) => { for (const ln of wrap(s, f, w)) { els.push(txt(x0, y + 12, ln, f, col || C.mute)); y += 16; } y += 6; };
   const typeChip = (name, idp) => [idp + "-" + name.replace(/\W/g, "_"), name, colorOf(name), cat(name) === "con" ? C.conBg : C.typeBg, cat(name) === "fn" ? { t: "fn", name } : { t: "type", name }, { dash: cat(name) === "con", open: { t: cat(name) === "fn" ? "fn" : "type", name } }];
   const o = S.open;
-  if (!o) { drawWorld(els, chipEl, head, () => y, (v) => (y = v), drawn, foc, d, draggedId); return els; }
+  if (!o) return els; // no permanent world panel: the world is reached from the thing in hand
   // the link target
   const target = o.t === "piece" ? o.p.kind : o.t === "type" || o.t === "fn" ? o.name : o.t === "op" ? o.term.function : o.t === "place" ? o.pl.declared : o.t === "un" ? null : null;
   els.push(h("g", { id: "pg-close", transform: translate(x0 + w - 18, y), role: "button", "data-label": "close", onClick: () => openThing(null) }, h("rect", { width: 18, height: 18, fill: "transparent" }), txt(4, 13, "×", F.head, C.mute)));
@@ -630,7 +652,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
   if (target != null && target !== "(none)") {
     if (isFn(target)) drawFnPage(target, head, row, para, typeChip);
     else drawTypePage(target, head, row, para, typeChip);
-  } else if (target === "(none)") head("(none)", C.faint);
+  } else if (target === "(none)") head("(none)", C.mute);
   // the d1 data for what is open
   if (o.t === "piece") {
     head(`share ${o.p.share == null ? "—" : o.p.share.toFixed(2)} · sure ${o.p.sure} · by ${o.p.by}`, C.mute);
@@ -649,7 +671,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
           drawn.set(id, { x: x0, y, w, h: 18 }); foc.push({ id, th: { t: "opt", kind: opt }, zone: "page", x: x0, li: y, act: () => stageBody(retag(o.p.start, o.p.end, opt)) });
           y += 19;
         }
-        if (pr.length > 4) { const id = `pg-m-${k.s}`; els.push(h("g", { id, transform: translate(x0, y), role: "button", onClick: () => { S.more[k.s] = !S.more[k.s]; paint(); } }, h("rect", { width: 60, height: 16, fill: "transparent" }), txt(0, 12, S.more[k.s] ? "−" : `+${pr.length - 4}`, F.mono, C.mute))); drawn.set(id, { x: x0, y, w: 60, h: 16 }); foc.push({ id, zone: "page", x: x0, li: y, act: () => { S.more[k.s] = !S.more[k.s]; paint(); } }); y += 18; }
+        if (pr.length > 4) { const id = `pg-x-${k.s}`; els.push(h("g", { id, transform: translate(x0, y), role: "button", onClick: () => { S.more[k.s] = !S.more[k.s]; paint(); } }, h("rect", { width: 60, height: 16, fill: "transparent" }), txt(0, 12, S.more[k.s] ? "−" : `+${pr.length - 4}`, F.mono, C.mute))); drawn.set(id, { x: x0, y, w: 60, h: 16 }); foc.push({ id, zone: "page", x: x0, li: y, act: () => { S.more[k.s] = !S.more[k.s]; paint(); } }); y += 18; }
         y += 4;
       }
       const d0 = kw[0].d, sid = `pg-st-${d0.phrase[0]}`;
@@ -670,7 +692,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
     }
   }
   // world editing is not built in the engine: its place, marked
-  els.push(h("g", { id: "pg-edit", transform: translate(x0, y + 4), "data-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.faint)));
+  els.push(h("g", { id: "pg-edit", transform: translate(x0, y + 4), "data-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.mute)));
   return els;
   function drawTypePage(name, head, row, para, typeChip) {
     const ty = world().types[name], pc = parseT(name);
@@ -723,43 +745,6 @@ function drawDecisions(ds, els, gy, sy, para) {
   }
   sy(y);
 }
-function drawWorld(els, chipEl, head, gy, sy, drawn, foc, d, draggedId) {
-  // the world as a graph: types (brands under what they wrap, sums over their alternatives), constructors, functions with edges
-  // from the type of each parameter
-  const wd = world(), names = Object.keys(wd.types), parent = {};
-  for (const n of names) { const t = wd.types[n]; if (t.brand && t.of) parent[n] = tname(t.of); }
-  for (const n of names) for (const a of wd.types[n].alternatives || []) if (!a.member && names.includes(tname(a)) && !parent[tname(a)]) parent[tname(a)] = n;
-  let y = gy();
-  head("world " + wd.identity.slice(0, 8));
-  sy(y = gy());
-  const pos = {}, x0 = PX, colW = Math.min(190, PW * 0.42);
-  const put = (n, depth) => {
-    const t = wd.types[n], ms = members(t).length, label = n + (ms ? ` ·${ms}` : "") + (t.brand ? " ⊂" : t.sum && !ms ? " |" : "");
-    sy(y);
-    const cw = chipEl("wd-t-" + n, x0 + depth * 14, label, colorOf(n), C.typeBg, { t: "type", name: n }, { open: { t: "type", name: n } });
-    pos[n] = { x: x0 + depth * 14 + cw, y: y + 11 };
-    y += 25;
-    for (const c of names.filter((m) => parent[m] === n)) put(c, depth + 1);
-  };
-  for (const n of names.filter((m) => !parent[m])) put(n, 0);
-  const yTypes = y;
-  let fy = TOP + 30 - S.pscroll;
-  const fx = x0 + colW + 40, edges = [];
-  sy(fy);
-  for (const [f, fd] of Object.entries(wd.functions)) {
-    sy(fy);
-    const cw = chipEl("wd-f-" + f, fx, `${f} → ${tname(fd.result)}`, C.fn, C.fnBg, { t: "fn", name: f }, { open: { t: "fn", name: f } });
-    for (const [, t] of fd.parameters) { const tn = inner(tname(t)), p = pos[tn]; if (p) edges.push(h("path", { d: `M${p.x + 2},${p.y} C${(p.x + fx) / 2},${p.y} ${(p.x + fx) / 2},${fy + 11} ${fx - 2},${fy + 11}`, fill: "none", stroke: C.fn, strokeOpacity: 0.35, strokeWidth: 1, strokeDasharray: parseT(tname(t)) ? "3 2" : "" })); }
-    fy += 26;
-  }
-  els.unshift(...edges);
-  y = Math.max(yTypes, fy) + 8;
-  sy(y);
-  let cx = x0;
-  for (const [c, cd] of Object.entries(wd.constructors)) { cx += chipEl("wd-c-" + c, cx, `${c} : ${cd.kind}`, C.con, C.conBg, { t: "con", con: c }, { dash: true, open: { t: "type", name: `${c}[*]` } }) + 6; }
-  y += 30; sy(y);
-  els.push(h("g", { id: "wd-edit", transform: translate(x0, y), "data-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.faint)));
-}
 function wrap(s, f, w) {
   const out = []; let line = "";
   for (const word of String(s).split(/\s+/)) { const t = line ? line + " " + word : word; if (tw(t, f) > w && line) { out.push(line); line = word; } else line = t; }
@@ -770,7 +755,18 @@ function wrap(s, f, w) {
 // ---------- the dock: the change under the pointer, before → after, and its confirm ----------
 function strip(st) {
   const out = [];
-  if (st.refused) { out.push(["no", "✕ " + st.refused.codes.join("  ")]); return out; }
+  if (st.refused) { // the engine's rule, the place and the type it declares, and what was offered
+    const b = st.refused.body || {};
+    out.push(["no", "✕ " + st.refused.codes.map((c) => c.split(" · ").pop()).filter((c, i, a) => a.indexOf(c) === i).join(" ")]);
+    if (b.number != null) {
+      const t = allTerms(S.base).find((x) => String(x.t.id) === String(b.number)), pl = t && placesOf(t.t).find((p) => p.path === b.path);
+      out.push(["was", `${t ? t.t.function : b.number}.${b.path} : ${pl ? pl.declared : "?"}`]);
+      out.push(["sep", "⟵"]);
+      out.push(["now", heldType(b.value)]);
+    } else if (b.path === "kind") out.push(["was", `${b.value}|${clip(S.base.text.slice(b.at[0], b.at[1]))}`]);
+    else if (b.number === null) out.push(["was", `+ ${b.path} ⟵ ${heldType(b.value)}`]);
+    return out;
+  }
   if (!st.change) return out;
   const b = st.change;
   if (b.path === "kind") {
@@ -786,9 +782,16 @@ function strip(st) {
     const pl = t && placesOf(t.t).find((p) => p.path === b.path);
     if (b.number == null) out.push(["now", `+ ${b.path.split(".")[0]}(${b.path.split(".")[1]}=${valLabel(b.value)})`]);
     else { out.push(["was", `${t ? t.t.function : b.number}.${b.path}=${pl ? slotOf(pl, S.base).g : "?"}`]); out.push(["sep", "→"]); out.push(["now", `${t ? t.t.function : b.number}.${b.path}=${valLabel(b.value)}`]); }
+    if (b.value && b.value.ref != null) { const r = allTerms(S.base).find((x) => x.t.id === String(b.value.ref)); const j = r && r.t.judgments || {}; if (j.complete === false) out.push(["no", "● " + r.t.function + " complete ✕"]); if (j.pending) out.push(["no", "⧗"]); }
     if (st.wait) out.push(["sep", "…"]);
   }
   return out;
+}
+function heldType(v) { // the type of what was offered, from the request itself or the operation it refers to
+  if (!v) return "∅";
+  if (v.ref != null) { const t = allTerms(S.base).find((x) => x.t.id === String(v.ref)); return t ? `↩ ${t.t.function} : ${t.t.type}` : "↩ " + v.ref; }
+  if (v.hole) return "▢ " + v.hole;
+  return `${v.at && v.at[0] >= 0 ? "“" + clip(v.constant) + "”" : v.constant} : ${v.type}`;
 }
 const clip = (s) => { s = s.replace(/\s+/g, " "); return s.length > 36 ? s.slice(0, 34) + "…" : s; };
 const valLabel = (v) => (v == null ? "∅" : v.ref != null ? "↩ " + ((allTerms(S.base).find((x) => x.t.id === String(v.ref)) || { t: { function: v.ref } }).t.function) : v.hole ? "▢ " + v.reason : v.constant != null ? (v.at && v.at[0] >= 0 ? "“" + clip(v.constant) + "”" : v.constant) : "?");
@@ -845,7 +848,7 @@ async function undo1() {
 }
 async function reload() {
   await loadAll();
-  S.base = LATEST.get(S.id); S.staged = null; S.hold = null; DRAFTS.clear(); Q = [];
+  S.base = LATEST.get(S.id); S.staged = null; S.hold = null; DRAFTS.clear(); VERD.clear(); Q = []; S.stale = null;
   if (S.open && S.open.t === "piece") { const p = (S.base.pieces || []).find((q) => q.start <= S.open.p.start && S.open.p.start < q.end); S.open = p ? { t: "piece", p } : null; }
   else if (S.open && (S.open.t === "op" || S.open.t === "place")) S.open = null;
   pick(); paint();
@@ -961,7 +964,7 @@ function paint() {
   sizes();
   const st = display();
   root ??= createRoot($("board"));
-  root.render(h(DraggableRenderer, { key: S.id + "|" + (S.open ? pageKey() : "world"), draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragStatus: status }));
+  root.render(h(DraggableRenderer, { key: S.id, draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragStatus: status }));
   if (S.pendingFocus) { requestAnimationFrame(() => { const zone = FOC.filter((f) => f.zone === "text"); if (zone.length && S.pendingFocus) { S.focus = (S.pendingFocus > 0 ? zone[zone.length - 1] : zone[0]).id; S.pendingFocus = 0; paint(); } }); }
   paintDock(DRAGGING ? LIVE : st);
 }
@@ -978,11 +981,11 @@ function pick() {
   const ids = [...LATEST.values()].sort((a, b) => !!b.pieces - !!a.pieces || b.text.length - a.text.length);
   if (sel.options.length !== ids.length) sel.innerHTML = ids.map((l) => `<option value="${l.id}">${l.id.slice(0, 8)} · ${l.text.length}${l.pieces ? "" : " · ⊘"}</option>`).join("");
   sel.value = S.id;
-  $("snap").textContent = `${S.base.snapshot.slice(0, 8)} · #${IDX.get(S.base.snapshot)} · ${(S.base.pieces || []).length} · ${allTerms(S.base).length}ƒ · ${S.base.corrections.length}✎`;
+  $("snap").textContent = (S.stale ? "⟳ " : "") + `${S.base.snapshot.slice(0, 8)} · #${IDX.get(S.base.snapshot)} · ${(S.base.pieces || []).length} · ${allTerms(S.base).length}ƒ · ${S.base.corrections.length}✎`;
 }
 async function choose(id) {
   S.id = id; S.base = LATEST.get(id); S.staged = null; S.hold = null; S.open = null; S.scroll = 0; S.focus = null; S.undo = []; S.note = null;
-  DRAFTS.clear(); Q = [];
+  DRAFTS.clear(); VERD.clear(); Q = []; S.stale = null;
   const u = new URL(location); u.searchParams.set("r", id.slice(0, 8)); history.replaceState(null, "", u);
   pick(); paint();
 }
