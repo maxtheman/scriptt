@@ -192,7 +192,7 @@ const JUDGE = ["valid", "complete", "pending", "deferred", "ready"];
 function diff(a, b) {
   const out = [], ta = new Map(terms(a).map(t => [String(t.id), t])), tb = new Map(terms(b).map(t => [String(t.id), t]));
   for (const [id, t] of tb) {
-    if (!ta.has(id)) { out.push({ text: `new operation ${t.function}#${id} on this phrase`, key: `o:${id}` }); continue; }
+    if (!ta.has(id)) { out.push({ text: `new operation ${t.function}#${id}: ${places(t).map(p => p.path + " ← " + say(p.value, b)).join(", ")} (${readyWord(t) || "no state"})`, key: `o:${id}` }); continue; }
     const u = ta.get(id), pa = Object.fromEntries(places(u).map(p => [p.path, p.value])), pb = Object.fromEntries(places(t).map(p => [p.path, p.value]));
     for (const path of new Set([...Object.keys(pa), ...Object.keys(pb)])) {
       const x = pa[path] ? say(pa[path], a) : "(none)", y = pb[path] ? say(pb[path], b) : "(none)";
@@ -439,6 +439,8 @@ function candidatesFor(op, path) {
   for (const d of decisionsFor(r, d => String(d.operation) === String(op.id) && d.path === path)) for (const o of d.offered || []) {
     if (o.constant !== undefined) add("d1 was offered", `“${trim(o.constant, 60)}”`, o); else if (o.ref !== undefined) add("d1 was offered", `the result of #${o.ref}`, o);
   }
+  const ph = phraseOf(r, op.id);
+  if (ph) { const raw = r.text.slice(ph.start, ph.end), lead = raw.length - raw.trimStart().length, txt = raw.trim(); if (txt) add("words of its own phrase", `“${trim(txt.replace(/\s+/g, " "), 60)}”`, { constant: txt, type: ph.brand || "Asked", at: [ph.start + lead, ph.start + lead + txt.length] }, `characters ${ph.start + lead}–${ph.start + lead + txt.length}`); }
   if (S.span) { const [a, b] = spanChars(); add("your selection", `“${trim(spanText(), 60)}”`, heldWords().value, `characters ${a}–${b}`); }
   for (const m of membersOf(ty)) add("members of " + (m.sum), `${m.words}`, memberValue(m), m.member);
   for (const t of terms(r)) if (String(t.id) !== String(op.id)) add("results of other operations", `${t.function}#${t.id} → ${t.type}`, { ref: String(t.id) });
@@ -532,7 +534,7 @@ function wordPanel(c) {
   const r = S.base;
   if (!S.span) { c.append(el("h2", {}, "Nothing selected")); return; }
   const [a, b] = spanChars(), p = r.phrases.find(p => p.start <= a && a < p.end);
-  c.append(el("h2", {}, `“${trim(spanText(), 70)}”`), el("p", { class: "sub" }, `${S.span.b - S.span.a + 1} word${S.span.b > S.span.a ? "s" : ""} · characters ${a}–${b}${p && p.quotes ? " · quoted text" : ""}`));
+  c.append(el("h2", {}, `“${trim(spanText(), 70)}”`), el("p", { class: "sub" }, `${S.span.b - S.span.a + 1} word${S.span.b > S.span.a ? "s" : ""} · characters ${a}–${b} · ${p && p.quotes ? "quoted: the engine matched it to an earlier reply in the log" : "counted as your words (the engine marks quoted text only when the log holds that reply)"}`));
   if (p) {
     const reads = p.terms.length ? `read as ${p.terms.map(t => t.function + "#" + t.id).join(" + ")}` : p.unresolved.length ? "a request d1 could not name" : "no request: d1 found nothing to do here";
     c.append(el("p", {}, `Its phrase (characters ${p.start}–${p.end}) is ${reads}. The engine reads whole phrases, not single words.`));
@@ -693,10 +695,11 @@ addEventListener("keydown", e => {
   const inWord = t.classList && t.classList.contains("w");
   if (S.held && (e.key === "o" || e.key === "O") && !e.metaKey && !e.ctrlKey) {  // jump to the next open place
     const all = [...document.querySelectorAll(".pl.hole")]; if (!all.length) return;
-    const i = all.indexOf(document.activeElement); e.preventDefault(); const n = all[(i + 1) % all.length]; n.focus(); n.scrollIntoView({ block: "center" }); return;
+    const i = all.indexOf(document.activeElement); e.preventDefault(); const n = all[(i + 1) % all.length]; n.focus(); n.scrollIntoView({ block: "center" }); hoverOn(targetAt(n)); return;
   }
   if (inWord) {
     const i = W.findIndex(w => w.el === t);
+    if (i !== S.cursor) tabStop(i);
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); focusWord(i + (e.key === "ArrowRight" ? 1 : -1), e.shiftKey, e.altKey); return; }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const ps = phraseStarts(), cur = ps.filter(x => x <= i).at(-1) ?? 0, k = ps.indexOf(cur); focusWord(e.key === "ArrowDown" ? ps[Math.min(ps.length - 1, k + 1)] : (i > cur ? cur : ps[Math.max(0, k - 1)]), e.shiftKey); return; }
     if (e.key === "Enter" || e.key === " ") {
@@ -724,14 +727,24 @@ addEventListener("keydown", e => {
 });
 function placeCursorOnFirstPlace() {
   if (S.held && S.held.kind === "fn") { const f = W[S.cursor]; f && f.el.focus(); S.note = "Holding a function: move to a word of the phrase (←/→, ↑/↓ jump phrases) and press Enter to add it there."; paintDock(); return; }
-  const p = document.querySelector(".pl.hole") || document.querySelector(".pl"); if (p) { p.focus(); p.scrollIntoView({ block: "center" }); }
+  const p = document.querySelector(".pl.hole") || document.querySelector(".pl"); if (p) { p.focus(); p.scrollIntoView({ block: "center" }); hoverOn(targetAt(p)); }
 }
 document.addEventListener("focusin", e => {
+  if (e.target.classList && e.target.classList.contains("w")) { const i = W.findIndex(w => w.el === e.target); if (i >= 0 && i !== S.cursor) tabStop(i); }
   if (!S.held || ptr) return;
   const tg = targetAt(e.target);
   if (tg) hoverOn(tg);
 });
 
+// a place and its words are one thing: hovering or focusing the place lights the words it holds, and a ref lights the operation it points at
+const linkFor = (n, on) => {
+  const pl = n.closest && n.closest("[data-place]"); if (!pl) return;
+  const op = termById(view(), pl.dataset.op), p = op && places(op).find(x => x.path === pl.dataset.path); if (!p) return;
+  if (p.value.constant !== undefined && p.value.at[0] >= 0) linkSpan(p.value.at[0], p.value.at[1], on);
+  if (p.value.ref !== undefined) { const b = document.querySelector(`.brick[data-brick="${CSS.escape(String(p.value.ref))}"]`); b && b.classList.toggle("link", on); }
+};
+document.addEventListener("mouseover", e => linkFor(e.target, true)); document.addEventListener("mouseout", e => linkFor(e.target, false));
+document.addEventListener("focusin", e => linkFor(e.target, true)); document.addEventListener("focusout", e => linkFor(e.target, false));
 $("#rerun").addEventListener("click", rerun);
 $("#older").addEventListener("click", () => { S.pending = null; S.sel = { kind: "history" }; render(); $("#insp .x").focus(); });
 $("#pick").addEventListener("change", async e => { S.id = e.target.value; S.sel = S.pending = null; S.span = null; S.cursor = 0; cache.clear(); await load(); render(); });
