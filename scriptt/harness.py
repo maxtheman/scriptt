@@ -22,7 +22,10 @@ names a function and its values, and counts only for the 1 obligation that has e
   an obligation that binds a path takes the writes of that file and the commands whose text names it;
   else one whose result holds Observed (text that a run of code produced) takes every command that ran;
   else one whose result is a Path or Later[T] of no text T (work on the folder) takes every file written.
-  Anything else, and every unresolved request, has no evidence a transcript can show: UNVERIFIED.
+  An obligation whose result is words (Written, Words) or None (a rule to follow) is fulfilled in the reply: d1 judges the reply
+  against its call with the engine's DID wording, kept as a judgment with its exact inputs, never as execution evidence;
+  PASS at Limits.yes or more, else UNVERIFIED. Anything else, and every unresolved request, stays UNVERIFIED.
+With "block": true, a turn goes back only for an obligation that is FAIL, or UNVERIFIED with a result that is no words.
 The last run of each command and the last write of each file count. A command passes with exit code 0, a write when the file exists.
 """
 
@@ -160,9 +163,17 @@ def takes(term: scriptt16.Application) -> tuple[set[str], set[str]]:
     return set(), ({"ran"} if observed else set()) | ({"wrote"} if worked else set())
 
 
+def words(term: scriptt16.Application) -> bool:
+    """Decides whether an operation's result is words (Written, Words) or None (a rule to follow): its fulfilment is in the reply."""
+    text = lambda one: one.name != "Observed" and text(one.of) if isinstance(one, agree.Brand) else isinstance(one, agree.Base) and one.python in (str, type(None))
+    return text(term.function.result)  # Observed is words too, but a run of code produced them: that is execution
+
+
 def needs(term) -> str:
     if isinstance(term, scriptt16.Unresolved):
         return "no evidence can show it"
+    if words(term):
+        return "d1 judges your reply (a judgment, not execution evidence)"
     paths, kinds = takes(term)
     if paths:
         return "a write of " + " or ".join(sorted(paths)) + ", or a command that names it"
@@ -201,7 +212,7 @@ def render(reading: scriptt16.Reading) -> str:
     if not terms:
         lines_.append("The message asks for no operation of the world.")
     else:
-        lines_.append("At the end of the turn each obligation is checked by evidence only: the commands you ran and the files you wrote. Your words are not evidence.")
+        lines_.append("At the end of the turn each obligation is checked: work by evidence only (the commands you ran, the files you wrote; your words are not evidence of work), an answer or a rule by d1's judgment of your reply.")
     return "\n".join(lines_)
 
 
@@ -279,26 +290,47 @@ def stop(event: dict, model) -> dict | None:
     if reading:
         folder = HOME.parent
         items = evidence(event.get("transcript_path"), reading.text)
+        state = f"MESSAGE:\n{reading.text}\n\nREPLY:\n{reply}"  # the state and the wording of check's own question to d1
+        spoken = {term.number: term for _, term in scriptt16.obligations(reading) if isinstance(term, scriptt16.Application) and words(term)}
+        questions = {f"did {number}": yes(DID(f"{term.function.asks}: {scriptt16.say(term)}")) for number, term in spoken.items()}
+        given = model(state, questions) if questions else {}
+        judgments = []
+        for number in spoken:
+            answer_ = given.get(f"did {number}") if isinstance(given, dict) else None
+            share = scriptt16.answer(scriptt16.YesNo(questions[f"did {number}"]["instructions"]), answer_)
+            judgments.append({"obligation": number, "state": state, "instructions": questions[f"did {number}"]["instructions"], "options": None, "answer": answer_, "share": share,
+                              "done": share is not None and share >= scriptt16.Limits().yes})
+        known = {(state, questions[key]["instructions"]): given.get(key) for key in questions if isinstance(given, dict)}
+
+        def once(state_: str, asked: dict) -> dict:  # check asks the same question again: it gets the answer that d1 already gave
+            new = {key: q for key, q in asked.items() if (state_, q["instructions"]) not in known}
+            got = model(state_, new) if new else {}
+            return {key: known[state_, q["instructions"]] if (state_, q["instructions"]) in known else got.get(key) for key, q in asked.items()}
+
         artifacts, of = [], {}
-        for item in items:
+        for item in items + [{"judged": one["obligation"]} for one in judgments if one["done"]]:
             for _, term in scriptt16.obligations(reading):
-                if isinstance(term, scriptt16.Application) and about(term, item, folder):
+                if isinstance(term, scriptt16.Application) and (term.number == item["judged"] if "judged" in item else not words(term) and about(term, item, folder)):
                     artifacts.append(artifact := scriptt16.Artifact(term.function.name, scriptt16.bindings(term)))
                     of[id(artifact)] = item
-        reading, verdict, _ = scriptt16.check(reading, reply, artifacts, [("evidence", lambda term, artifact: holds(of[id(artifact)], folder))], model)
+        criterion = lambda term, artifact: "judged" in of[id(artifact)] or holds(of[id(artifact)], folder)  # a judgment artifact exists only for a done
+        reading, verdict, _ = scriptt16.check(reading, reply, artifacts, [("evidence", criterion)], once)
         reading, _ = scriptt16.save(reading, store())
+        terms = {term.number: term for _, term in scriptt16.obligations(reading)}
+        executable = lambda number: isinstance(terms[number], scriptt16.Application) and not words(terms[number])
+        sent_back = [one for one in reading.fulfillment if one.outcome == scriptt16.FAIL or (one.outcome == scriptt16.UNVERIFIED and executable(one.obligation))]
         blocks = sum(1 for one in mine if one["event"] == "Stop" and one.get("reading") == reading.id and one.get("blocked"))
-        blocked = bool(config().get("block")) and verdict != scriptt16.PASS and blocks < BLOCKS
-        line |= {"reading": reading.id, "snapshot": reading.base, "evidence": items, "artifacts": [[artifact.function, {path: call(one, False) for path, one in artifact.arguments.items()}, items.index(of[id(artifact)])] for artifact in artifacts],
-                 "verdict": verdict, "outcomes": [{"obligation": one.obligation, "outcome": one.outcome, "evidence": one.evidence, "claim": one.claim} for one in reading.fulfillment],
+        blocked = bool(config().get("block")) and bool(sent_back) and blocks < BLOCKS
+        line |= {"reading": reading.id, "snapshot": reading.base, "evidence": items, "judgments": judgments,
+                 "artifacts": [[artifact.function, {path: call(one, False) for path, one in artifact.arguments.items()}, {"judged": of[id(artifact)]["judged"]} if "judged" in of[id(artifact)] else items.index(of[id(artifact)])] for artifact in artifacts],
+                 "verdict": verdict, "outcomes": [{"obligation": one.obligation, "outcome": one.outcome, "evidence": one.evidence, "claim": one.claim,
+                                                   "by": None if one.evidence is None else "d1 judged" if "judged" in of[id(artifacts[one.evidence])] else "execution"} for one in reading.fulfillment],
                  "blocked": blocked, "blocks": blocks + blocked}
         if blocked:
-            terms = {term.number: term for _, term in scriptt16.obligations(reading)}
             failed = lambda one: (lambda item: f"`{item['ran'][:80]}` exited {item['exit']}" if "ran" in item else f"the write of {item['wrote']} did not hold")(of[id(artifacts[one.evidence])])
-            open_ = [f"#{one.obligation} {'?' if isinstance(terms[one.obligation], scriptt16.Unresolved) else call(terms[one.obligation])} {one.outcome}: "
-                     + (failed(one) if one.outcome == scriptt16.FAIL else f"needs {needs(terms[one.obligation])}") for one in reading.fulfillment if one.outcome != scriptt16.PASS]
+            open_ = [f"#{one.obligation} {call(terms[one.obligation])} {one.outcome}: " + (failed(one) if one.outcome == scriptt16.FAIL else f"needs {needs(terms[one.obligation])}") for one in sent_back]
             answer = {"decision": "block", "reason": f"scriptt: by the evidence of this turn, {len(open_)} of {len(terms)} obligations are not done (send-back {blocks + 1} of {BLOCKS}). "
-                                                     "Your words are not evidence; a command that ran or a file that was written is.\n" + "\n".join(open_) + "\nDo each one, or say in 1 line why you do not."}
+                                                     "Your words are not evidence of work; a command that ran or a file that was written is.\n" + "\n".join(open_) + "\nDo each one, or say in 1 line why you do not."}
     note(line)
     return answer
 

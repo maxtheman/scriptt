@@ -204,6 +204,35 @@ def test_hooks() -> None:
     server.shutdown()
 
 
+def test_judged() -> None:
+    """A request whose result is words is judged by d1 against the reply, kept as a judgment with its inputs, never as execution evidence."""
+    explain = "Explain the search."
+    with tempfile.TemporaryDirectory() as temporary:
+        folder = pathlib.Path(temporary)
+        home = installed(folder, (HERE / "world.py").read_text())
+        for session, (text, ops, binds, judge) in {"done": (explain, "explain", X.ABSENT, 0.9), "not done": (explain, "explain", X.ABSENT, 0.1),
+                                                   "build, prose": ("Redesign the mod.", "redesign", X.MOD, 0.9)}.items():
+            server, url = endpoint(Standin(X.script({text: ops}, {(text, ops, "subject" if ops == "explain" else "surface"): binds}, judge=judge), X.World("next")))
+            (home / "config.json").write_text(json.dumps({"url": url, "block": True}))
+            said = hook(home, {"hook_event_name": "UserPromptSubmit", "session_id": session, "prompt": text})["hookSpecificOutput"]["additionalContext"]
+            reply = "The search ranks the candidates by type, then asks d1." if ops == "explain" else "I redesigned the mod."
+            answer = hook(home, {"hook_event_name": "Stop", "session_id": session, "transcript_path": transcript(folder, session, text, [reply]), "last_assistant_message": reply})
+            record = last_stop(home)
+            server.shutdown()
+            outcomes = [(one["outcome"], one["by"]) for one in record["outcomes"]]
+            print(f"{session}: {outcomes}, send-back {bool(answer)}, judgments {[(one['obligation'], one['share'], one['done']) for one in record['judgments']]}")
+            if ops == "explain":
+                assert "evidence: d1 judges your reply (a judgment, not execution evidence)" in said, said
+                judgment, = record["judgments"]
+                assert judgment["state"] == f"MESSAGE:\n{text}\n\nREPLY:\n{reply}" and judgment["instructions"].startswith("The message asks the reader to explain") and judgment["answer"]["p_true"] == judge and judgment["share"] == judge
+                assert record["evidence"] == [] and answer is None, "a word result judged by d1 is sent back"
+                assert outcomes == ([("PASS", "d1 judged")] if judge >= 0.5 else [("UNVERIFIED", None)]), outcomes
+            else:
+                assert record["judgments"] == [] and outcomes == [("UNVERIFIED", None)] and answer["decision"] == "block" and "needs a file written" in answer["reason"]
+        saved = [strict(line) for line in (home / "events.jsonl").read_text().splitlines()]
+        assert [one["fulfillment"][0]["outcome"] for one in saved if "fulfillment" in one] == ["PASS", "UNVERIFIED", "UNVERIFIED"]
+
+
 def test_non_finite() -> None:
     """A NaN in d1's raw answer is kept as the string "NaN": the line is JSON, and load still diagnoses the answer."""
     world = agree.loads((HERE / "world.py").read_text(), ROOT)
@@ -254,6 +283,7 @@ if __name__ == "__main__":
     test_starter_world()
     test_non_finite()
     test_hooks()
+    test_judged()
     if "--live" in sys.argv:
         live()
     print("all hook tests passed")

@@ -12,10 +12,11 @@
   not done yet. They need no import.
 - A ``pathlib.Path`` is a path that the message names and that exists in this folder; an ``int`` is digits.
 
-At the end of a turn the harness checks each request by evidence only (see harness.py): one that binds a path takes the
-writes of that file and the commands that name it; one whose result holds ``Observed`` takes the commands run; one whose
-result is a ``Path`` or ``Later`` of no text (``Later[Subject]``) takes the files written. A result such as
-``Written``, ``Later[Asked]`` or ``None`` has no evidence.
+At the end of a turn the harness checks each request (see harness.py). Work needs evidence from the transcript: one
+that binds a path takes the writes of that file and the commands that name it; one whose result holds ``Observed``
+takes the commands run; one whose result is a ``Path`` or ``Later`` of no text (``Later[Subject]``) takes the files
+written. A result that is words (``Written``, ``Words``) or ``None`` is judged by d1 against the reply: a judgment, not
+execution evidence.
 Keep it small: the 5 to 10 things that the user really asks for in this folder.
 """
 

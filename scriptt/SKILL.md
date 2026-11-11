@@ -11,21 +11,23 @@ of the world each phrase asks for and which value fills each parameter; rules gr
 (members of a sum type, numbers, paths that exist here). Every reading is saved to `.scriptt/events.jsonl`. You receive:
 
 ```
-scriptt: d1 read this message against .scriptt/world.py (reading 7198f8a8). Obligations: 4.
+scriptt: d1 read this message against .scriptt/world.py (reading 7198f8a8). Obligations: 5.
 #0 redesign(surface='the mod') -> Later[Surface]  (pending)   "Redesign the mod."   evidence: a file written
 #1 show(subject=#0) -> Subject  (pending)   "Then show it."   evidence: no evidence of a turn can show it
 #2 ?   "Also send the summary to my accountant."
 #3 test(subject=...) -> Observed   "And test whatever else changed."   evidence: a command that runs and exits 0
+#4 explain(subject=None) -> Written   "Why did it break?"   evidence: d1 judges your reply (a judgment, not execution evidence)
 Declared in world.py:
   def redesign(surface: Surface) -> Later[Surface]   change how the page or the interface looks, or how its information is ordered
   def show(subject: Subject) -> Subject   show or open something so that the user can see it
   def test(subject: Subject) -> Observed   test or verify that something works
+  def explain(subject: Maybe[Words]) -> Written   explain or answer something: say why, how or what, or confirm or deny it
   Surface = 'the page' | 'the site' | 'the mod'
 Open holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:
   #3 test.subject: Subject, d1 chose none of the candidates
 Unresolved requests, each a ? above: no function of world.py fits (#2 d1 chose none of the candidates).
   For each: say in 1 line what it asks, do it, and propose the function to add to .scriptt/world.py.
-At the end of the turn each obligation is checked by evidence only: the commands you ran and the files you wrote. Your words are not evidence.
+At the end of the turn each obligation is checked: work by evidence only (the commands you ran, the files you wrote; your words are not evidence of work), an answer or a rule by d1's judgment of your reply.
 ```
 
 ## What to do with the block
@@ -45,20 +47,23 @@ At the end of the turn each obligation is checked by evidence only: the commands
 
 ## The check at the end of the turn
 
-When you stop, the harness takes the evidence of the turn from the transcript, never from your reply's words:
-each command you ran with its exit code, and each file you wrote or edited (the last run of a command and the last
-write of a file count). Each obligation's `evidence:` says what counts for it:
+When you stop, each obligation is checked. Work is checked by evidence from the transcript, never by your reply's
+words: each command you ran with its exit code, and each file you wrote or edited (the last run of a command and the
+last write of a file count). Each obligation's `evidence:` says what counts for it:
 
 - an obligation that binds a path: a write of that file, or a command that names it;
 - else a result that holds `Observed` (a test, research): a command that ran; it passes with exit code 0;
-- else a result that is a `Path` or `Later[...]` of no text (a change, a redesign, a save): a file written that exists.
-- Anything else (an explanation, a rule to follow) and every `?` has no evidence: it stays UNVERIFIED.
+- else a result that is a `Path` or `Later[...]` of no text (a change, a redesign, a save): a file written that exists;
+- a result that is words (`Written`, `Words`: an explanation, an answer) or `None` (a rule to follow) is done in the
+  reply itself: d1 judges your reply against the call. That is a judgment, shown as "d1 judged", not execution
+  evidence: PASS when d1 says done, else UNVERIFIED. Its exact question and answer are kept;
+- anything else, and every `?`, stays UNVERIFIED.
 
-Each obligation gets PASS, FAIL (an artifact about it failed) or UNVERIFIED. With `"block": true` in
-`.scriptt/config.json`, a turn with any obligation that is not PASS is sent back with a reason that starts
-"scriptt:" and lists each one with what it needs, at most 2 times for 1 message. When you get it: do the work that
-is missing, or say in 1 line why it cannot be shown (an explanation needs none). Saying it is done does not count.
-The results are saved with the reading.
+Each obligation gets PASS, FAIL (a command about it failed, or a write did not hold) or UNVERIFIED. With
+`"block": true` in `.scriptt/config.json`, a turn is sent back, with a reason that starts "scriptt:", only for an
+obligation that is FAIL, or UNVERIFIED with a result that needs work; at most 2 times for 1 message. An answer that
+d1 did not judge done, and a `?`, are not sent back. When you get it: do the work that is missing, or say in 1 line
+why it cannot be shown. Saying the work is done does not count. The results are saved with the reading.
 
 ## The world, 1 for each folder
 
