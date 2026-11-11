@@ -37,9 +37,12 @@ Nothing new is added to the world. The drop replaces d1's choice through the eng
    carry none, open holes with their reason in words, what can be picked up.
 5. Keyboard parity for all of the above (board 3's independent audit failed keyboard use and provenance; fix both).
 
-Known engine gaps (being fixed on the engine side): /edit returns HTTP 400 instead of diagnostics for a value that does
-not inhabit its type; a world member with no span (`"at": [-1, -1]`) as a value is being checked. Handle both until
-fixed; report anything else the engine needs instead of working around it in the page.
+Engine status (commit 84518de, in the lab): /edit answers a value that does not fit with the engine's diagnostics in a
+normal 200 body (e.g. `[[0, "surface", "type"]]`, `"reference"` for a missing operation); a world member with no span
+(`{"constant": "the page", "type": "Surface", "at": [-1, -1]}`) previews as d1's choice replaced, and d1's original
+decision stays in `decisions` so you can show both side by side. Value forms: a constant `{constant, type, at}`, a
+reference `{"ref": "n"}`, a cleared hole `{"hole": T, "reason": "cleared"}`, or null to remove. Report anything else the
+engine needs instead of working around it in the page.
 
 ## What Max saw in board 3 (screens in web/notes/screens/)
 
