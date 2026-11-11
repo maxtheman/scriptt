@@ -437,17 +437,8 @@ def identity(world: World) -> str:
 
 
 def world_record(world: World) -> dict:
-    """Converts a world to data that JSON can hold, for an interface that must not be a second type checker.
-
-    Keys: identity; types (each as ``tree``, with its kind and the function
-    parameters that accept a value of it, by ``is_subtype``, directly or as a
-    member of a Maybe or Many place); constructors (kind and meaning); functions
-    (docstring, parameters as [name, tree], result tree).
-    """
-    places = [(f"{function.name}.{name}", kind) for function in world.functions.values() for name, kind in function.parameters]
-    accepts = lambda one: [place for place, kind in places if is_subtype(one, kind) or isinstance(kind, Applied) and kind.constructor in (MAYBE, MANY) and is_subtype(one, kind.argument)]
+    """Converts a world to data that JSON can hold: its identity, each type and constructor with its kind, each function. A record names its world by the identity."""
     return {"identity": identity(world),
-            "types": {name: tree(one) | {"kind": show(kind_of(one)), "accepted_by": accepts(one)} for name, one in world.types.items()},
+            "types": {name: tree(one) | {"kind": show(kind_of(one))} for name, one in world.types.items()},
             "constructors": {name: {"kind": show(one.kind), "describes": one.describes} for name, one in CONSTRUCTORS.items()},
             "functions": {f.name: {"asks": f.asks, "parameters": [[name, tree(one)] for name, one in f.parameters], "result": tree(f.result)} for f in world.functions.values()}}
-

@@ -564,7 +564,7 @@ def test_record_shape():
         assert phrase["terms"][1]["parameters"] == {"subject": "Subject"} and phrase["terms"][0]["arguments"]["surface"]["type"] == "Surface"  # declared place apart from the value's type
         assert phrase["terms"][1]["judgments"] == {"valid": True, "diagnostics": [], "complete": True, "pending": True, "ready": False}
         exported = json.loads(json.dumps(agree.world_record(world)))
-        assert exported["identity"] == line["world"] and "show.subject" in exported["types"]["Surface"]["accepted_by"] and "redesign.surface" not in exported["types"]["Subject"]["accepted_by"]
+        assert exported["identity"] == line["world"] and exported["types"]["Surface"]["kind"] == "*" and exported["constructors"]["Many"]["kind"] == "* -> *"
         assert exported["types"]["Surface"]["alternatives"][0]["type"]["brand"] == "Asked" and exported["functions"]["show"]["parameters"] == [["subject", agree.tree(world.types["Subject"])]]
         assert {"form", "id", "text", "source", "world", "base", "phrases", "constants", "decisions", "corrections"} == set(line)
         assert all({"by", "rule", "state", "asked", "answers", "function", "operation", "path", "offered", "cut", "chosen"} <= set(one) for one in line["decisions"])
@@ -865,9 +865,9 @@ def main() -> int:
         print(f"  imported {name:<14} {pathlib.Path(path).resolve()}")
     failures: list[str] = []
     failures += [f"{name} was imported from {path}, outside {X.DECLARED_ROOT}" for name, path in loaded.items() if not pathlib.Path(path).resolve().is_relative_to(X.DECLARED_ROOT)]
-    imported = [pathlib.Path(path).resolve().relative_to(X.DECLARED_ROOT).as_posix() for path in loaded.values()]
+    imported = [pathlib.Path(path).resolve().relative_to(HERE.parent).as_posix() for path in loaded.values() if pathlib.Path(path).resolve().is_relative_to(HERE.parent)]
     failures += [f"L4: {name} is imported but differs from HEAD (the tested tree is not the commit)" for name in imported
-                 if name in committed and committed[name] != (provenance["files"].get(name) or hashlib.sha256((X.DECLARED_ROOT / name).read_bytes()).hexdigest())]
+                 if name in committed and committed[name] != hashlib.sha256((HERE.parent / name).read_bytes()).hexdigest()]
     failures += [f"L4: {name} is imported but not committed" for name in imported if subprocess.run(["git", "-C", str(HERE.parent), "cat-file", "-e", f"HEAD:{name}"]).returncode]
 
     for test in UNIT_TESTS:
