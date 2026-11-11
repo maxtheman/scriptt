@@ -345,8 +345,10 @@ class Edit:
     ``set`` with obligation None and path "function.parameter" applies the
     function to the value: a new application with the value in that place (a
     single T in a Many[T] place is the collection of it) and a cleared hole in
-    every other place. It is listed after the message's obligations, with span
-    "", and gets the largest operation number plus one; no number changes.
+    every other place. It belongs to the phrase of the thing it was applied to
+    (a constant's phrase, or the referenced operation's phrase): that is its
+    span, and it is listed after that phrase's existing operations. It gets the
+    largest operation number plus one; no number changes.
     """
 
     op: str
@@ -580,7 +582,7 @@ RECORD = {"R1": ("A save writes one JSON object per reading, as the engine's rec
 # Each change to this oracle after its first review. Version 1 is commit 5b524a0.
 # Every observed result must be judged again against the version that holds it;
 # no result had been produced against version 1.
-ORACLE_VERSION = 7
+ORACLE_VERSION = 8
 CORRECTIONS = (
     ("E1", 2, "status could be recomputed by the adapter from the projected bindings, making C10 circular, and was not transitive through a pending operation's non-Later result",
      "observe() now takes status from the engine's own dependency judgment and defines it transitively; run C10 through_result", ("C10", "C15", "C18", "C19")),
@@ -659,6 +661,7 @@ CORRECTIONS = (
     ("E66", 7, "duplicated controls proved the same comparison in the same case", "38 removed; one control per comparison and case remains, with the brief's named wrong implementations", ()),
     ("E67", 7, "applying a function to a thing was untested", "run apply: edit with no operation and path function.parameter; Obligation.number is the engine's stable operation number; runs apply and applied_rerun", ("C18", "C19")),
     ("E68", 7, "ready meant complete and available, so redesign(mod), whose own result is deferred, could not start", "ready is: valid, complete, and no input the result of a PENDING obligation; its own Later result is status, a separate judgment", ("C06", "C10", "C15", "C18", "C19", "C20", "C22")),
+    ("E69", 8, "an applied operation was listed after all obligations with span '', which no phrase holds", "it belongs to the phrase of the thing it was applied to and follows that phrase's operations; numbers are compared by operation, not position; an unresolved obligation's correction keeps rule unresolved", ("C18", "C19")),
 )
 
 
@@ -827,8 +830,8 @@ TOKEN_WORLD = World(extra='\nToken = typing.NewType("Token", str)\n\ndef make_to
 AGGREGATES = World(extra='\ndef gather(surface: Surface) -> Many[Observed]:\n    "gather notes on it"\n\ndef summarize(notes: Many[Observed]) -> Written:\n    "summarize notes"\n'
                          '\ndef find(surface: Surface) -> Maybe[Observed]:\n    "find a note on it"\n\ndef keep(note: Maybe[Observed]) -> Written:\n    "keep a note"\n')
 PLACE_WORLD = World(extra='\ndef place(surface: Surface, subject: Subject) -> Written:\n    "place it beside something"\n')
-APPLIED = [ob("Redesign the mod.", "redesign", {"surface": MOD}, PENDING), ob("", "show", {"subject": Ref(0)}, PENDING),
-           ob("", "place", {"surface": Ref(0), "subject": Hole("Subject", CLEARED)}, PENDING), ob("", "compare", {"surfaces": (MOD,)})]
+APPLIED = [ob("Redesign the mod.", "redesign", {"surface": MOD}, PENDING), ob("Redesign the mod.", "show", {"subject": Ref(0)}, PENDING),
+           ob("Redesign the mod.", "place", {"surface": Ref(0), "subject": Hole("Subject", CLEARED)}, PENDING), ob("Redesign the mod.", "compare", {"surfaces": (MOD,)})]
 REDESIGN_TWICE = [ob("Redesign the mod.", "redesign", {"surface": MOD}, PENDING), ob("Redesign the mod again.", "redesign", {"surface": MOD}, PENDING)]
 INHABITED = [ob("Compare the mod and the page.", "compare", {"surfaces": (MOD, PAGE)}), ob("Redesign the mod.", "redesign", {"surface": MOD}, PENDING), ob("Explain the mod.", "explain", {"subject": MOD})]
 UNRESOLVED_SHOW = [ob("Email my accountant.", UNRESOLVED, reason=REJECTED), ob("Then show the mod.", "show", {"subject": MOD})]
@@ -1220,7 +1223,7 @@ CASES = (
                ("not_accepting", ("preview", Edit("set", None, "open_cell.cell", Ref(0))), rejected_edit((None, "cell", "type"), APPLIED)),
                ("no_such_operation", ("preview", Edit("set", None, "show.subject", Ref(7))), rejected_edit((None, "subject", "reference"), APPLIED)),
                ("later_operation", ("preview", Edit("set", None, "show.subject", Ref(4))), rejected_edit((None, "subject", "reference"), APPLIED)))),),
-         interpretation="'Previews perform no work' is observed as zero model calls and zero store writes during inspect, preview, cancel and stage. Cancel and restore return the decisions of the reading as well as its bindings. Reloading after a failed save reads the store, which still holds the last good save. A draft opened from an earlier snapshot cannot be saved over a later one: the save is refused as stale. Applying a function to a thing is an edit with no operation and the path function.parameter: it adds an application with the thing in that place, a single value as the collection of it in a Many place, and cleared holes elsewhere; existing operation numbers never change and the new one gets the next number. A place that does not accept the thing, or a reference to no earlier operation, is refused and the base is kept (run apply)."),
+         interpretation="'Previews perform no work' is observed as zero model calls and zero store writes during inspect, preview, cancel and stage. Cancel and restore return the decisions of the reading as well as its bindings. Reloading after a failed save reads the store, which still holds the last good save. A draft opened from an earlier snapshot cannot be saved over a later one: the save is refused as stale. Applying a function to a thing is an edit with no operation and the path function.parameter: it adds an application, in the phrase of the thing and after that phrase's operations, with the thing in that place, a single value as the collection of it in a Many place, and cleared holes elsewhere; existing operation numbers never change and the new one gets the next number. A place that does not accept the thing, or a reference to no earlier operation, is refused and the base is kept (run apply)."),
     Case("C19", "Accepted manual correction, then rerun or world change",
          "Correction is retained or explicitly invalidated with a reason; it is never silently overwritten by model preference.",
          "A rerun recomputes every binding from d1 and forgets the correction.",
@@ -1624,7 +1627,8 @@ def step_diagnostics(case: Case, observed_runs: dict, labels: tuple = ()) -> lis
             if action[0] in ("stage", "preview", "correct") and isinstance(action[1], Edit) and action[1].obligation is None and step.get("accepted"):
                 before, after = previous_obligations(observation, label), step.get("obligations") or []
                 numbers = [one.number for one in before]
-                if [one.number for one in after[:len(before)]] != numbers or [one.number for one in after[len(before):]] != [max(numbers, default=-1) + 1]:
+                kept = {one.number: one.operation for one in before} == {one.number: one.operation for one in after if one.number in numbers}
+                if not kept or sorted(one.number for one in after) != sorted(numbers + [max(numbers, default=-1) + 1]):
                     found.append(f"{where}: operation numbers {[one.number for one in after]} after adding one to {numbers}: existing numbers must stay and the new one is the next")
             if action[0] in ("check", "save", "inspect") and "obligations" in step and "obligations" not in expected:
                 found += obligations_diagnostics(f"{where} (a {action[0]} changed the reading)", previous_obligations(observation, label), step["obligations"])
