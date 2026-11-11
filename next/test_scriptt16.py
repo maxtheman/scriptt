@@ -1000,7 +1000,7 @@ def main() -> int:
     print("coverage of the requirement inventory: which checks of this run test each requirement (accounting, not a verdict on its words)")
     for key, kind, linked, failed in coverage(results):
         print(f"  {key:<4} {kind:<20} " + (f"tested by {', '.join(linked)}" + (f"; FAILED: {failed}" if failed else "") if linked else "not tested by this run: checked by the final report"))
-    table = [row | {"observed": "pass: " + ", ".join(row["checks"]) if not any(results.get(key) for key in row["checks"]) else
+    table = [row | {"observed": "not tested by this run" if not row["checks"] else "pass: " + ", ".join(row["checks"]) if not any(results.get(key) for key in row["checks"]) else
                     {key: results[key][:2] for key in row["checks"] if results.get(key)}} for row in X.INVARIANT_TABLE]
     for row in table:
         print(f"  {row['invariant']}: {row['observed']}")
