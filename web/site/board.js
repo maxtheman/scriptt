@@ -73,7 +73,7 @@ const isFn = (k) => !!(k && world().functions[k]);
 const cat = (k) => (k == null ? "null" : k === "(none)" ? "none" : isFn(k) ? "fn" : parseT(k) ? "con" : "type");
 const inner = (n) => { let p = parseT(n); while (p) { n = p.arg; p = parseT(n); } return n; };
 const mentions = (t, name) => !!t && (tname(t) === name || mentions(t.of, name) || (t.alternatives || []).some((a) => !a.member && mentions(a, name)));
-function members(t) { return (t.alternatives || []).flatMap((a) => (a.member ? [{ type: t.sum, ...a }] : members(a))); }
+function members(t) { return (t.alternatives || []).flatMap((a) => (a.member ? [{ ...a, of: t.sum }] : members(a))); }
 // d1 was given each type's docstring as the description of its option: the page shows it from there.
 function docOf(name) {
   for (const d of S.base.decisions) if (d.path === "kind") for (const q of Object.values(d.asked || {})) for (const o of q.options || []) if (o.id === name) return o.description;
@@ -356,7 +356,8 @@ function spec(th, d) {
   const { out, places } = options(th);
   th.places = places;
   RAIL_IDS = new Set(railItems().map((r) => r.id));
-  const opts = [...out.filter((o) => visible(o.target) || RAIL_IDS.has(o.target)), ...places.filter((o) => visible(o.target)), ...railItems().map((r) => ({ ...r.o, target: r.id }))];
+  const segs = (o) => (o.target.startsWith("pc-") ? [...DRAWN.entries()].filter(([, b]) => b.seg && "pc-" + b.start === o.target).map(([id]) => ({ ...o, target: id })) : [o]);
+  const opts = [...places.filter((o) => visible(o.target)), ...railItems().map((r) => ({ ...r.o, target: r.id })), ...out.filter((o) => visible(o.target) || RAIL_IDS.has(o.target)).flatMap(segs)];
   const fb = far(th), farState = fb ? stateFor(fb, { pull: true }) : base();
   const targets = opts.map((o) => d.dropTarget(o.target, o.body ? stateFor(o.body, { target: o.target }) : base(), { boundsState: start }));
   const sp = targets.length ? d.closest(targets).whenFar(farState) : d.fixed(farState);
@@ -396,6 +397,7 @@ function sig(c) {
   }
   return s;
 }
+function hash(s) { let x = 2166136261; for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); } return "k" + (x >>> 0).toString(36) + s.length.toString(36); }
 function keyAll(el) {
   if (!el || typeof el !== "object" || !el.props) return el;
   const ch = el.props.children;
@@ -407,9 +409,9 @@ function keyAll(el) {
     if (!c || typeof c !== "object" || !c.props) return c;
     c = keyAll(c);
     if (c.props.id != null || c.props.dragologyKey != null) return c;
-    const k = sig(c), n = seen.get(k) || 0;
+    const k = hash(sig(c)), n = seen.get(k) || 0;
     seen.set(k, n + 1);
-    return React.cloneElement(c, { dragologyKey: k + "#" + n });
+    return React.cloneElement(c, { dragologyKey: k + "-" + n });
   });
   return React.cloneElement(el, { children: out });
 }
@@ -437,9 +439,11 @@ function draggable({ state: st, d, draggedId }) {
     }
   }
   // the links: one per piece, piped to its kind
+  const labelEnd = new Map();
   for (const [k, a] of segs) {
     const p = a.p, col = colorOf(p.kind), c = cat(p.kind), id = "pc-" + k, isOpen = openP && openP.start === p.start, ch = changed.has(p.start);
     const kids = [];
+    a.parts.forEach((s, i) => { kids.push(h("rect", { id: `pt-${k}-${i}`, transform: translate(s.x0 - 2, s.y + 2), width: s.x1 - s.x0 + 4, height: 38, fill: "transparent", pointerEvents: "none" })); drawn.set(`pt-${k}-${i}`, { seg: true, start: k }); });
     for (const s of a.parts) {
       if (ch) bg.push(h("rect", { transform: translate(s.x0 - 3, s.y + 12), width: s.x1 - s.x0 + 6, height: 26, rx: 3, fill: C.accBg }));
       kids.push(h("rect", { transform: translate(s.x0 - 2, s.y + 2), width: s.x1 - s.x0 + 4, height: 38, fill: "transparent" }));
@@ -448,7 +452,8 @@ function draggable({ state: st, d, draggedId }) {
     }
     const s0 = a.parts[0], label = p.kind == null ? "null" : p.kind;
     const lw = tw(label, F.small);
-    if (c !== "none" && (lw <= s0.x1 - s0.x0 + 14 || isOpen || ch || draggedId === id)) kids.push(txt(s0.x0, s0.y + 11, label, F.small, ch ? C.acc : col, { fontWeight: p.by === "user" ? 700 : 400 }));
+    const room = (labelEnd.get(s0.li) ?? -1e9) <= s0.x0 - 4;
+    if (c !== "none" && room && (lw <= s0.x1 - s0.x0 + 14 || isOpen || ch || draggedId === id)) { labelEnd.set(s0.li, s0.x0 + lw); kids.push(txt(s0.x0, s0.y + 11, label, F.small, ch ? C.acc : col, { fontWeight: p.by === "user" ? 700 : 400 })); }
     else if (c !== "none") kids.push(h("circle", { transform: translate(s0.x0 + 2, s0.y + 8), r: 2, fill: col }));
     if (isOpen) for (const s of a.parts) kids.push(h("rect", { transform: translate(s.x0 - 3, s.y + 1), width: s.x1 - s.x0 + 6, height: 40, rx: 4, fill: "none", stroke: col, strokeWidth: 1.5 }));
     const th = { t: "piece", p };
@@ -658,7 +663,7 @@ function drawPage(st, d, draggedId, drawn, foc) {
       const tys = alts.filter((a) => !a.member).map((a) => tname(a));
       if (tys.length) { head(tys.join(" | "), C.mute); row(tys.map((c) => typeChip(c, "pg-u"))); }
       const ms = members(ty);
-      if (ms.length) { head(`${ms.length} ·`, C.mute); row(ms.map((m) => [`pg-m-${m.type}-${m.member}`, m.words, C.type, C.card, { t: "member", type: m.type, words: m.words }, { open: { t: "type", name: m.type } }])); }
+      if (ms.length) { head(`∋ ${ms.length}`, C.mute); row(ms.map((m) => [`pg-m-${m.of}-${m.member}`, m.words, C.type, C.card, { t: "member", type: m.of, words: m.words }, { open: { t: "type", name: m.of } }])); }
     }
     row(Object.keys(world().constructors).map((c) => typeChip(`${c}[${name}]`, "pg-c")));
     const fs = Object.entries(world().functions);
@@ -924,13 +929,16 @@ function paint() {
   sizes();
   const st = display();
   root ??= createRoot($("board"));
-  root.render(h(DraggableRenderer, { draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragState: () => { DRAGGING = true; }, onDragStatus: status }));
+  root.render(h(DraggableRenderer, { draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragStatus: status }));
   if (S.pendingFocus) { requestAnimationFrame(() => { const zone = FOC.filter((f) => f.zone === "text"); if (zone.length && S.pendingFocus) { S.focus = (S.pendingFocus > 0 ? zone[zone.length - 1] : zone[0]).id; S.pendingFocus = 0; paint(); } }); }
   paintDock(DRAGGING ? LIVE : st);
 }
 // a press that never became a drag (a click) leaves nothing held
 function status(st) {
-  if (st.type === "idle" && !st.pendingDrag && HELD && !DRAGGING) { HELD = null; RAIL_IDS = new Set(); LIVE = null; setTimeout(paint, 0); }
+  const was = DRAGGING;
+  DRAGGING = st.type === "dragging";
+  if (!DRAGGING && !st.pendingDrag && HELD) { HELD = null; RAIL_IDS = new Set(); LIVE = null; setTimeout(paint, 0); }
+  else if (was && !DRAGGING) setTimeout(paint, 0);
 }
 function pick() {
   const sel = $("pick");
