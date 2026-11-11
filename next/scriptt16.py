@@ -334,8 +334,18 @@ def inside(term: Term) -> list[Term]:
 
 
 def pending(term: Term) -> bool:
-    """Decides whether a term waits on work: an application whose result is Later, or anything holding one at any depth."""
-    return (isinstance(term, Application) and later(term.function.result)) or any(pending(part) for part in inside(term))
+    """Decides whether a term's value is not available yet: an application whose own result is deferred, or anything holding a pending value at any depth."""
+    return deferred(term) or waiting(term)
+
+
+def deferred(term: Term) -> bool:
+    """Decides whether an operation's own result comes later: its declared result is Later."""
+    return isinstance(term, Application) and later(term.function.result)
+
+
+def waiting(term: Term) -> bool:
+    """Decides whether a term holds an input that is not available yet, at any depth."""
+    return any(pending(part) for part in inside(term))
 
 
 def complete(term: Term) -> bool:
@@ -352,8 +362,12 @@ def sound(reading: "Reading", term: Application) -> bool:
 
 
 def ready(reading: "Reading", term: Application) -> bool:
-    """Decides whether an operation could run now: sound and not pending. Readiness is not fulfillment."""
-    return sound(reading, term) and not pending(term)
+    """Decides whether an operation can start now: sound, with no input that is not available yet.
+
+    Its own result may still come later (``deferred``): redesign(mod) can start,
+    and show(redesign(mod)) must wait. Readiness is not fulfillment.
+    """
+    return sound(reading, term) and not waiting(term)
 
 
 # ---- Part 2: lexical grounding ----------------------------------------------
@@ -1071,20 +1085,29 @@ def inspect(reading: Reading, number: int, path: str) -> dict:
 # ---- Part 5: edits, records and the store -------------------------------------
 
 
-def edit(reading: Reading, number: int, path: str, value: Term | None, correction: bool = False) -> tuple[Reading, list[tuple[int, str, str]]]:
+def edit(reading: Reading, number: int | None, path: str, value: Term | None, correction: bool = False, world: World | None = None) -> tuple[Reading, list[tuple[int, str, str]]]:
     """Proposes one change at one place of an operation, and validates the whole proposed reading.
 
     The base reading is not changed: the draft is a copy that keeps every shared
     reference and every decision. A value may refer only to an operation made
     before the one it is placed in.
 
+    With ``number`` None, the edit asks for a new operation: ``path`` is
+    "function.parameter" of ``world``, the value fills that parameter (one value
+    for a Many becomes a collection of it), every other parameter is a cleared
+    hole, and the operation joins the phrase that the value comes from, after
+    its operations, with a new number. Its number is an identity, not a place:
+    no other number changes.
+
     Args:
         reading: The base reading.
-        number: The operation.
-        path: The argument, or a field at a dotted path.
+        number: The operation, or None for a new one.
+        path: The argument, or a field at a dotted path; "function.parameter" for a new operation.
         value: The new term (from the base reading or new), or None to remove the binding.
-        correction: True to keep the edit as an accepted manual correction. A
-            valid edit at a place that has a correction replaces it either way.
+        correction: True to keep the edit as an accepted manual correction (a
+            new operation: as the user's request). A valid edit at a place that
+            has a correction replaces it either way.
+        world: The world, for a new operation.
 
     Returns:
         The draft and its diagnostics. With diagnostics the edit is rejected and
@@ -1093,26 +1116,49 @@ def edit(reading: Reading, number: int, path: str, value: Term | None, correctio
     copies: dict = {}
     draft = copy.deepcopy(reading, copies)
     value = copy.deepcopy(value, copies)
+    asked = number is None
+    if asked:
+        draft, number, path = requested(draft, path, value, world)
+        if number is None:
+            return draft, [(None, path.partition(".")[2], "reference")]
+        value = bindings(by_number(draft, number))[path]
     entries = [term for _, term in obligations(draft)]
     target = next((term for term in entries if term.number == number and isinstance(term, Application)), None)
     if target is None:
-        return draft, [(number, path, "reference")]
+        return draft, [(None if asked else number, path, "reference")]
     earlier = {id(term) for term in entries[:entries.index(target)]}
     referred = [one for one in ([value] if value is not None else []) for one in operations(one, set()) if isinstance(one, Application)]
     if any(id(one) not in earlier for one in referred):
-        return draft, [(number, path, "reference")]
+        return draft, [(None if asked else number, path, "reference")]
     try:
         holder, last = place(target, path)
     except (KeyError, AttributeError):
-        return draft, [(number, path, "missing")]
+        return draft, [(None if asked else number, path, "missing")]
     if value is None:
         holder.pop(last, None)
     else:
         holder[last] = value
-    found = validate(draft)
+    found = [(None if asked and one[0] == number else one[0], *one[1:]) for one in validate(draft)]  # a refused new operation has no number
     if not found and (correction or any((one["operation"], one["path"]) == (number, path) for one in draft.corrections)):
-        corrected(draft, number, path, value)  # a later edit at a corrected place is the correction now
+        corrected(draft, number, path, value, asked)  # a later edit at a corrected place is the correction now
     return draft, found
+
+
+def requested(draft: Reading, path: str, value: Term, world: World | None) -> tuple[Reading, int | None, str]:
+    """Adds a new operation that a value is given to, as ``edit`` describes. Returns the draft, its number and parameter (None if there is no such function or phrase)."""
+    name, _, parameter = path.partition(".")
+    function = world.functions.get(name) if world else None
+    kind = dict(function.parameters).get(parameter) if function else None
+    pairs = obligations(draft)
+    source = value.terms[0] if isinstance(value, Several) and value.terms else value
+    phrase = next((one for one, term in pairs if term is source), None) or next((one for one in innermost(draft.message) if isinstance(source, Constant) and one.start <= source.start < one.end), None)
+    if kind is None or phrase is None:
+        return draft, None, path
+    if isinstance(kind, Applied) and kind.constructor == MANY and not isinstance(value, Several) and fills(value, kind.argument):
+        value = Several(kind.argument, (value,))
+    new = Application(function, {one: value if one == parameter else Hole(other, "cleared") for one, other in function.parameters}, max((term.number for _, term in pairs), default=-1) + 1)
+    message = fold(lambda one: dataclasses.replace(one, terms=one.terms + (new,)) if (one.start, one.end, one.inside) == (phrase.start, phrase.end, ()) else one, draft.message)
+    return dataclasses.replace(draft, message=message), new.number, parameter
 
 
 def place(application: Application, path: str) -> tuple[dict, str]:
@@ -1124,7 +1170,7 @@ def place(application: Application, path: str) -> tuple[dict, str]:
     return holder, last
 
 
-def corrected(draft: Reading, number: int, path: str, value: Term | None) -> None:
+def corrected(draft: Reading, number: int, path: str, value: Term | None, asked: bool = False) -> None:
     """Keeps the correction at a place of a draft, replacing one already there; None removes it.
 
     It records where the corrected operation stands in the source (its
@@ -1136,13 +1182,15 @@ def corrected(draft: Reading, number: int, path: str, value: Term | None) -> Non
     pairs = obligations(draft)
     entries = [term for _, term in pairs]
     meanings = meaning(draft)
+    asked = asked or any(one.get("requested") for one in draft.corrections if (one["operation"], one["path"]) == (number, path))
     draft.corrections[:] = [one for one in draft.corrections if (one["operation"], one["path"]) != (number, path)]
     if value is not None:
         phrase, target = next((phrase, term) for phrase, term in pairs if term.number == number)
         refers = [[term.number, term.function.name, meanings[entries.index(term)]] for term in operations(value, set()) if term in entries]
         draft.corrections.append(plain({"operation": number, "function": target.function.name, "phrase": [phrase.start, phrase.end], "path": path,
                                         "others": context_of(meanings[entries.index(target)], path), "value": term_record(value, {term.number for term in entries}),
-                                        "refers": refers, "status": "retained", "reason": ""}))
+                                        "refers": refers, "requested": asked,
+                                        "status": "retained", "reason": ""}))
 
 
 def context_of(meant: tuple, path: str) -> object:
@@ -1192,7 +1240,9 @@ def record(reading: Reading) -> dict:
     Keys: form, id, text, world (``agree.identity``), phrases (each innermost
     phrase in order: start, end, brand, starts_by, quotes, terms: its
     applications, each with the declared type of each place and the engine's
-    judgments at save time: valid, diagnostics, complete, pending, ready; and
+    judgments at save time: valid, diagnostics, complete, pending (its value
+    is not available yet), deferred (its own result comes later), ready (it
+    can start now); and
     unresolved: its unresolved operation or None), constants
     (every grounded span), decisions (every decision, d1's and the rules',
     with its path, its candidates and its choice as term records) and corrections.
@@ -1200,7 +1250,7 @@ def record(reading: Reading) -> dict:
     written: set[int] = set()
     found = diagnostics(reading)
     judged = {term.number: {"valid": not any(one[0] == term.number for one in found), "diagnostics": [list(one[1:]) for one in found if one[0] == term.number],
-                            "complete": complete(term), "pending": pending(term), "ready": ready(reading, term)}
+                            "complete": complete(term), "pending": pending(term), "deferred": deferred(term), "ready": ready(reading, term)}
               for _, term in obligations(reading) if isinstance(term, Application)}
     phrases_line = []
     for phrase in innermost(reading.message):
@@ -1347,6 +1397,17 @@ def rerun(line: dict, world: World, model: Model, limits: Limits = Limits()) -> 
             entries = [term for _, term in pairs]
             made_by = {term.number: term for term in entries if isinstance(term, Application)}
             meanings = meaning(reading)
+            if correction.get("requested"):  # the user asked for this operation: give the value to the function again
+                try:
+                    value = term_from(correction["value"], world, made_by)
+                except LookupError as error:
+                    raise LookupError(f"the requested {correction['function']} of {correction['path']} no longer applies: {str(error).strip(chr(39))}")
+                draft, found = edit(reading, None, f"{correction['function']}.{correction['path']}", value, world=world)
+                if found:
+                    raise LookupError(f"the requested {correction['function']} of {correction['path']} no longer applies ({found})")
+                reading, correction = draft, correction | {"operation": max(term.number for _, term in obligations(draft))}
+                reading.corrections.append(correction | {"status": status, "reason": reason})
+                continue
             here = [term for phrase, term in pairs if [phrase.start, phrase.end] == correction["phrase"] and isinstance(term, Application)]
             same = [term for term in here if term.function.name == correction["function"]]
             if len(same) > 1:

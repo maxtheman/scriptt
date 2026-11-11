@@ -562,7 +562,7 @@ def test_record_shape():
         [phrase] = line["phrases"]
         assert [term["function"] for term in phrase["terms"]] == ["redesign", "show"] and phrase["terms"][1]["arguments"]["subject"] == {"ref": "0"}
         assert phrase["terms"][1]["parameters"] == {"subject": "Subject"} and phrase["terms"][0]["arguments"]["surface"]["type"] == "Surface"  # declared place apart from the value's type
-        assert phrase["terms"][1]["judgments"] == {"valid": True, "diagnostics": [], "complete": True, "pending": True, "ready": False}
+        assert phrase["terms"][1]["judgments"] == {"valid": True, "diagnostics": [], "complete": True, "pending": True, "deferred": False, "ready": False}
         exported = json.loads(json.dumps(agree.world_record(world)))
         assert exported["identity"] == line["world"] and exported["types"]["Surface"]["kind"] == "*" and exported["constructors"]["Many"]["kind"] == "* -> *"
         assert exported["types"]["Surface"]["alternatives"][0]["type"]["brand"] == "Asked" and exported["functions"]["show"]["parameters"] == [["subject", agree.tree(world.types["Subject"])]]
@@ -600,6 +600,31 @@ def test_specimen():
         assert [term.function.name for _, term in scriptt16.obligations(loaded)] == ["redesign", "show", "test"]
         seen = scriptt16.inspect(reading, show.number, "subject")
         assert seen["term"] is redesign and seen["type"] == "Subject" and seen["definition"] == show.function.asks and seen["decision"]["chosen"] is redesign
+        # Readiness: redesign can start and its result comes later; show waits on it.
+        assert (scriptt16.ready(reading, redesign), scriptt16.deferred(redesign), scriptt16.ready(reading, show), scriptt16.deferred(show)) == (True, True, False, False)
+        # Acceptance survives a rerun in which d1 prefers the original binding, and is invalidated with a reason when it cannot hold.
+        accepted, faults = scriptt16.edit(reading, show.number, "subject", mod, correction=True)
+        line = json.loads(json.dumps(scriptt16.record(accepted)))
+        again = scriptt16.rerun(line, world, Standin(run.script, run.world, world))
+        assert faults == [] and scriptt16.say(scriptt16.obligations(again)[1][1]) == "show(subject='the mod')" and again.corrections[0]["status"] == "retained"
+        without = world_of((HERE / "world.py").read_text().replace('    MOD: Asked = "the mod"\n', ""), folder)
+        gone = scriptt16.rerun(line, without, Standin(run.script, run.world, without))
+        assert gone.corrections[0]["status"] == "invalidated" and "subject" in gone.corrections[0]["reason"] and scriptt16.say(scriptt16.obligations(gone)[1][1]) != "show(subject='the mod')"
+        # A function applied to a value through edit: a new operation with a new number in the value's phrase; no other number changes.
+        tested, faults = scriptt16.edit(reading, None, "test.subject", mod, correction=True, world=world)
+        numbers = [term.number for _, term in scriptt16.obligations(tested)]
+        assert faults == [] and numbers == [0, 3, 1, 2] and scriptt16.say(scriptt16.obligations(tested)[1][1]) == "test(subject='the mod')", (faults, numbers)
+        assert [term.number for _, term in scriptt16.obligations(reading)] == [0, 1, 2]  # the base is untouched
+        assert scriptt16.edit(reading, None, "test.nothing", mod, world=world)[1] == [(None, "nothing", "reference")]
+        assert scriptt16.edit(reading, None, "redesign.surface", next(one for one in reading.constants if lit(one) == X.SEARCH), world=world)[1] == [(None, "surface", "type")]
+        kept = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(tested))), world, Standin(run.script, run.world, world))
+        assert [scriptt16.say(term) for _, term in scriptt16.obligations(kept)][1] == "test(subject='the mod')" and kept.corrections[0]["status"] == "retained"
+        dropped = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(tested))), without, Standin(run.script, run.world, without))
+        assert dropped.corrections[0]["status"] == "invalidated" and "test" in dropped.corrections[0]["reason"] and len(scriptt16.obligations(dropped)) == 3
+        test_world = world_of(WORLD, folder)
+        small = scriptt16.read("Redesign the mod.", test_world, [], Standin(X.told(X.REDESIGN_SHOW[:1]), X.World(), test_world), join=False)
+        compared, faults = scriptt16.edit(small, None, "compare.surfaces", small.constants[0], world=test_world)
+        assert faults == [] and scriptt16.say(scriptt16.obligations(compared)[1][1]) == "compare(surfaces=['the mod'])"  # one value for a Many becomes a collection of it
         checks, verdict, judgment = scriptt16.check(loaded, "I did all three.", [], [("evidence", lambda term, artifact: True)], Standin(X.script({}, judge=0.99), X.World("next")))
         assert verdict == X.UNVERIFIED and {one.claim for one in checks} == {0.99} and "I did all three." in judgment["state"]  # a confident claim is kept, and is no evidence
 
@@ -934,6 +959,14 @@ def main() -> int:
         print(f"  {row['invariant']}: {row['observed']}")
     print("INVARIANT_TABLE " + json.dumps(table))
 
+    print("deferred, not tested by this run: project-wide object navigation (which actual notebook a phrase means); identity of an object across messages; live d1 (every model answer here is the stand-in's)")
+    print("the laws are structural checks over next/world.py and its declarations; they are no evaluation of the real d1")
+    dirty = [name for name in ("next/agree.py", "next/scriptt16.py", "next/world.py", "scriptt/harness.py", "next/expected.py", "next/test_scriptt16.py")
+             if subprocess.run(["git", "-C", str(HERE.parent), "diff", "--quiet", "HEAD", "--", name]).returncode]
+    if dirty:
+        failures.append(f"not final: uncommitted {dirty}")
+    print(f"receipt: {'FINAL' if not failures else 'NOT FINAL'}: engine commit {provenance['commit']}, expectations version {X.ORACLE_VERSION}"
+          + (f", uncommitted {dirty}" if dirty else ", engine and expectations committed"))
     print(f"{len(X.CASES)} cases, {len(X.NEGATIVE_CONTROLS)} projection controls, {len(ENGINE_CONTROLS)} engine controls, {len(UNIT_TESTS)} unit tests, {len(LAWS)} laws: "
           + ("all passed" if not failures else f"{len(failures)} FAILURES"))
     return 1 if failures else 0
