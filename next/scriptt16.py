@@ -109,6 +109,7 @@ class Limits:
         depth: The largest number of function applications inside one argument.
         yes: The smallest share at which a yes of d1 counts.
         operations: The largest number of operations that one phrase can ask for.
+        sure: The smallest share at which d1's kind for a word is sure (``typed``).
     """
 
     run: int = 6
@@ -117,6 +118,7 @@ class Limits:
     depth: int = 1
     yes: float = 0.5
     operations: int = 3
+    sure: float = 0.5
 
 
 # ---- Questions for d1 -------------------------------------------------------
@@ -952,6 +954,7 @@ class Reading:
             or "invalidated") and reason.
         base: The snapshot of the store that this reading was loaded from or saved as; None for a new reading.
         fulfillment: The outcomes of the last ``check``, or None if none ran since the last edit.
+        pieces: The kind of every word (see ``typed``), or None if no one asked for it.
     """
 
     id: str
@@ -963,6 +966,7 @@ class Reading:
     corrections: list[dict] = dataclasses.field(default_factory=list)
     base: str | None = None
     fulfillment: list | None = None
+    pieces: list[dict] | None = None
 
 
 def read(text: str, world: World, replies: list[str], model: Model, join: bool = True, limits: Limits = Limits(),
@@ -1006,6 +1010,74 @@ def read(text: str, world: World, replies: list[str], model: Model, join: bool =
         context = [*reversed(results), *reversed(local), *([words] if words.value else []), *context]
     with_terms = fold(lambda phrase: phrase if phrase.inside else finished[phrase.start], message)
     return Reading(uuid.uuid4().hex, text, with_terms, constants, search.decisions, identity(world))
+
+
+# ---- Part 3b: a kind for every word ------------------------------------------
+
+KIND = 'In this text, the words "{words}" are part of which kind of thing?'
+"""The wording of the prototype of 10 Nov (tests/live/span-typing). No measurement with the real d1."""
+
+
+def kinds(world: World) -> dict[str, str]:
+    """The options of a kind question: each type of the world by what it describes, each function by what it asks, and none."""
+    found = {name: getattr(kind, "describes", "") or name for name, kind in world.types.items() if name not in ("str", "NoneType")}
+    return found | {name: f"the action: {function.asks}" for name, function in world.functions.items()} | {NONE: "none of these"}
+
+
+def typed(reading: Reading, world: World, model: Model, limits: Limits = Limits()) -> Reading:
+    """Gives every word of the message a kind: d1's choice among ``kinds``. Words of one phrase with the same kind are one piece.
+
+    A piece is a dict: start, end, kind (None for an invalid answer), share (the
+    smallest share d1 gave its words), sure (share at least ``limits.sure``) and
+    by ("model", or "user" for ``retag``). Many unsure words are a sign that the
+    world does not hold the user's words. One request per phrase, kept as a
+    decision with path "kind". The terms of the reading do not change.
+    """
+    search = Search(reading.text, world, model, limits, [], itertools.count())
+    options, pieces = kinds(world), []
+    for phrase in innermost(reading.message):
+        words = [(phrase.start + a, phrase.start + b) for a, b in chunks(reading.text[phrase.start:phrase.end])]
+        if not words:
+            continue
+        questions = {f"w{index}": OneOf(KIND.format(words=reading.text[a:b]), options) for index, (a, b) in enumerate(words)}
+        answers, decision = ask(search, reading.text[phrase.start:phrase.end].strip(), questions, {"path": "kind", "phrase": [phrase.start, phrase.end]})
+        decision["chosen"] = [one.best for one in answers.values()]
+        for (start, end), one in zip(words, answers.values()):
+            share = one.shares.get(one.best, 0.0) if one.best else 0.0
+            last = pieces[-1] if pieces and pieces[-1]["start"] >= phrase.start else None
+            if last and last["kind"] == one.best:
+                last.update(end=end, share=min(last["share"], share), sure=min(last["share"], share) >= limits.sure)
+            else:
+                pieces.append({"start": start, "end": end, "kind": one.best, "share": share, "sure": share >= limits.sure, "by": "model"})
+    return dataclasses.replace(reading, decisions=reading.decisions + search.decisions, pieces=pieces)
+
+
+def retag(reading: Reading, start: int, end: int, kind: str, world: World) -> tuple[Reading, list[tuple[None, str, str]]]:
+    """Gives the words from start to end the kind the user chose, and keeps it as a correction. The base is not changed.
+
+    ``kind`` is a type of the world, a type built with a constructor of the
+    world ("Later[Surface]", "Many[Code]"), a function, or NONE. Diagnostics:
+    "identity" (another world), "place" (not whole words of the text), "kind"
+    (no such type or function). Pieces it overlaps keep their words outside it.
+    """
+    if identity(world) != reading.world:
+        return reading, [(None, "kind", "identity")]
+    words = places(reading.text)
+    if not (0 <= start < end <= len(reading.text)) or start not in {a for a, _ in words} or end not in {b for _, b in words}:
+        return reading, [(None, "kind", "place")]
+    try:
+        kind == NONE or kind in world.functions or type_named(kind, world)
+    except LookupError:
+        return reading, [(None, "kind", "kind")]
+    kept = []
+    for piece in reading.pieces or []:
+        inside = [(a, b) for a, b in words if piece["start"] <= a and b <= piece["end"]]
+        left, right = [w for w in inside if w[1] <= start], [w for w in inside if w[0] >= end]
+        kept += [piece | {"start": part[0][0], "end": part[-1][1]} for part in (left, right) if part]
+    new = {"start": start, "end": end, "kind": kind, "share": None, "sure": True, "by": "user"}
+    others = [one for one in reading.corrections if one["path"] != "kind" or one["at"][1] <= start or one["at"][0] >= end]
+    correction = {"operation": None, "function": None, "phrase": None, "path": "kind", "at": [start, end], "kind": kind, "status": "retained", "reason": ""}
+    return dataclasses.replace(reading, pieces=sorted(kept + [new], key=lambda one: one["start"]), corrections=others + [correction]), []
 
 
 # ---- Part 4: judgments over a reading ----------------------------------------
@@ -1338,11 +1410,12 @@ def record(reading: Reading) -> dict:
                              "terms": [term_record(term, written, judged) for term in phrase.terms if isinstance(term, Application)],
                              "unresolved": [{"id": str(term.number), "reason": term.reason, "place": place} for place, term in enumerate(phrase.terms) if isinstance(term, Unresolved)]})
     chosen = lambda value: [term_record(one, written) for one in value] if isinstance(value, list) else term_record(value, written) if isinstance(value, Constant | Application | Record | Several | Empty | Hole) else value
-    decisions = [one | {"offered": [term_record(term, written) for term in one["offered"]], "cut": [term_record(term, written) for term in one["cut"]], "chosen": chosen(one["chosen"])}
+    decisions = [one | {"offered": [term_record(term, written) for term in one["offered"]], "cut": [term_record(term, written) for term in one["cut"]], "chosen": one["chosen"] if one["path"] == "kind" else chosen(one["chosen"])}
                  for one in reading.decisions]
     return finite({"form": 5, "id": reading.id, "text": reading.text, "source": hashlib.sha256(reading.text.encode()).hexdigest()[:16], "world": reading.world, "base": reading.base, "phrases": phrases_line,
              "constants": [term_record(one, written) for one in reading.constants], "decisions": decisions, "corrections": reading.corrections}
-            | ({"fulfillment": [dataclasses.asdict(one) for one in reading.fulfillment]} if reading.fulfillment is not None else {}))
+            | ({"fulfillment": [dataclasses.asdict(one) for one in reading.fulfillment]} if reading.fulfillment is not None else {})
+            | ({"pieces": reading.pieces} if reading.pieces is not None else {}))
 
 
 def type_named(name: str, world: World) -> Type:
@@ -1425,11 +1498,11 @@ def load(line: dict, world: World) -> tuple[Reading | None, list[tuple[None, Non
     rebuilt = lambda value: [term_from(one, world, made_by, dangling) for one in value] if isinstance(value, list) else term_from(value, world, made_by, dangling) if isinstance(value, dict) else value
     message = recorded_phrases(line, world, made_by, dangling)
     try:
-        decisions = [one | {"offered": rebuilt(one["offered"]), "cut": rebuilt(one["cut"]), "chosen": rebuilt(one["chosen"])} for one in line["decisions"]]
+        decisions = [one | {"offered": rebuilt(one["offered"]), "cut": rebuilt(one["cut"]), "chosen": one["chosen"] if one["path"] == "kind" else rebuilt(one["chosen"])} for one in line["decisions"]]
     except KeyError:  # a decision's candidate names no operation
         return None, [(None, None, "reference")]
     reading = Reading(line["id"], line["text"], message, rebuilt(line["constants"]), decisions, line["world"], [dict(one) for one in line["corrections"]], line.get("snapshot"),
-                      [Checked(**one) for one in line["fulfillment"]] if "fulfillment" in line else None)
+                      [Checked(**one) for one in line["fulfillment"]] if "fulfillment" in line else None, line.get("pieces"))
     numbers = [term.number for _, term in obligations(reading)]
     if len(set(numbers)) != len(numbers):  # two operations with one number: no reference can be trusted
         return None, [(None, None, "identity")]
@@ -1487,7 +1560,12 @@ def rerun(line: dict, world: World, model: Model, limits: Limits = Limits()) -> 
     silently to d1.
     """
     reading = read(line["text"], world, [], model, False, limits, recorded_phrases(line, world))
-    for correction in line["corrections"]:
+    reading = typed(reading, world, model, limits) if line.get("pieces") is not None else reading
+    for correction in [one for one in line["corrections"] if one["path"] == "kind"]:  # the user's kinds: kept, or invalidated with the reason
+        draft, found = retag(reading, *correction["at"], correction["kind"], world)
+        reading = draft if not found else dataclasses.replace(reading, corrections=reading.corrections + [correction | {
+            "status": "invalidated", "reason": f"{correction['kind']} is no type or function of this world" if found[0][2] == "kind" else "its words are no longer whole words of the text"}])
+    for correction in [one for one in line["corrections"] if one["path"] != "kind"]:
         status, reason = "retained", ""
         try:
             pairs = obligations(reading)

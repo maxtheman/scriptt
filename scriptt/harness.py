@@ -208,6 +208,10 @@ def render(reading: scriptt16.Reading) -> str:
     if unresolved:
         lines_ += ["Unresolved requests, each a ? above: no function of world.py fits (" + ", ".join(f"#{one.number} {REASONS.get(one.reason, one.reason)}" for one in unresolved) + ").",
                    "  For each: say in 1 line what it asks, do it, and propose the function to add to .scriptt/world.py."]
+    unsure = [reading.text[one["start"]:one["end"]] for one in reading.pieces or [] if not one["sure"]]
+    if unsure:  # d1 found no sure kind in world.py for these words: the world may not hold what the user means
+        lines_.append(f"Words with no sure kind in world.py ({len(unsure)} of {len(reading.pieces)} pieces): " + "; ".join(" ".join(one.split())[:40] for one in unsure[:12])
+                      + ". If they matter, ask what they are, or propose types for .scriptt/world.py.")
     faults = scriptt16.diagnostics(reading)
     if faults:
         lines_.append("Diagnostics: " + "; ".join(f"#{number} {path or ''} {rule}".replace("  ", " ") for number, path, rule in faults))
@@ -273,7 +277,7 @@ def prompt(event: dict, model) -> dict:
         said = "scriptt: .scriptt/world.py has faults, so this message was not read. Fix them (python3.14 .scriptt/harness.py world):\n" + "\n".join(f"  {text}" for _, _, text in here.faults)
         return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": said}}
     replies = [line["reply"] for line in lines(LOG) if line.get("session") == session and line.get("reply")][-scriptt16.Limits().replies:]
-    reading = scriptt16.read(text, here, replies, model)
+    reading = scriptt16.typed(scriptt16.read(text, here, replies, model), here, model)
     reading, _ = scriptt16.save(reading, store())
     WORLDS.mkdir(exist_ok=True)
     if not (WORLDS / f"{reading.world}.py").exists():
@@ -378,6 +382,8 @@ def edited(body: dict, correction: bool) -> tuple:
     reading, found = scriptt16.load(saved, here)
     if reading is None:
         return None, found
+    if body["path"] == "kind":  # the user's kind for the words at [start, end]: a type, a constructed type, a function or "(none)"
+        return scriptt16.retag(reading, *body["at"], body["value"], here)
     made_by = {term.number: term for _, term in scriptt16.obligations(reading) if isinstance(term, scriptt16.Application)}
     try:
         value = None if body.get("value") is None else scriptt16.term_from(body["value"], here, made_by)
@@ -419,6 +425,7 @@ def serve(port: int):
     GET  /readings   every snapshot in the store (form 5)        GET /worlds   agree.world_record of each world, by identity
     GET  /log        hooks.jsonl                                 GET /<file>   the page
     POST /edit       {reading, number, path, value, phrase?} -> {draft, diagnostics}; nothing is saved
+                     {reading, path: "kind", at: [start, end], value: a kind} gives those words that kind (scriptt16.retag)
     POST /accept     the same, as a correction; saved when it has no diagnostics -> {saved, diagnostics}
     POST /restore    {snapshot: n from 1} -> {saved, diagnostics}: the n-th snapshot becomes the latest
     POST /rerun      {reading} or {snapshot: n from 1} -> {saved, corrections, diagnostics}: the source read again with d1,

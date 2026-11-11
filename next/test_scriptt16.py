@@ -647,6 +647,41 @@ def test_record_shape():
         assert case.id == "C16"
 
 
+def test_word_kinds() -> None:
+    """typed gives every word a kind and keeps the request; retag is the user's kind, kept through save, load and rerun, and invalidated when the world loses the kind."""
+    world = agree.loads((HERE / "world.py").read_text(), HERE)
+    text = "Redesign the mod. Then show it."
+    def model(state, questions):
+        return {key: {"probabilities": {"Surface": 0.7, scriptt16.NONE: 0.3}} if one["instructions"].endswith('"mod" are part of which kind of thing?') or '"mod"' in one["instructions"]
+                else {"probabilities": {scriptt16.NONE: 0.45, "Code": 0.55}} if "kind of thing" in one["instructions"]
+                else {"p_true": 0.0} if one["type"] == "boolean" else {"probabilities": {one["options"][0]["id"]: 1.0}} for key, one in questions.items()}
+    reading = scriptt16.typed(scriptt16.read(text, world, [], model), world, model)
+    assert " ".join(text[one["start"]:one["end"]] for one in reading.pieces).split() == [text[a:b] for a, b in scriptt16.chunks(text)], reading.pieces
+    assert [one["sure"] for one in reading.pieces if text[one["start"]:one["end"]] == "mod"] == [True]
+    assert any(one["path"] == "kind" and len(one["chosen"]) == 3 for one in reading.decisions)
+    start = text.index("show it")
+    for kind, rule in (("Nope", "kind"), ("Later[Surface]", None), ("show", None), (scriptt16.NONE, None)):
+        draft, found = scriptt16.retag(reading, start, start + len("show it"), kind, world)
+        assert (found[0][2] if found else None) == rule, (kind, found)
+    assert scriptt16.retag(reading, start + 1, start + 4, "Code", world)[1] == [(None, "kind", "place")]
+    draft, _ = scriptt16.retag(reading, start, start + len("show it"), "Later[Surface]", world)
+    assert reading.pieces != draft.pieces and not any(one["path"] == "kind" for one in reading.corrections), "the base changed"
+    assert [one for one in draft.pieces if one["by"] == "user"] == [{"start": start, "end": start + 7, "kind": "Later[Surface]", "share": None, "sure": True, "by": "user"}]
+    assert " ".join(text[one["start"]:one["end"]] for one in draft.pieces).split() == [text[a:b] for a, b in scriptt16.chunks(text)], draft.pieces
+    with tempfile.TemporaryDirectory() as folder:
+        saved, _ = scriptt16.save(draft, pathlib.Path(folder) / "store.jsonl")
+        line = scriptt16.saved(pathlib.Path(folder) / "store.jsonl")[-1]
+        loaded, found = scriptt16.load(line, world)
+        assert not found and loaded.pieces == draft.pieces
+        again = scriptt16.rerun(line, world, model)
+        assert [one for one in again.pieces if one["by"] == "user"] == [one for one in draft.pieces if one["by"] == "user"]
+        assert [one["status"] for one in again.corrections if one["path"] == "kind"] == ["retained"]
+        smaller = agree.loads((HERE / "world.py").read_text(), HERE)
+        lost = line | {"corrections": [one | {"kind": "Gone[Surface]"} for one in line["corrections"]]}
+        again = scriptt16.rerun(lost, smaller, model)
+        assert [(one["status"], one["reason"]) for one in again.corrections if one["path"] == "kind"] == [("invalidated", "Gone[Surface] is no type or function of this world")]
+
+
 def test_specimen():
     """The specimen end to end through the public API: read, validate, edit, save, reload, validate again; no d1 call after the read."""
     with tempfile.TemporaryDirectory() as name:
@@ -934,7 +969,7 @@ def test_chosen_rule():
     assert scriptt16.chosen(shares({"build": 0.5, scriptt16.NONE: 0.5})) == scriptt16.NONE and scriptt16.chosen(scriptt16.Choice({}, None)) is None
 
 
-UNIT_TESTS = [test_chosen_rule, test_same_words_once, test_final_review, test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
+UNIT_TESTS = [test_chosen_rule, test_same_words_once, test_final_review, test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen, test_word_kinds]
 
 
 # ---- Laws over the real next/world.py -------------------------------------------------

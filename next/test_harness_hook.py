@@ -40,6 +40,18 @@ def strict(line: str) -> dict:
     return json.loads(line, parse_constant=lambda name: (_ for _ in ()).throw(ValueError(f"{name} is not JSON")))
 
 
+def kinded(model):
+    """The stand-in, with a scripted answer to each kind question (scriptt16.typed): "mod" is a Surface, short words no kind and unsure."""
+    def answer(state: str, questions: dict) -> dict:
+        kinds = {key: one for key, one in questions.items() if one["instructions"].startswith(scriptt16.KIND.partition("{")[0])}
+        given = model(state, {key: one for key, one in questions.items() if key not in kinds}) if len(kinds) < len(questions) else {}
+        for key, one in kinds.items():
+            words = one["instructions"].split('"')[1]
+            given[key] = {"probabilities": {"Surface": 0.8, scriptt16.NONE: 0.2} if words == "mod" else {scriptt16.NONE: 0.45, "Surface": 0.35, "Code": 0.2} if len(words) <= 3 else {scriptt16.NONE: 0.9, "Surface": 0.1}}
+        return given
+    return answer
+
+
 def endpoint(model) -> tuple[http.server.HTTPServer, str]:
     """Serves a model as CoreAI's /v1/decide: {state, questions: [{id, ...}]} -> {answers: [{id, ...}]}."""
     class Decide(http.server.BaseHTTPRequestHandler):
@@ -119,7 +131,7 @@ def last_stop(home: pathlib.Path) -> dict:
 
 def test_hooks() -> None:
     world_source = (HERE / "world.py").read_text()
-    server, url = endpoint(Standin(SCRIPT, X.World("next")))
+    server, url = endpoint(kinded(Standin(SCRIPT, X.World("next"))))
     with tempfile.TemporaryDirectory() as temporary:
         folder = pathlib.Path(temporary)
         home = installed(folder, world_source)
@@ -145,6 +157,12 @@ def test_hooks() -> None:
         for words in ("#0 redesign(surface='the mod') -> Later[Surface]", "#1 test(subject='the search') -> Observed", "def redesign(surface: Surface) -> Later[Surface]", "evidence: a file written"):
             assert words in said, words
         assert (home / "worlds" / f"{line['world']}.py").read_text() == world_source
+        # 1b. Every word has a kind; "mod" is a Surface; words with no sure kind are named to the agent.
+        print("pieces:", [(TEXT[one["start"]:one["end"]], one["kind"], one["share"], one["sure"]) for one in line["pieces"]])
+        words = [TEXT[a:b] for a, b in scriptt16.chunks(TEXT)]
+        assert " ".join(TEXT[one["start"]:one["end"]] for one in line["pieces"]).split() == words, line["pieces"]
+        assert any(TEXT[one["start"]:one["end"]] == "mod" and one["kind"] == "Surface" and one["sure"] for one in line["pieces"])
+        assert "Words with no sure kind in world.py (2 of 3 pieces): Redesign the; Test the search too." in said, said
 
         # 2. Evidence for 1 of 2 obligations (a command ran: test) blocks, blocks again, then passes: at most 2 send-backs.
         ran = transcript(folder, "ran", TEXT, [("Bash", "python3.14 -m unittest", 0), "I redesigned the mod and tested the search."])
