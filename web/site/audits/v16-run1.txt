@@ -1,0 +1,13 @@
+Audit run 1 of build v16 (board 3), 10 Nov 2026, built-in browser, page at http://127.0.0.1:2781, script site/audit.js (structural checks over the lab store)
+Corpus: 85 readings (24,661 characters, 183 operations, 132 unresolved requests, texts of 8 to 2,355 characters) produced by the lab's own harness
+  (UserPromptSubmit hook, d1 service) from: the specimen; 7 hand-written messages with code fences, a diff, a pasted agent reply with "> " lines, quoted log lines,
+  repeated surfaces, a rule ("from now on"); the 37 distinct texts of web/site/engine/readings.json; plus long texts that another session's script wrote into the same lab store.
+Checks per reading (render through the page's own render(); never /accept):
+  R1 the text layer minus operation tags, place labels and sockets equals the source text exactly (no word duplicated, lost or reordered)
+  R2 one tag per operation, one chip per unresolved request   R3 one object per argument place
+  R4 every semantic object has tabindex=0 and an accessible name   R6 click opens a card, <= 40% of viewport height, no relationship open at first
+  L2 for the first value or operation result: one /edit per place, every answer carries a draft or diagnostics
+Result: 85 readings, 0 failures. /edit calls 182, all from previews; /accept 0; storage writes 0.
+Caveats: R6 height is partly bounded by a CSS max-height (40vh, scrolls inside): the 40% rows are capped, not natural. Clicks in this audit are element.click()
+(synthetic); real pointer and keyboard runs are recorded in v16-run2.txt. "several", "fields" and "empty" values do not occur in this lab world, so they are not exercised.
+Per-reading rows (id chars ops unresolved): see the page's report object; shortest 8 chars, longest adf412 2355 chars / 32 phrases / 4 ops, a580db 1636 / 14 / 11 ops, 8c7eae 1844 / 22 phrases / 12 ops.

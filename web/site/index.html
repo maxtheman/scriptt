@@ -28,6 +28,9 @@
   #stage { position:relative; margin-top:28px; }
   #text { position:relative; font:24px/3.3 var(--text); margin:0; padding:0 0 28px; white-space:pre-wrap; cursor:default; }
   #text .w { border-radius:3px; cursor:pointer; }
+  #text .w.code { font:0.8em var(--code); background:var(--tint); }
+  #text .w.pasted { color:var(--mute); font-style:italic; }
+  .ph.quoted { border-bottom-style:double; }
   #text .w:hover { background:var(--tint); }
   /* one phrase = one brick: its operation is the stud on top-left, its words are the body, the bar is its underside */
   .ph { box-decoration-break:clone; -webkit-box-decoration-break:clone; border-bottom:3px solid var(--rule); padding-bottom:2px; }

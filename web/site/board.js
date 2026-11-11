@@ -29,7 +29,7 @@ const terms = r => r.phrases.flatMap(p => p.terms);
 const termById = (r, id) => terms(r).find(t => t.id === id);
 const phraseOf = (r, id) => r.phrases.find(p => p.terms.some(t => t.id === id));
 const world = () => S.worlds[S.base.world];
-const view = () => (S.pending && S.pending.draft) || S.base;
+const view = () => (S.pending && okay(S.pending) && S.pending.draft) || S.base;
 const leaves = (v, path) => v.fields ? Object.entries(v.fields).flatMap(([k, x]) => leaves(x, path + "." + k)) : [{ path, value: v }];
 const places = t => Object.entries(t.arguments).flatMap(([k, v]) => leaves(v, k));
 const constantsIn = v => v.constant !== undefined ? [v] : v.several ? v.several.flatMap(constantsIn) : v.fields ? Object.values(v.fields).flatMap(constantsIn) : [];
@@ -46,7 +46,7 @@ const outcomeOf = (r, id) => (r.fulfillment || []).find(o => String(o.obligation
 async function load() {
   const [lines, worlds, log] = await Promise.all(["/readings", "/worlds", "/log"].map(u => fetch(u).then(x => x.json())));
   Object.assign(S, { lines, worlds, log });
-  if (!S.id) S.id = new URLSearchParams(location.search).get("r") || lines.at(-1).id;
+  if (!S.id) { const want = new URLSearchParams(location.search).get("r"); S.id = (want && lines.find(l => l.id.startsWith(want)) || lines.at(-1)).id; }
   S.base = latest(S.id);
   const ids = [...new Set(lines.map(l => l.id))], pick = $("#pick");
   pick.hidden = ids.length < 2;
@@ -54,12 +54,14 @@ async function load() {
 }
 
 // ---- the text layer: words, bricks, sockets ----
+const styled = text => { const out = []; for (const m of text.matchAll(/```[\s\S]*?```|^>.*$/gm)) out.push([m.index, m.index + m[0].length, m[0][0] === "`" ? "code" : "pasted"]); return out; };
 function words(parent, from, to, text) {
   let pos = from;
-  for (const piece of text.slice(from, to).split(/(\s+)/)) {
+  const marks = styled(text);
+  for (const piece of text.slice(from, to).split(/(\s+|[.,;:!?])/)) {
     if (!piece) continue;
-    if (/^\s+$/.test(piece)) parent.append(piece);
-    else parent.append(el("span", { class: "w", "data-key": key.word(pos), "data-w": pos, "data-kind": "word" }, piece));
+    if (/^(\s+|[.,;:!?])$/.test(piece)) parent.append(piece);
+    else parent.append(el("span", { class: "w " + ((marks.find(m => pos >= m[0] && pos < m[1]) || [])[2] || ""), "data-key": key.word(pos), "data-w": pos, "data-kind": "word" }, piece));
     pos += piece.length;
   }
 }
@@ -74,40 +76,48 @@ function render() {
     o.binds.push({ op, path: p.path, own: !!p.value.constant !== false && p.value.constant !== undefined, inSeveral: p.value.constant === undefined });
     S.occ.set(k, o);
   }
-  const changed = S.pending && S.pending.draft ? changedKeys(base, r) : new Set();
+  const changed = S.pending && okay(S.pending) ? changedKeys(base, r) : new Set();
   const ownPhrase = (op) => phraseOf(r, op.id);
+  const placed = new Set(), cover = new Map(), labelled = new Set();
   const range = (parent, from, to, phrase) => {
-    const occs = [...S.occ.values()].filter(o => o.at[0] >= from && o.at[1] <= to).sort((a, b) => a.at[0] - b.at[0]);
-    let pos = from;
+    const occs = [...S.occ.values()].filter(o => o.at[0] >= from && o.at[1] <= to).sort((a, b) => a.at[0] - b.at[0] || b.at[1] - a.at[1]);
+    let pos = from, last = null;
     for (const o of occs) {
-      if (o.at[0] < pos) continue;
+      if (o.at[0] < pos) { cover.set(key.val(o.at), last); continue; }  // overlaps a larger occurrence: its places keep a socket aimed at that one
       words(parent, pos, o.at[0], r.text);
       const here = o.binds.filter(b => phrase && ownPhrase(b.op) === phrase && !b.inSeveral);
       const v = el("span", { class: "val", tabindex: 0, role: "button", "data-key": key.val(o.at), "data-kind": "value", "data-drag": 1,
         "aria-label": `“${o.constant}”, a ${o.type}. Enter to inspect, Space to pick up and use elsewhere.` }, el("span", { "data-text": 1 }, r.text.slice(o.at[0], o.at[1])));
-      for (const b of here) v.append(placeLabel(b.op, b.path, "pl", changed, r));
+      for (const b of here) { v.append(placeLabel(b.op, b.path, "pl", changed, r, phrase.terms.length > 1)); labelled.add(key.place(b.op.id, b.path)); }
       parent.append(v);
+      placed.add(key.val(o.at)); last = key.val(o.at);
       pos = o.at[1];
     }
     words(parent, pos, to, r.text);
   };
+  // pass 1: the words of every gap and phrase; pass 2: put each phrase's operations and sockets in front of its words
+  const parts = [];
   let pos = 0;
   for (const p of r.phrases) {
-    range(t, pos, p.start, null);
-    const ph = el("span", { class: "ph" + (p.unresolved.length ? " unres" : ""), "data-phrase": p.start });
+    const gap = document.createDocumentFragment(); range(gap, pos, p.start, null);
+    const body = document.createDocumentFragment(); range(body, p.start, p.end, p);
+    parts.push({ gap, p, body }); pos = p.end;
+  }
+  const tail = document.createDocumentFragment(); range(tail, pos, r.text.length, null);
+  for (const { gap, p, body } of parts) {
+    t.append(gap);
+    const ph = el("span", { class: "ph" + (p.unresolved.length ? " unres" : "") + (p.quotes ? " quoted" : ""), "data-phrase": p.start });
     for (const op of p.terms) ph.append(opTag(op, r, changed));
     for (const u of p.unresolved) ph.append(el("span", { class: "op", "data-kind": "unresolved", tabindex: 0, role: "button", "data-key": `u:${u.id}`, "aria-label": `unresolved request ${u.reason}` }, "? ", el("span", { class: "ty" }, u.reason)));
     for (const op of p.terms) for (const pl of places(op)) {  // sockets sit on the operation's stud, so a brick wraps as one piece
-      const c = pl.value.constant !== undefined ? pl.value : null;
-      if (c && c.at[0] >= p.start && c.at[1] <= p.end) continue;
+      if (labelled.has(key.place(op.id, pl.path))) continue;
       if (pl.value.several && pl.value.several.length) continue;
-      ph.append(socket(op, pl, r, changed));
+      const target = pl.value.constant === undefined ? "" : placed.has(key.val(pl.value.at)) ? key.val(pl.value.at) : cover.get(key.val(pl.value.at)) || "";
+      ph.append(socket(op, pl, r, changed, p.terms.length > 1, target));
     }
-    range(ph, p.start, p.end, p);
-    t.append(ph);
-    pos = p.end;
+    ph.append(body); t.append(ph);
   }
-  range(t, pos, r.text.length, null);
+  t.append(tail);
   restoreMarks();
   drawCard();
   requestAnimationFrame(drawArcs);
@@ -124,19 +134,19 @@ function opTag(op, r, changed) {
     op.function, el("span", { class: "ty prop" }, "→ " + op.type), ...tags);
 }
 
-function placeLabel(op, path, cls, changed, r) {
+function placeLabel(op, path, cls, changed, r, prefix) {
   const c = correctionAt(r, op.id, path), k = key.place(op.id, path);
   return el("span", { class: cls + (changed.has(k) ? " chg" : ""), tabindex: 0, role: "button", "data-place": k, "data-op": op.id, "data-path": path, "data-kind": "place", "data-key": k,
-    "aria-label": `place ${path} of ${op.function}, type ${op.parameters[path.split(".")[0]] || ""}${c ? ", corrected by you" : ""}. Enter to inspect.` }, path, c ? el("span", { class: "mark" }, c.status === "invalidated" ? "✎✕" : "✎") : null);
+    "aria-label": `place ${path} of ${op.function}, type ${op.parameters[path.split(".")[0]] || ""}${c ? ", corrected by you" : ""}. Enter to inspect.` }, (prefix ? op.function + "." : "") + path, c ? el("span", { class: "mark" }, c.status === "invalidated" ? "✎✕" : "✎") : null);
 }
 
-function socket(op, pl, r, changed) {
+function socket(op, pl, r, changed, prefix, target) {
   const v = pl.value, c = correctionAt(r, op.id, pl.path), k = key.place(op.id, pl.path);
   const what = v.ref !== undefined ? ["←", (termById(r, v.ref) || {}).function || "?"] : v.constant !== undefined ? ["↖", ""] : v.hole ? ["?", v.reason] : v.empty ? ["∅", "absent"] : ["", ""];
   const s = el("span", { class: "sock" + (v.hole ? " hole" : "") + (changed.has(k) ? " chg" : ""), tabindex: 0, role: "button", "data-place": k, "data-op": op.id, "data-path": pl.path, "data-kind": "place", "data-key": k,
-    "data-target": v.ref !== undefined ? key.op(v.ref) : v.constant !== undefined ? key.val(v.at) : "",
+    "data-target": v.ref !== undefined ? key.op(v.ref) : target,
     "aria-label": `place ${pl.path} of ${op.function}: ${say(v, r)}${c ? ", corrected by you" : ""}. Enter to inspect.` },
-    pl.path, " ", el("span", { class: "arrow" }, what[0]), what[1] ? " " + what[1] : "", c ? el("span", { class: "mark" }, c.status === "invalidated" ? "✎✕" : "✎") : null);
+    (prefix ? op.function + "." : "") + pl.path, " ", el("span", { class: "arrow" }, what[0]), what[1] ? " " + what[1] : "", c ? el("span", { class: "mark" }, c.status === "invalidated" ? "✎✕" : "✎") : null);
   return s;
 }
 
@@ -513,7 +523,7 @@ function activate(o) {
   else select(k, kind);
 }
 stage.addEventListener("click", e => {
-  if (justDragged || e.target.closest("#card")) return;
+  if (justDragged || e.composedPath().includes($("#card"))) return;  // composedPath: the card rebuilds itself on click, so the target may be detached by now
   const o = objectAt(e.target);
   if (!o) { if (S.sel && !S.pending) closeCard(); return; }
   if (S.pending) return;
@@ -530,7 +540,7 @@ addEventListener("keydown", e => {
     return;
   }
   const o = e.target.closest && e.target.closest("#text [data-kind]");
-  if (!o || e.target.closest("#card")) return;
+  if (!o || e.composedPath().includes($("#card"))) return;
   if (e.key === "Enter") { e.preventDefault(); activate(o); }
   else if (e.key === " ") {
     e.preventDefault();
