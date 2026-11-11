@@ -476,6 +476,7 @@ function draggable({ state: st, d, draggedId }) {
     const room = (labelEnd.get(s0.li) ?? -1e9) <= s0.x0 - 4;
     if (c !== "none" && room && (lw <= s0.x1 - s0.x0 + 14 || isOpen || ch || draggedId === id)) { labelEnd.set(s0.li, s0.x0 + lw); kids.push(txt(s0.x0, s0.y + 11, label, F.small, ch ? C.acc : col, { fontWeight: p.by === "user" ? 700 : 400 })); }
     else if (c !== "none") kids.push(h("circle", { transform: translate(s0.x0 + 2, s0.y + 8), r: 2, fill: col }));
+    if (draggedId === id) { const lw2 = tw(label, F.mono) + 12; kids.push(h("g", { transform: translate(s0.x0, s0.y - 6) }, h("rect", { width: lw2, height: 18, rx: 9, fill: C.card, stroke: col, strokeWidth: 1.25 }), txt(6, 13, label, F.mono, col))); }
     if (isOpen) for (const s of a.parts) kids.push(h("rect", { transform: translate(s.x0 - 3, s.y + 1), width: s.x1 - s.x0 + 6, height: 40, rx: 4, fill: "none", stroke: col, strokeWidth: 1.5 }));
     const th = { t: "piece", p };
     links.push(h("g", { id, "data-kind": label, "data-start": p.start, "data-end": p.end, role: "link", "data-label": label, className: "pc", dragologyZIndex: draggedId === id ? "/1" : false,

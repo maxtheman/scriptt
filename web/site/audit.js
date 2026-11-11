@@ -15,7 +15,7 @@
     if (trusted()) { await bridge({ type, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }); return at(x, y); }
     const el = at(x, y); el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1, pointerId: 1, isPrimary: true, pointerType: "mouse" })); return el;
   };
-  const click = async (el, what = "") => { if (!el) throw new Error("nothing to click " + what); const [x, y] = center(el.querySelector("rect") || el); if (trusted()) { await pe("pointermove", x, y); await pe("pointerdown", x, y); await pe("pointerup", x, y); } else { const t = await pe("pointerdown", x, y); await pe("pointerup", x, y); t.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: x, clientY: y })); } await sleep(150); };
+  const click = async (el, what = "") => { if (!el) throw new Error("nothing to click " + what); if (el.id) el = document.getElementById(el.id) || el; const [x, y] = center(el.querySelector("rect") || el); if (trusted()) { await pe("pointermove", x, y); await pe("pointerdown", x, y); await pe("pointerup", x, y); } else { const t = await pe("pointerdown", x, y); await pe("pointerup", x, y); t.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: x, clientY: y })); } await sleep(150); };
   const key = async (k, extra = {}) => { if (trusted()) await bridge({ type: "key", key: k, ...extra }); else document.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true, ...extra })); await sleep(60); };
   const shot = async (name) => { if (trusted()) await bridge({ type: "shot", name }); };
   const until = async (f, ms = 8000) => { const t = Date.now(); while (Date.now() - t < ms) { const v = f(); if (v) return v; await sleep(60); } return null; };
@@ -41,14 +41,15 @@
   }
   const sent = (b) => window.__net.some((n) => n.path === "/edit" && JSON.stringify(n.body) === JSON.stringify({ reading: S.id, ...b }));
   // press a thing, let the rail bring the places near, wait for a place the engine accepts (✓), drop there
-  async function dragToPlace(src, name, ms = 25000) {
+  async function dragToPlace(src, name, ms = 25000, not = "") {
     if (src.id) src = document.getElementById(src.id) || src;
-    const [sx, sy] = center(src.querySelector("rect") || src);
+    const [sx, sy] = center(src.tagName === "text" ? src : src.querySelector("rect") || src);
     await pe("pointermove", sx, sy); await pe("pointerdown", sx, sy);
     for (let i = 1; i <= 4; i++) { await pe("pointermove", sx + i * 3, sy + i * 3); await sleep(30); }
     const okRail = () => [...document.querySelectorAll("#board [id^=rl-]")].find((g) => g.textContent.trim().startsWith("✓"));
     let target = await until(okRail, ms);
-    if (!target) target = [...document.querySelectorAll("#board [id^=pl-]")].find((g) => g.dataset.hole === "1") || document.querySelector("#board [id^=rl-]");
+    const mine = (g) => not && (g.id.startsWith("pl-" + not + "-") || g.id.startsWith("rl-" + not + "-"));
+    if (!target) target = [...document.querySelectorAll("#board [id^=pl-]")].find((g) => g.dataset.hole === "1" && !mine(g)) || [...document.querySelectorAll("#board [id^=rl-]")].find((g) => !mine(g)) || [...document.querySelectorAll("#board [id^=pl-]")].find((g) => !mine(g));
     if (!target) { await pe("pointerup", sx, sy); return null; }
     const tid = target.id;
     const [dx, dy] = center(target.querySelector("rect"));
@@ -134,7 +135,7 @@
       { const L2 = window.board.layout(S.base); const multi = [...document.querySelectorAll("#board [id^=pc-]")].find((g) => g.dataset.kind !== "(none)" && L2.words.filter((w) => w.s >= +g.dataset.start && w.e <= +g.dataset.end).length >= 2); await key("Escape"); await click(multi, "a link of two words"); }
       await key("["); await until(() => !/…/.test(dock()) && /→/.test(dock()), 20000);
       const e2 = S.hold && S.hold.opts[0].states && { body: S.hold.opts[0].states[S.hold.opts[0].k].change };
-      ok(e2 && e2.body && sent(e2.body) && e2.body.path === "kind" && e2.body.value === "(none)", "B2k [ narrows: the last word unlinked (/edit kind (none))");
+      ok(e2 && e2.body && sent(e2.body) && e2.body.path === "kind" && e2.body.value === "(none)", "B2k [ narrows: the last word unlinked (/edit kind (none))" + " got " + JSON.stringify({ e2, hold: !!S.hold, open: S.open && S.open.p, focus: S.focus, dock: dock() }).slice(0, 400));
       await key("Enter"); await sleep(150);
       ok(S.staged || S.note, "B2k Enter stages or shows the engine's refusal");
       await key("Escape");
@@ -226,7 +227,7 @@
       if (opsEl.length >= 2) {
         const srcOp = opsEl[0], tgt = [...document.querySelectorAll("#board [id^=pl-]")].find((g) => !srcOp.contains(g) && +g.dataset.op > +srcOp.dataset.op);
         if (ok(srcOp, "C3 a result to drag")) {
-          const res = await dragToPlace(srcOp, `${pre}-c-result`); if (res) row.did.push("C3 → " + res.tid);
+          const res = await dragToPlace(srcOp.querySelector("text"), `${pre}-c-result`, 25000, srcOp.dataset.op); if (res) row.did.push("C3 → " + res.tid);
           const b = (S.staged && S.staged.body) || (S.note && S.note.refused && S.note.refused.body), e = b && sent(b) && { body: b };
           ok(e && e.body.value && String(e.body.value.ref) === srcOp.dataset.op, "C3 result into a place = /edit {ref}");
           ok(S.staged || S.note, "C3 answered");
