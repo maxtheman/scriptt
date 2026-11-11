@@ -219,8 +219,9 @@ async function ask(body) {
   const p = run; cache.set(k, p); return p;
 }
 const okay = r => r && r.draft && !r.diagnostics.length && !r.error;
-const RULE = { type: "its type does not fit this place", reference: "that operation is not in this reading", missing: "something it needs is missing" };
+const RULE = { type: "its type does not fit this place", reference: "a result can only be used by an operation that comes after it in the message (or that operation is not in this reading)", missing: "something it needs is missing" };
 const diagWords = (d, r) => `${d[0] == null ? "new operation" : (termById(r || S.base, d[0]) || {}).function + "#" + d[0]}.${d[1]}: ${RULE[d[2]] || "engine rule “" + d[2] + "”"} [${JSON.stringify(d)}]`;
+const takes = (op, path) => { const ty = declared(op, path), ms = membersOf(ty); return ms.length ? `It takes one of ${ty}'s members (${ms.slice(0, 4).map(m => m.words).join(", ")}${ms.length > 4 ? ", …" : ""}): drag one from the world.` : ""; };
 const refusalWords = (res, r) => res.error ? res.error : res.diagnostics.map(d => diagWords(d, r)).join("; ") || "refused";
 
 // ---- what can be held ----
@@ -241,6 +242,7 @@ function pickFrom(node) {
   if (d.pick === "member") { const m = membersOf(d.sum).find(x => x.member === d.member); return heldMember(m); }
   if (d.pick === "fn") return heldFn(d.fn, world().functions[d.fn]);
   if (d.pick === "result") return heldResult(termById(S.base, d.op));
+  if (d.pick === "cand") return node._held;
   return null;
 }
 
@@ -379,7 +381,7 @@ function paintDock() {
       if (!H.res) inn.append(el("div", {}, `Over ${H.tg.kind === "place" ? "place " + H.tg.path : "a phrase"}: asking the engine…`));
       else if (H.res.here || H.res.same) inn.append(el("div", { class: "mute" }, "That is where it already is."));
       else if (okay(H.res)) inn.append(el("div", { class: "ok" }, `Fits: ${H.res.what}. Release to stage it.`), ...consequence(H.res));
-      else inn.append(el("div", { class: "no" }, `Refused by the engine: ${refusalWords(H.res)}.${H.tg.kind === "place" ? " This place is declared " + declared(termById(S.base, H.tg.op), H.tg.path) + "." : ""} Releasing here changes nothing.`));
+      else inn.append(el("div", { class: "no" }, `Refused by the engine: ${refusalWords(H.res)}.${H.tg.kind === "place" ? " This place is declared " + declared(termById(S.base, H.tg.op), H.tg.path) + ". " + takes(termById(S.base, H.tg.op), H.tg.path) : ""} Releasing here changes nothing.`));
       if (H.res && H.res.options && H.res.options.length > 1) inn.append(el("div", { class: "mute" }, "parameters tried: " + H.res.options.map(o => `${o.param} ${okay(o.res) ? "✓" : "✕"}`).join(", ")));
     }
     return;
@@ -387,7 +389,7 @@ function paintDock() {
   if (S.refused) {
     d.className = "refuse";
     const R = S.refused;
-    inn.append(el("div", { class: "head no" }, "The engine refused that drop"), el("div", {}, R.what), el("div", { class: "no" }, refusalWords(R.res)), el("div", { class: "mute" }, "The reading is unchanged. Try another value, or open the place to see what d1 was offered."),
+    inn.append(el("div", { class: "head no" }, "The engine refused that drop"), el("div", {}, R.what), el("div", { class: "no" }, refusalWords(R.res)), el("div", { class: "mute" }, "The reading is unchanged. " + (R.anchor && R.anchor.startsWith("p:") ? takes(termById(S.base, R.anchor.split(":")[1]), R.anchor.split(":").slice(2).join(":")) : "") + " Open the place to see what d1 was offered."),
       el("div", { class: "actions" }, el("button", { id: "dismiss", onclick: () => { S.refused = null; paintDock(); refocus(R.anchor); } }, "Dismiss")));
     return;
   }
@@ -451,8 +453,9 @@ async function candidateList(box, op, path, group) {
   const list = candidatesFor(op, path).filter(c => c.group === group || (group === "members" && c.group.startsWith("members of")));
   for (const c of list) {
     const row = el("div", { class: "item" });
-    const b = el("button", { class: "chip", "data-cand": c.label, onclick: async () => { const res = await ask({ reading: S.id, number: +op.id, path, value: c.value }); stage({ ...res }, `${c.label} → ${op.function}#${op.id}.${path}`, pkey(op.id, path)); } }, c.label);
+    const b = el("button", { class: "chip", "data-cand": c.label, "data-pick": "cand", onclick: async () => { const res = await ask({ reading: S.id, number: +op.id, path, value: c.value }); stage({ ...res }, `${c.label} → ${op.function}#${op.id}.${path}`, pkey(op.id, path)); } }, c.label);
     const v = el("span", { class: "verdict mute" }, c.sub || "");
+    b._held = { kind: c.value.ref !== undefined ? "result" : c.value.at && c.value.at[0] < 0 ? "member" : "words", label: c.label, value: c.value };
     row.append(b, v); box.append(row);
     if (group !== "results of other operations") ask({ reading: S.id, number: +op.id, path, value: c.value }).then(res => { v.className = "verdict " + (okay(res) ? "ok" : "no"); v.textContent = (c.sub ? c.sub + " · " : "") + (okay(res) ? "fits" : "engine: " + refusalWords(res).replace(/ \[.*$/, "")); });
   }
@@ -600,7 +603,7 @@ document.addEventListener("pointerdown", e => {
   if (e.button !== 0 || S.pending) return;
   if (S.held && S.held.clickHeld) return;  // click-click mode: the click handler drops
   const t = e.target;
-  if (t.closest("#insp, #dock, header, #needs")) return;
+  if (t.closest("#insp, #dock, header, #needs") && !t.closest("#insp [data-pick]")) return;
   const hdl = t.closest(".hdl");
   if (hdl) { e.preventDefault(); ptr = { mode: "handle", which: hdl.dataset.hdl, x: e.clientX, y: e.clientY, moved: false }; return; }
   const pick = t.closest("[data-pick]");
