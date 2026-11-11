@@ -1256,5 +1256,59 @@ const READINGS = [
   "decisions": [],
   "corrections": [],
   "fulfillment": []
+ },
+ {
+  "form": 4,
+  "world": "sha256:9f405426f2f0 (hand-written sample)",
+  "text": "Write the summary into notes.md soon.",
+  "phrases": [
+   {
+    "start": 0,
+    "end": 37,
+    "brand": "Asked",
+    "choice": {
+     "pick": "write",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.9,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "f1",
+     "fn": "write",
+     "args": {
+      "path": {
+       "kind": "Constant",
+       "type": "Path",
+       "value": "notes.md",
+       "span": [
+        23,
+        31
+       ]
+      }
+     }
+    }
+   }
+  ],
+  "constants": [
+   {
+    "start": 23,
+    "end": 31,
+    "type": "Path",
+    "value": "notes.md"
+   }
+  ],
+  "decisions": [],
+  "corrections": [],
+  "fulfillment": []
  }
 ];

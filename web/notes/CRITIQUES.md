@@ -15,7 +15,18 @@ What the probes cannot see is written under each build, from looking at the page
 |---|---|---|
 | v00 | 5/32 | the page as it stood (3cca462) |
 | v01 | 17/32 | marks you can name |
-| v02 | 20/32 (in progress) | no palette; click opens one panel; one `transitions()` function |
+| v02 | 20/32 | no palette; click opens one panel; one `transitions()` function |
+| v03 | 25/37 | every phrase is one chain of interlocking blocks; a press never changes the reading |
+| v04 | 27/37 | tabs (Board, d1, Install), no prose, Undo and Redo always visible |
+| v05 | 30/37 | follow a relation and go back, type definitions, d1's options at their place |
+| v06 | 32/39 | no Edit gate; every word is a thing to pick up; a span of words grounds as a value; long sample |
+| v07 | 36/41 | the world on the board, live-linked by type; tagging both ways |
+| v08 | 37/42 | the world can be changed (members, functions, types), previewed, one Undo for everything |
+| v09 | 41/44 (not rerun in full) | every record behind every piece, refused drops explained, corrections kept and read again |
+| v10 | 46/48 | the world as a typed graph, type structure (sum, product), doc strings, re-rank while holding, arrows, informative labels, typography, tag width |
+
+The probe count grew from 32 to 48 as Max's feedback added criteria, so a score is only comparable with the builds next to it. v00 scored 5/32 on the first audit.
+
 
 ## Critique of v00 (5/32)
 
@@ -56,3 +67,23 @@ Found while building (real bugs the audit exposed, not in v00):
 Open at this point:
 - Pressing a value in the sample with two `implement`s can throw `dropTarget: could not compute bounds for element "h-d1-implement.questions"`, and the renderer then stops drawing the panel until reload. Not understood yet. C07 and C11 fail because of it.
 - Following a relation, the panel's Back, type definitions (C09, C10), decisions at their place (C28), refusals (C14), history (C18, C19), Play (C20), prose (C21), markdown (C25), map (C26) are not built yet.
+
+## What Max said after v05, v08 and how v10 answers it (all in v10)
+
+Max's words are in `FEEDBACK-SESSION.md`. Each point, and where it went:
+
+- Text duplicated, unclear what to drag: the panel no longer repeats the thing, the world no longer lists members next to the message (members show only in a type's structure, where they can be dragged), a held thing draws an arrow to each place that takes it, and refused places say why.
+- Functions typed with inputs and outputs, and "if I grab a string, what takes strings": the world is a typed graph (types left, functions with a port for each input, the types they give right, a curve for each use). Grabbing or selecting a type lights its curves and the ports that take it.
+- What `Code` is made of, sum and product: selecting a type draws a fork to its members (sum) or a box of its fields (product), with what it is part of, what makes it, what takes it.
+- Doc strings: shown for functions (`asks`) and types (`doc`).
+- Re-rank while holding: the functions that take what is held come first in the graph (the layout depends on what is held).
+- Labels like "→ ❷": every action now names the operation or the place (`→ ➋ implement.questions`).
+- The world is not a chain: it is a graph from the data; the chains are the message and the panel.
+- Typography: a rhythm of 8 px units (blocks 40 px, rows 12, chains 28), 16 px text and 13 px notation set on the cap height, quiet borders for words and strong ones for typed things.
+- Words: dropped on a tag they make it wider (refused with a reason when the new words are not a member of the type); the panel also offers + and − for each end.
+
+Deferred, with the reason and the way in:
+- Kinds as first-class (`Type → Type` for `Many`, `Maybe`, `Later`): the readings that the engine saves today carry `Many[T]` and `Maybe[T]` only as type names inside a place. The board shows them there. When the engine sends type-level terms, a constructor will be a block with a slot (`Many[ ]`) and a kind line, drawn like the other blocks.
+- Brands (`Asked`, `Written`, `Observed` over `Words`): shown on each phrase (`data-brand`, the tag, the panel). The world has no brand declarations to draw yet; when `world.py` is sent with them they become a fork under a `Words` node, like a sum.
+- Folding and unfolding of nested phrases: the saved readings are flat (one level of phrases). A phrase group will fold to its first words and unfold to its chains; no fold control is drawn until there is a group to fold.
+- Regrouping phrases (split, merge, move a boundary): this is the engine's job (the contract lists it under source and grouping: it must re-anchor or invalidate). The board will send the request as a correction; it does not fake a regrouping.
