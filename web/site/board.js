@@ -60,7 +60,7 @@ async function load() {
   S.base = latest(S.id);
   const ids = [...new Set(lines.map(l => l.id))], pick = $("#pick");
   pick.hidden = ids.length < 2;
-  pick.replaceChildren(...ids.map(i => el("option", { value: i, selected: i === S.id }, `${latest(i).text.length} chars · ${trim(latest(i).text.replace(/\s+/g, " "), 44)}`)));
+  pick.replaceChildren(...ids.sort((a, b) => latest(b).text.length - latest(a).text.length).map(i => el("option", { value: i, selected: i === S.id }, `${latest(i).text.length} chars · ${openPlaces(latest(i)).length} open · ${trim(latest(i).text.replace(/\s+/g, " "), 40)}`)));
 }
 
 // ---- world declarations (shown, never used to decide fit; the engine decides) ----
@@ -112,10 +112,10 @@ function render() {
   }
   gap(r.text.length);
   tabStop(Math.min(S.cursor, W.length - 1));
-  paintSpan(); paintNeeds(r); paintLegend(r); paintInsp(); paintWorld(); paintDock();
+  paintSpan(); requestAnimationFrame(paintGutter); paintNeeds(r); paintLegend(r); paintInsp(); paintWorld(); paintDock();
   $("#snap").textContent = snapLabel();
   $("#older").disabled = $("#rerun").disabled = !!S.pending;
-  $("#how").replaceChildren(el("b", {}, "To revisit a decision, drop something into a place. "), "Click a word (then drag its ends, or Shift+←/→) to select words and drag them onto any place. Drag a world member or an operation from the side or the text onto a place. Drag a function onto a phrase to add an operation. Keyboard: Space picks up, Tab to a place, Enter drops, Esc cancels.");
+  $("#how").replaceChildren(el("b", {}, "To revisit a decision, drop something into a place. "), "Click a word (then drag its ends, or Shift+←/→) to select words and drag them onto any place. Drag a world member or an operation from the side or the text onto a place. Drag a function onto a phrase to add an operation. Keyboard: Space picks up, Tab to a place, Enter drops, Esc cancels; ] and [ jump between open places, u to the next unresolved request.");
 }
 
 function brick(op, r, changed) {
@@ -163,6 +163,27 @@ function paintSpan() {
 }
 function linkSpan(a, b, on) {
   for (const w of W) w.el.classList.toggle("link", on && w.s >= a && w.e <= b);
+}
+
+// ---- the structure gutter: one tick per operation, open place and unresolved request, at its height in the text ----
+function paintGutter() {
+  const g = $("#gutter"), t = $("#text"); if (!g || !t.offsetHeight) return;
+  const H = t.offsetHeight, top0 = t.getBoundingClientRect().top + scrollY, items = [];
+  for (const b of document.querySelectorAll(".brick")) items.push({ e: b, kind: "op", y: b.getBoundingClientRect().top + scrollY - top0, label: b.querySelector(".op").textContent });
+  for (const h of document.querySelectorAll(".pl.hole")) items.push({ e: h, kind: "hole", y: h.getBoundingClientRect().top + scrollY - top0, label: "open place " + h.textContent });
+  for (const u of document.querySelectorAll(".unres-chip")) items.push({ e: u, kind: "unres", y: u.getBoundingClientRect().top + scrollY - top0, label: u.textContent });
+  g.replaceChildren(...items.map(it => el("button", { class: it.kind, tabindex: -1, title: it.label, "aria-label": "jump to " + it.label, style: `top:${Math.max(0, Math.min(98.5, it.y / H * 100)).toFixed(2)}%`, onclick: () => { it.e.scrollIntoView({ block: "center" }); it.e.focus({ preventScroll: true }); } })), el("div", { class: "view", id: "gview" }));
+  paintView();
+}
+function paintView() { const v = $("#gview"), t = $("#text"); if (!v) return; const r = t.getBoundingClientRect(), H = t.offsetHeight; const a = Math.max(0, -r.top) / H, b = Math.min(1, (innerHeight - r.top) / H); v.style.top = (a * 100) + "%"; v.style.height = Math.max(0.5, (b - a) * 100) + "%"; }
+addEventListener("scroll", () => requestAnimationFrame(paintView), { passive: true });
+addEventListener("resize", () => requestAnimationFrame(paintGutter));
+function jump(sel, dir) {
+  const all = [...document.querySelectorAll(sel)]; if (!all.length) return;
+  const cur = all.indexOf(document.activeElement.closest(sel) || null);
+  let i;
+  if (cur >= 0) i = (cur + dir + all.length) % all.length; else { const y = innerHeight / 2; i = dir > 0 ? all.findIndex(e => e.getBoundingClientRect().top > y) : all.map(e => e.getBoundingClientRect().top).findLastIndex(t => t < y - 40); if (i < 0) i = dir > 0 ? 0 : all.length - 1; }
+  all[i].focus({ preventScroll: true }); all[i].scrollIntoView({ block: "center" }); if (S.held) hoverOn(targetAt(all[i]));
 }
 
 // ---- counts, needs, legend ----
@@ -222,6 +243,7 @@ const okay = r => r && r.draft && !r.diagnostics.length && !r.error;
 const RULE = { type: "its type does not fit this place", reference: "a result can only be used by an operation that comes after it in the message (or that operation is not in this reading)", missing: "something it needs is missing" };
 const diagWords = (d, r) => `${d[0] == null ? "new operation" : (termById(r || S.base, d[0]) || {}).function + "#" + d[0]}.${d[1]}: ${RULE[d[2]] || "engine rule “" + d[2] + "”"} [${JSON.stringify(d)}]`;
 const takes = (op, path) => { const ty = declared(op, path), ms = membersOf(ty); return ms.length ? `It takes one of ${ty}'s members (${ms.slice(0, 4).map(m => m.words).join(", ")}${ms.length > 4 ? ", …" : ""}): drag one from the world.` : ""; };
+const heldType = h => h.value ? (h.value.type || (h.value.ref !== undefined ? "the result of an operation" : "a value")) : "a function";
 const refusalWords = (res, r) => res.error ? res.error : res.diagnostics.map(d => diagWords(d, r)).join("; ") || "refused";
 
 // ---- what can be held ----
@@ -340,8 +362,9 @@ async function accept1() {
   S.note = `Accepted and saved as your correction (snapshot ${S.base.snapshot.slice(0, 6)}, ${S.base.corrections.length} correction${S.base.corrections.length === 1 ? "" : "s"}). A rerun keeps it or says why not.`; render(); refocus(a);
 }
 async function rerun() {
+  const btn = $("#rerun"); btn.disabled = true; btn.textContent = "Rerunning…";
   S.note = "Rerunning: the engine reads the source again with d1…"; paintDock();
-  const r = await api("/rerun", { reading: S.id });
+  let r; try { r = await api("/rerun", { reading: S.id }); } finally { btn.textContent = "Rerun with d1"; btn.disabled = !!S.pending; }
   if (r.error) { S.note = "Rerun failed: " + r.error; return paintDock(); }
   cache.clear(); await load();
   S.sel = { kind: "rerun", data: { corrections: r.corrections || [], diagnostics: r.diagnostics || [], saved: !!r.saved } };
@@ -381,7 +404,7 @@ function paintDock() {
       if (!H.res) inn.append(el("div", {}, `Over ${H.tg.kind === "place" ? "place " + H.tg.path : "a phrase"}: asking the engine…`));
       else if (H.res.here || H.res.same) inn.append(el("div", { class: "mute" }, "That is where it already is."));
       else if (okay(H.res)) inn.append(el("div", { class: "ok" }, `Fits: ${H.res.what}. Release to stage it.`), ...consequence(H.res));
-      else inn.append(el("div", { class: "no" }, `Refused by the engine: ${refusalWords(H.res)}.${H.tg.kind === "place" ? " This place is declared " + declared(termById(S.base, H.tg.op), H.tg.path) + ". " + takes(termById(S.base, H.tg.op), H.tg.path) : ""} Releasing here changes nothing.`));
+      else inn.append(el("div", { class: "no" }, `Refused by the engine: ${refusalWords(H.res)}.${H.tg.kind === "place" ? " This place is declared " + declared(termById(S.base, H.tg.op), H.tg.path) + "; you hold " + heldType(S.held) + ". " + takes(termById(S.base, H.tg.op), H.tg.path) : ""} Releasing here changes nothing.`));
       if (H.res && H.res.options && H.res.options.length > 1) inn.append(el("div", { class: "mute" }, "parameters tried: " + H.res.options.map(o => `${o.param} ${okay(o.res) ? "✓" : "✕"}`).join(", ")));
     }
     return;
@@ -417,7 +440,6 @@ function scoreBlock(d) {
   const out = [];
   for (const [q, spec] of Object.entries(d.asked || {})) {
     const ans = (d.answers || {})[q] || {}, p = ans.probabilities || {}, entries = Object.entries(p).sort((x, y) => y[1] - x[1]);
-    const standIn = entries.length > 2 && Math.abs(entries[0][1] - 0.9) < 1e-9 && entries.slice(2).every(e => Math.abs(e[1] - entries[1][1]) < 1e-9);
     out.push(el("div", { class: "q" }, spec.instructions));
     const optDesc = id => ((spec.options || []).find(o => String(o.id) === String(id)) || {}).description;
     const win = entries[0] && entries[0][0];
@@ -425,8 +447,8 @@ function scoreBlock(d) {
       const desc = optDesc(id);
       out.push(el("div", { class: "opt" + (id === win ? " chosen" : "") }, el("span", { class: "bar", style: `width:${Math.max(2, Math.round(v * 70))}px` }), `${(v * 100).toFixed(v < .01 ? 1 : 0)}% `, el("span", { class: "t" }, id), desc && id !== desc ? " " + trim(desc, 90) : "", id === win ? (id === "none" || id.startsWith("(") ? "  ← d1's answer: none of the above" : "  ← d1's answer") : ""));
     }
-    if (entries.length > 8) out.push(el("div", { class: "mute" }, `+${entries.length - 8} more options`));
-    out.push(el("div", { class: "prov" }, standIn ? `${FIXTURE}? These numbers have the stand-in shape (0.9 for the pick, the rest equal); the record does not name its source. Not a confidence.` : "recorded d1 score; the record does not say whether it was live or stand-in. Not a confidence."));
+    if (entries.length > 8) out.push(el("div", { class: "mute" }, `${entries.length - 8} other options, together ${(entries.slice(8).reduce((n, e) => n + e[1], 0) * 100).toFixed(1)}%`));
+    out.push(el("div", { class: "prov" }, "recorded d1 score; the record does not say whether it was live or a stand-in. Not a confidence."));
   }
   if ((d.offered || []).length) out.push(el("div", { class: "mute" }, "d1 was offered: " + d.offered.map(offeredWords).join(", ") + ((d.cut || []).length ? `; cut before asking: ${d.cut.length}` : "")));
   return out;
@@ -457,6 +479,7 @@ async function candidateList(box, op, path, group) {
     const v = el("span", { class: "verdict mute" }, c.sub || "");
     b._held = { kind: c.value.ref !== undefined ? "result" : c.value.at && c.value.at[0] < 0 ? "member" : "words", label: c.label, value: c.value };
     row.append(b, v); box.append(row);
+    const curV = places(op).find(p => p.path === path).value; if (JSON.stringify(curV) === JSON.stringify(c.value) || (c.value.constant !== undefined && curV.constant === c.value.constant && JSON.stringify(curV.at) === JSON.stringify(c.value.at))) { v.className = "verdict mute"; v.textContent = "already here"; continue; }
     if (group !== "results of other operations") ask({ reading: S.id, number: +op.id, path, value: c.value }).then(res => { v.className = "verdict " + (okay(res) ? "ok" : "no"); v.textContent = (c.sub ? c.sub + " · " : "") + (okay(res) ? "fits" : "engine: " + refusalWords(res).replace(/ \[.*$/, "")); });
   }
 }
@@ -471,7 +494,7 @@ function paintInsp(focus) {
   if (sel.typeView) { typePanel(c, sel.typeView); return focus && ($(".x", c) || c).focus(); }
   if (sel.kind === "history") {
     c.append(el("h2", {}, "Snapshots of this reading"), el("p", { class: "sub" }, "The store keeps every saved snapshot. Restore makes one the latest."));
-    for (const { l, n } of snapshotsOf(S.id).reverse().slice(0, 40)) c.append(el("div", { class: "item" }, `#${n} · ${l.snapshot.slice(0, 6)} · ${l.corrections.length} corrections${l.fulfillment ? " · checked" : ""} `, el("button", { class: "link", disabled: l === r, onclick: () => restore(n) }, l === r ? "latest" : "Restore")));
+    for (const { l, n } of snapshotsOf(S.id).reverse().slice(0, 40)) c.append(el("div", { class: "item" }, `store line #${n} · ${l.snapshot.slice(0, 6)} · ${l.corrections.length} corrections${l.fulfillment ? " · checked" : ""} `, el("button", { class: "link", disabled: l === r, onclick: () => restore(n) }, l === r ? "latest" : "Restore")));
   } else if (sel.kind === "rerun") {
     c.append(el("h2", {}, "Rerun with d1"), el("p", { class: "sub" }, "the source was read again; your corrections were applied to the new reading:"));
     if (!sel.data.corrections.length) c.append(el("div", { class: "mute" }, "no corrections to apply."));
@@ -482,6 +505,7 @@ function paintInsp(focus) {
   } else if (sel.kind === "unres") {
     const u = r.phrases.flatMap(p => p.unresolved).find(u => String(u.id) === sel.id); if (!u) return closeInsp();
     c.append(el("h2", {}, "A request that is not an operation"), el("p", { class: "sub" }, `d1 found a request in this phrase, then ${reasonLong(u.reason)}. It stays visible as owed work.`));
+    const up = r.phrases.find(p => p.unresolved.includes(u)); if (up) c.append(el("p", { class: "mute" }, `Its phrase: “${trim(r.text.slice(up.start, up.end).replace(/\s+/g, " "), 140)}”`));
     c.append(el("p", {}, "To give it a meaning, drag a function from the world (right) onto the phrase's words."));
     for (const d of decisionsFor(r, d => String(d.operation) === String(u.id))) c.append(...scoreBlock(d));
   } else if (sel.kind === "op") {
@@ -695,6 +719,8 @@ addEventListener("keydown", e => {
     return;
   }
   if (t.closest && t.closest("#insp, #dock, header, #needs") && !S.held) return;
+  if (!e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "]" || e.key === "[")) { e.preventDefault(); return jump(".pl.hole", e.key === "]" ? 1 : -1); }
+  if (!e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "u" || e.key === "U") && !S.held) { e.preventDefault(); return jump(".unres-chip", 1); }
   const inWord = t.classList && t.classList.contains("w");
   if (S.held && (e.key === "o" || e.key === "O") && !e.metaKey && !e.ctrlKey) {  // jump to the next open place
     const all = [...document.querySelectorAll(".pl.hole")]; if (!all.length) return;
