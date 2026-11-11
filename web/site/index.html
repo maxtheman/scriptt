@@ -48,5 +48,6 @@
 <script src="model.js"></script>
 <script src="vendor/dragology-0.2.0.iife.js"></script>
 <script src="board.js"></script>
+<script>if (/[?&]audit/.test(location.search)) document.head.append(Object.assign(document.createElement("script"), { src: "audit.js" }));</script>
 </body>
 </html>
