@@ -678,7 +678,46 @@ def test_specimen():
         assert verdict == X.UNVERIFIED and {one.claim for one in checks} == {0.99} and "I did all three." in judgment["state"]  # a confident claim is kept, and is no evidence
 
 
-UNIT_TESTS = [test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
+def test_rules():
+    """Rules that the cases allow either way, pinned to the engine's declared choice, each with the reading that shows it."""
+    with tempfile.TemporaryDirectory() as name:
+        folder = pathlib.Path(name)
+        test = world_of(WORLD, folder)
+        read = lambda text, script, world=test: scriptt16.read(text, world, [], Standin(script, X.World(), world), join=False)
+        # A hole with nothing in scope says "no candidate"; a bound that cut candidates says "bounded".
+        unknown = read("Compare them.", X.script({"Compare them.": "compare"}))
+        assert scriptt16.obligations(unknown)[0][1].arguments["surfaces"].reason == "no candidate"
+        bounded = scriptt16.read(X.BOUNDED_TEXT, world_from(X.World("next"), folder)[0], [], Standin(X.script({X.BOUNDED_TEXT: "show"}), X.World("next")), join=False)
+        assert scriptt16.obligations(bounded)[0][1].arguments["subject"].reason == "bounded"
+        # A single candidate of a Many is still d1's to choose.
+        no_producer = world_of(WORLD.replace("def redesign(surface: Surface) -> Later[Surface]:", "def redesign(surface: Surface) -> Later[Written]:"), folder)
+        one = read("Compare the mod.", X.script({"Compare the mod.": "compare"}), no_producer)
+        assert [len(one_decision["offered"]) for one_decision in one.decisions if one_decision["path"] == "surfaces"] == [1]
+        # A quote of a reply is words in scope: a Maybe[Words] place is offered it.
+        quoted = scriptt16.read('"These seven words are the entire earlier reply." What do you mean?', test, [X.QUOTE], Standin(X.script({"What do you mean?": "explain"}), X.World(), test), join=False)
+        assert any(isinstance(term, Constant) and term.type.name == "Written" for one in quoted.decisions for term in one["offered"])
+        # A hole whose type has the wrong kind is a kind fault.
+        redesign = scriptt16.obligations(unknown)[0][1]
+        assert scriptt16.edit(unknown, redesign.number, "surfaces", Hole(agree.MANY, "cleared"))[1] == [(redesign.number, "surfaces", "kind")]
+        # Members of a Many are compared as a set.
+        members = scriptt16.members(test.types["Surface"])
+        assert scriptt16.value_of(Several(test.types["Surface"], tuple(members)), {}) == scriptt16.value_of(Several(test.types["Surface"], tuple(reversed(members))), {})
+        # A new operation gets the largest number plus one, also after an edit removed one.
+        nested = read("Show me the mod, redesigned.", X.script({"Show me the mod, redesigned.": "show"}, {("Show me the mod, redesigned.", "show", "subject"): X.New("redesign"), ("Show me the mod, redesigned.", "redesign", "surface"): X.MOD}))
+        _, show = [term for _, term in scriptt16.obligations(nested)]
+        flat, _ = scriptt16.edit(nested, show.number, "subject", nested.constants[0])
+        applied, faults = scriptt16.edit(flat, None, "redesign.surface", flat.constants[0], world=test)
+        assert faults == [] and sorted(term.number for _, term in scriptt16.obligations(applied)) == [1, 2], [term.number for _, term in scriptt16.obligations(applied)]
+        # A corrected value that the changed world's place no longer accepts is invalidated.
+        base = read("Redesign the mod. Then show it.", X.told(X.REDESIGN_SHOW))
+        redesign_op, show_op = [term for _, term in scriptt16.obligations(base)]
+        corrected, _ = scriptt16.edit(base, show_op.number, "subject", base.constants[0], correction=True)
+        narrower = world_of(WORLD.replace("def show(subject: Subject) -> Subject:", "def show(subject: pathlib.Path) -> Subject:"), folder)
+        again = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(corrected))), narrower, Standin(X.told(X.REDESIGN_SHOW), X.World(), narrower))
+        assert again.corrections[0]["status"] == "invalidated" and "subject" in again.corrections[0]["reason"], again.corrections
+
+
+UNIT_TESTS = [test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
 
 
 # ---- Laws over the real next/world.py -------------------------------------------------
