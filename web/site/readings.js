@@ -691,5 +691,570 @@ const READINGS = [
   "decisions": [],
   "corrections": [],
   "fulfillment": []
+ },
+ {
+  "form": 4,
+  "world": "sha256:9f405426f2f0 (hand-written sample)",
+  "text": "> I rewrote the notebook and it now has 18 cells. Count the cells in this notebook. Then delete the old cells, and implement all ten of these in 12 cells. Restate all ten of these using the computer science concepts and the roles. After that rewrite these cells with the functions, then delete it. Please also reconcile the flux ledger against last quarter's invoices, which finance still has not sent over, and then tell me whether the template is typed. Write the summary to the usual place. Explain why the roles are defined the way they are in the result types, and what this is supposed to accomplish for the people who read the notebook at the end of the day. Solve for the result types. Mock the model. Is that all ten?",
+  "phrases": [
+   {
+    "start": 0,
+    "end": 49,
+    "brand": "Written",
+    "choice": {
+     "pick": "nothing",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.9
+     }
+    },
+    "term": null
+   },
+   {
+    "start": 50,
+    "end": 83,
+    "brand": "Asked",
+    "choice": {
+     "pick": "count",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.86,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e2",
+     "fn": "count",
+     "args": {
+      "notebook": {
+       "kind": "Constant",
+       "type": "Notebook",
+       "value": "this notebook",
+       "span": [
+        69,
+        82
+       ]
+      }
+     }
+    }
+   },
+   {
+    "start": 84,
+    "end": 110,
+    "brand": "Asked",
+    "choice": {
+     "pick": "delete",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.86,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e3",
+     "fn": "delete",
+     "args": {
+      "notebook": {
+       "kind": "Constant",
+       "type": "Notebook",
+       "value": "the old cells",
+       "span": [
+        96,
+        109
+       ]
+      }
+     }
+    }
+   },
+   {
+    "start": 111,
+    "end": 154,
+    "brand": "Asked",
+    "choice": {
+     "pick": "implement",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.86,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e4",
+     "fn": "implement",
+     "args": {
+      "questions": {
+       "kind": "Constant",
+       "type": "Questions",
+       "value": "all ten of these",
+       "span": [
+        125,
+        141
+       ]
+      },
+      "cells": {
+       "kind": "Constant",
+       "type": "int",
+       "value": "12",
+       "span": [
+        145,
+        147
+       ]
+      }
+     }
+    }
+   },
+   {
+    "start": 155,
+    "end": 230,
+    "brand": "Asked",
+    "choice": {
+     "pick": "restate",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.86,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e5",
+     "fn": "restate",
+     "args": {
+      "questions": {
+       "kind": "Several",
+       "type": {
+        "name": "Many",
+        "args": [
+         "Questions"
+        ]
+       },
+       "items": [
+        {
+         "kind": "Constant",
+         "type": "Questions",
+         "value": "all ten of these",
+         "span": [
+          163,
+          179
+         ]
+        }
+       ]
+      },
+      "concepts": {
+       "kind": "Several",
+       "type": {
+        "name": "Many",
+        "args": [
+         "Concepts"
+        ]
+       },
+       "items": [
+        {
+         "kind": "Constant",
+         "type": "Concepts",
+         "value": "the computer science concepts",
+         "span": [
+          186,
+          215
+         ]
+        }
+       ]
+      }
+     }
+    }
+   },
+   {
+    "start": 231,
+    "end": 281,
+    "brand": "Asked",
+    "choice": {
+     "pick": "rewrite",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.86,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e6",
+     "fn": "rewrite",
+     "args": {
+      "change": {
+       "kind": "Record",
+       "fields": {
+        "notebook": {
+         "kind": "Constant",
+         "type": "Notebook",
+         "value": "these cells",
+         "span": [
+          250,
+          261
+         ]
+        },
+        "code": {
+         "kind": "Constant",
+         "type": "Code",
+         "value": "the functions",
+         "span": [
+          267,
+          280
+         ]
+        }
+       }
+      }
+     }
+    }
+   },
+   {
+    "start": 282,
+    "end": 297,
+    "brand": "Asked",
+    "choice": {
+     "pick": "delete",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.86,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e7",
+     "fn": "delete",
+     "args": {
+      "notebook": {
+       "ref": "e6"
+      }
+     }
+    }
+   },
+   {
+    "start": 298,
+    "end": 407,
+    "brand": "Asked",
+    "choice": {
+     "pick": "none",
+     "scores": {
+      "explain": 0.1,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.7,
+      "nothing": 0.01
+     }
+    },
+    "term": null,
+    "unresolved": {
+     "reason": "no function of the world matches (d1 chose none, 0.70)"
+    }
+   },
+   {
+    "start": 408,
+    "end": 455,
+    "brand": "Asked",
+    "choice": {
+     "pick": "answer",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.86,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e9",
+     "fn": "answer",
+     "args": {}
+    }
+   },
+   {
+    "start": 456,
+    "end": 493,
+    "brand": "Asked",
+    "choice": {
+     "pick": "write",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.86,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e10",
+     "fn": "write",
+     "args": {
+      "path": {
+       "kind": "Hole",
+       "type": "Path",
+       "reason": "d1 declined: the text names no path"
+      }
+     }
+    }
+   },
+   {
+    "start": 494,
+    "end": 665,
+    "brand": "Asked",
+    "choice": {
+     "pick": "explain",
+     "scores": {
+      "explain": 0.86,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e11",
+     "fn": "explain",
+     "args": {}
+    }
+   },
+   {
+    "start": 666,
+    "end": 693,
+    "brand": "Asked",
+    "choice": {
+     "pick": "solve",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01,
+      "solve": 0.86
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e12",
+     "fn": "solve",
+     "args": {
+      "types": {
+       "kind": "Constant",
+       "type": "Types",
+       "value": "result types",
+       "span": [
+        680,
+        692
+       ]
+      }
+     }
+    }
+   },
+   {
+    "start": 694,
+    "end": 709,
+    "brand": "Asked",
+    "choice": {
+     "pick": "mock",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01,
+      "mock": 0.86
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e13",
+     "fn": "mock",
+     "args": {
+      "model": {
+       "kind": "Constant",
+       "type": "Model",
+       "value": "the model",
+       "span": [
+        699,
+        708
+       ]
+      }
+     }
+    }
+   },
+   {
+    "start": 710,
+    "end": 726,
+    "brand": "Asked",
+    "choice": {
+     "pick": "answer",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.86,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "e14",
+     "fn": "answer",
+     "args": {}
+    }
+   }
+  ],
+  "constants": [
+   {
+    "start": 69,
+    "end": 82,
+    "type": "Notebook",
+    "value": "this notebook"
+   },
+   {
+    "start": 96,
+    "end": 109,
+    "type": "Notebook",
+    "value": "the old cells"
+   },
+   {
+    "start": 125,
+    "end": 141,
+    "type": "Questions",
+    "value": "all ten of these"
+   },
+   {
+    "start": 145,
+    "end": 147,
+    "type": "int",
+    "value": "12"
+   },
+   {
+    "start": 163,
+    "end": 179,
+    "type": "Questions",
+    "value": "all ten of these"
+   },
+   {
+    "start": 186,
+    "end": 215,
+    "type": "Concepts",
+    "value": "the computer science concepts"
+   },
+   {
+    "start": 250,
+    "end": 261,
+    "type": "Notebook",
+    "value": "these cells"
+   },
+   {
+    "start": 267,
+    "end": 280,
+    "type": "Code",
+    "value": "the functions"
+   },
+   {
+    "start": 680,
+    "end": 692,
+    "type": "Types",
+    "value": "result types"
+   },
+   {
+    "start": 699,
+    "end": 708,
+    "type": "Model",
+    "value": "the model"
+   }
+  ],
+  "decisions": [],
+  "corrections": [],
+  "fulfillment": []
  }
 ];
