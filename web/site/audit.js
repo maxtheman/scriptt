@@ -274,7 +274,8 @@
       // sent, is asked again here with /edit (one by one, by the audit) and compared with the glyph drawn
       {
         await key("Escape"); await key("Escape"); await pause(); // no open link, so no handles over the words
-        const src = document.querySelectorAll("#board [id^=pc-]")[4];
+        const pcsD = [...document.querySelectorAll("#board [id^=pc-]")];
+        const src = pcsD[Math.max(0, pcsD.length - 3)]; // a link no earlier step held
         const [sx, sy] = center(src.querySelector("rect"));
         const n0 = window.__net.length;
         await pe("pointermove", sx, sy); await pe("pointerdown", sx, sy); await pe("pointermove", sx + 7, sy + 7);
@@ -294,7 +295,7 @@
           const engineOk = !ans.error && ans.draft && !(ans.diagnostics || []).length;
           if (r.t.startsWith("…") || (engineOk ? r.t.startsWith("✓") : r.t.startsWith("✕"))) agree++; else disagree.push(r.id + " drawn " + r.t.slice(0, 1) + " engine " + (engineOk ? "ok" : JSON.stringify(ans.diagnostics || ans.error)));
         }
-        ok(window.__net.some((n) => n.path === "/edits" && n.body.reading === S.id && n.body.edits.some((x) => x.value && x.value.at && String(x.value.at[0]) === src.dataset.start)) && railEls.length > 0, "D1 holding words asks the engine for its places with /edits, and the rail shows places");
+        ok(window.__net.some((n) => n.path === "/edits" && n.body.reading === S.id && n.body.edits.some((x) => x.value && x.value.at && String(x.value.at[0]) === src.dataset.start)) && railEls.length > 0, "D1 holding words asks the engine for its places with /edits, and the rail shows places" + ` (${src.id}; rail ${railEls.map((r) => r.t.slice(0, 1)).join("")}; batches ${window.__net.slice(n0).filter((n) => n.path === "/edits").length})`);
         ok(disagree.length === 0, "D1 every ✓/✕ in the rail equals the engine's /edit answer for that place" + (disagree.length ? ": " + disagree.slice(0, 3).join("; ") : ""));
         ok(railEls.every((r) => r.bottom <= innerHeight), "D2 the rail is in view");
         row.did.push(`D rail ${railEls.length}: agree ${agree}`);

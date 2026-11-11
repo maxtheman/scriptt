@@ -41,7 +41,7 @@ const VERD = new Map();
 function verdicts(bodies) {
   const todo = bodies.filter((b) => { const k = bkey(b), e = DRAFTS.get(k); return !(e && e.done) && !VERD.has(k); });
   if (!todo.length) return;
-  Q.push({ batch: todo, snap: S.base.snapshot, hold: HOLDN });
+  Q.unshift({ batch: todo, snap: S.base.snapshot, hold: HOLDN }); // before previews: the rail needs it at once
   pump();
 }
 function ask(body, front, bg) {
@@ -49,7 +49,11 @@ function ask(body, front, bg) {
   let e = DRAFTS.get(k);
   if (!e) { e = { k, body, done: false, snap: S.base.snapshot, bg: !!bg, hold: HOLDN }; DRAFTS.set(k, e); Q.push(e); }
   if (!bg) e.bg = false;
-  if (front && !e.done && Q[0] !== e) Q = [e, ...Q.filter((x) => x !== e)];
+  if (front && !e.done) { // the state under the pointer (or the key) now: previews queued for earlier ones are dropped
+    Q = Q.filter((x) => { if (x !== e && x.preview && !x.batch) { DRAFTS.delete(x.k); return false; } return x !== e; });
+    e.preview = true;
+    Q.unshift(e);
+  }
   pump();
   return e;
 }
@@ -992,7 +996,7 @@ async function choose(id) {
 window.board = { choose, reload, accept, cancel, undo1, paint, options, layout, peek, verdict, terms: allTerms, world: () => world(),
   ids: () => [...LATEST.keys()], idleQ: () => !BUSY && !Q.length, busy: () => BUSY || Q.length > 0, held: () => HELD || (S.hold && S.hold.th),
   openPiece: (p) => { if (p) openThing({ t: "piece", p: (S.base.pieces || []).find((q) => q.start === p.start) || p }); },
-  openType: (name) => openThing({ t: "type", name }), dbg: () => ({ DRAGGING, LIVE, HELD, DV, Q: Q.length, BUSY }), handleStates };
+  openType: (name) => openThing({ t: "type", name }), dbg: () => ({ DRAGGING, LIVE, HELD, DV, Q: Q.length, BUSY, VERD: VERD.size, stale: S.stale, HOLDN, snap: S.base.snapshot }), handleStates };
 (async function main() {
   await loadAll();
   const want = new URL(location).searchParams.get("r");
