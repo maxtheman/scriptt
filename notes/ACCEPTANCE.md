@@ -80,7 +80,8 @@ on-screen coordinates of the element, `elementsFromPoint` deciding the target), 
 Added, never loosening anything above. How each applicable item is checked (audit id, or the independent review):
 
 - A1/A4/B1 every drag in the audit is trusted Chrome input (CDP `Input.dispatchMouseEvent`) through Dragology's handlers;
-  no probe calls page functions to move things (the page API is used only to wait and to name the reading).
+  no probe calls page functions to move things. The audit reads page state (`S.staged`, `S.hold`, `S.note`) only together
+  with the network log (the same body must have gone to `/edit` or `/edits`), and uses the page API to wait and to pick the reading.
 - A2/A3 targets are taken from what is drawn, re-found by id before each gesture; links are compared with the server's
   `/readings` record of the snapshot the page names (A0, A2, B5, B6, E), never with the page's own copy; the rail's ✓/✕ is
   compared with the engine's `/edit` answer asked by the audit itself (D1).
