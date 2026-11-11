@@ -356,12 +356,13 @@ let RAIL_IDS = new Set();
 function railItems() {
   const held = HELD || (S.hold && S.hold.th);
   if (!held || !held.places) return [];
+  if (held.rail) return held.rail.map((r) => ({ ...r, v: verdict(peek(r.o.body)) })); // frozen for the hold: places never move under the pointer
   const out = [];
   let x = X0;
-  for (const o of held.places.slice().sort((a, b) => (b.open - a.open))) {
+  for (const o of held.places.slice().sort((a, b) => (verdict(peek(b.body)) === "ok") - (verdict(peek(a.body)) === "ok") || (b.open - a.open))) {
     const v = verdict(peek(o.body));
     if (v === "no") continue;
-    const label = `${o.pl.t.function}.${o.pl.path}`, w = tw(label, F.mono) + 26;
+    const label = `${o.pl.t.function}.${o.pl.path}`, w = tw("✓ " + label, F.mono) + 16;
     if (x + w > X0 + TW + 40) break;
     out.push({ id: "rl-" + pkey(o.pl.t, o.pl.path), o, label, x, w, v });
     x += w + 6;
@@ -375,8 +376,9 @@ function spec1(th, d) {
   const start = cur();
   HELD = th; RAIL_IDS = new Set();
   const { out, places } = options(th);
-  th.places = places;
-  RAIL_IDS = new Set(railItems().map((r) => r.id));
+  th.places = places; delete th.rail;
+  th.rail = railItems();
+  RAIL_IDS = new Set(th.rail.map((r) => r.id));
   const segs = (o) => (o.target.startsWith("pc-") ? [...DRAWN.entries()].filter(([, b]) => b.seg && "pc-" + b.start === o.target).map(([id]) => ({ ...o, target: id })) : [o]);
   const opts = [...places.filter((o) => visible(o.target)), ...railItems().map((r) => ({ ...r.o, target: r.id })), ...out.filter((o) => visible(o.target) || RAIL_IDS.has(o.target)).flatMap(segs)];
   const fb = far(th), farState = fb ? stateFor(fb, { pull: true }) : base();
@@ -541,8 +543,8 @@ function draggable({ state: st, d, draggedId }) {
     for (const r of ri) {
       const hit = st.target === r.id || (S.hold && S.hold.opts[S.hold.i] && S.hold.opts[S.hold.i].target === r.id);
       rail.push(h("g", { id: r.id, transform: translate(r.x, y), className: "rail" },
-        h("rect", { width: r.w, height: 28, rx: 5, fill: hit ? C.accBg : r.o.open ? C.card : C.tint, stroke: hit ? C.acc : C.fn, strokeDasharray: r.o.open ? "4 3" : "", strokeWidth: 1.25 }),
-        txt(8, 18, (r.v === "ok" ? "✓ " : "… ") + r.label, F.mono, r.v === "ok" ? C.fn : C.mute)));
+        h("rect", { width: r.w, height: 28, rx: 5, fill: r.v === "no" ? C.noBg : hit ? C.accBg : r.o.open ? C.card : C.tint, stroke: r.v === "no" ? C.no : hit ? C.acc : C.fn, strokeDasharray: r.o.open ? "4 3" : "", strokeWidth: 1.25, opacity: r.v === "no" ? 0.6 : 1 }),
+        txt(8, 18, ({ ok: "✓ ", no: "✕ ", wait: "… " })[r.v] + r.label, F.mono, r.v === "ok" ? C.fn : r.v === "no" ? C.no : C.mute)));
       drawn.set(r.id, { x: r.x, y, w: r.w, h: 28 });
     }
   }
@@ -854,7 +856,7 @@ function openThing(th) {
 // ---------- the keyboard: the same options as the pointer, the same /edit bodies ----------
 function holdOf(th) {
   const { out, places } = options(th);
-  th.places = places;
+  th.places = places; delete th.rail;
   const opts = [...out.filter((o) => !o.self), ...places.slice().sort((a, b) => b.open - a.open)];
   const fb = far(th);
   if (fb) opts.push({ target: null, body: fb, pull: true });

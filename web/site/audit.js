@@ -259,8 +259,10 @@
         const rails = [...document.querySelectorAll("#board [id^=rl-]")].map((g) => g.id.slice(3));
         const held = window.board.held();
         const verdicts = held && held.places ? held.places.map((o) => [o.target.slice(3), window.board.verdict(window.board.peek(o.body))]) : [];
-        ok(rails.length === 0 || rails.every((k) => verdicts.some(([t, v]) => t === k && v !== "no")), "D1 the rail holds only places the engine did not refuse");
-        ok(verdicts.filter(([, v]) => v === "no").every(([t]) => !rails.includes(t)), "D1 refused places are not in the rail");
+        const railEls = [...document.querySelectorAll("#board [id^=rl-]")];
+        const vOf = (k) => (verdicts.find(([t]) => t === k) || [])[1];
+        ok(railEls.every((g) => { const v = vOf(g.id.slice(3)); const t = g.textContent.trim(); return v === "ok" ? t.startsWith("✓") : v === "no" ? t.startsWith("✕") : t.startsWith("…"); }), "D1 each place in the rail carries the engine's verdict (✓ accepted, ✕ refused, … asking)");
+        ok(verdicts.filter(([, v]) => v === "no").every(([t]) => !railEls.some((g) => g.id.slice(3) === t && g.textContent.trim().startsWith("✓"))), "D1 no refused place is marked as accepting");
         const railBox = document.querySelector("#board [id^=rl-]");
         ok(!railBox || (railBox.getBoundingClientRect().bottom <= innerHeight), "D2 the rail is in view");
         row.did.push(`D verdicts ok ${verdicts.filter(([, v]) => v === "ok").length} / no ${verdicts.filter(([, v]) => v === "no").length}; rail ${rails.length}`);
