@@ -1015,7 +1015,7 @@ def read(text: str, world: World, replies: list[str], model: Model, join: bool =
 # ---- Part 3b: a kind for every word ------------------------------------------
 
 KIND = 'In this text, the words "{words}" are part of which kind of thing?'
-"""The wording of the prototype of 10 Nov (tests/live/span-typing). No measurement with the real d1."""
+"""No measurement of this wording with the real d1 yet."""
 
 
 def kinds(world: World) -> dict[str, str]:

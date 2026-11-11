@@ -11,15 +11,9 @@ const $ = (id) => document.getElementById(id);
 // ---------- records ----------
 let LINES = [], LATEST = new Map(), IDX = new Map(), WORLDS = {};
 const S = { id: null, base: null, staged: null, open: null, scroll: 0, pscroll: 0, focus: null, zone: "text", hold: null, undo: [], note: null, more: {} };
-window.S = S;
-const NET = (window.__net = []);
 async function post(path, body) {
-  const t0 = performance.now();
-  let r, j;
-  try { r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); j = await r.json(); }
-  catch (x) { j = { error: String(x) }; }
-  NET.push({ path, body, ms: Math.round(performance.now() - t0), status: r && r.status, diagnostics: j.diagnostics, error: j.error });
-  return j;
+  try { return await (await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json(); }
+  catch (x) { return { error: String(x) }; }
 }
 async function loadAll() {
   const [lines, worlds] = await Promise.all([fetch("/readings").then((r) => r.json()), fetch("/worlds").then((r) => r.json())]);
@@ -418,6 +412,7 @@ function spec1(th, d) {
   const fb = far(th), farState = fb ? stateFor(fb, { pull: true }) : base();
   // the targets are built again once the engine has answered for every place (d.reactTo): refused places stop being targets
   const build = () => {
+    draggable({ state: start, d, draggedId: null }); // DRAWN must be the state the drag starts from: a link opened by the same press reflows the text
     delete th.rail; th.rail = railItems();
     RAIL_IDS = new Set(th.rail.filter((r) => !r.info).map((r) => r.id));
     const segs = (o) => (o.target.startsWith("pc-") ? [...DRAWN.entries()].filter(([, b]) => b.seg && "pc-" + b.start === o.target).map(([id]) => ({ ...o, target: id })) : [o]);
@@ -1064,13 +1059,9 @@ async function choose(id) {
   const u = new URL(location); u.searchParams.set("r", id.slice(0, 8)); history.replaceState(null, "", u);
   pick(); paint();
 }
-window.board = { choose, reload, accept, cancel, undo1, paint, options, layout, peek, verdict, terms: allTerms, world: () => world(),
-  ids: () => [...LATEST.keys()], idleQ: () => !BUSY && !Q.length, busy: () => BUSY || Q.length > 0, held: () => HELD || (S.hold && S.hold.th),
-  openPiece: (p) => { if (p) openThing({ t: "piece", p: (S.base.pieces || []).find((q) => q.start === p.start) || p }); },
-  openType: (name) => openThing({ t: "type", name }), dbg: () => ({ DRAGGING, LIVE, HELD, DV, Q: Q.length, BUSY, VERD: VERD.size, stale: S.stale, HOLDN, snap: S.base.snapshot }), handleStates };
 (async function main() {
   await loadAll();
-  const want = new URL(location).searchParams.get("r");
+  const query = new URL(location).searchParams, want = query.get("r") || query.get("reading"); // ?reading= from the desktop mod
   const ids = [...LATEST.values()].sort((a, b) => !!b.pieces - !!a.pieces || b.text.length - a.text.length);
   const first = (want && ids.find((l) => l.id.startsWith(want))) || ids[0];
   $("pick").onchange = (e) => choose(e.target.value);

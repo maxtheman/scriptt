@@ -44,7 +44,7 @@ LOG = HOME / "hooks.jsonl"
 WORLDS = HOME / "worlds"
 BLOCKS = 2  # the most times that 1 message sends a turn back
 
-# ---- The wordings that scriptt16 asks d1 with. Each was compared with others with the real d1-2b (tests/README.md). ----
+# ---- The wordings that scriptt16 asks d1 with. ----
 WHAT = "What does this text ask the reader to do?"
 ELSE = {"none": "something else that it asks the reader to do or to answer", "nothing": "nothing: it is a remark, a reason, a rule or a greeting"}
 NAMES = lambda name, f: t"The text asks the reader to {f}. Which {name} does the text name for that?"
@@ -438,7 +438,7 @@ def serve(port: int):
     """The page and the engine, on this computer only. Every meaning comes from scriptt16; the server only moves records.
 
     GET  /readings   every snapshot in the store (form 5)        GET /worlds   agree.world_record of each world, by identity
-    GET  /log        hooks.jsonl                                 GET /<file>   the page
+    GET  /log        hooks.jsonl                                 GET /board/   the page (/ redirects there)
     POST /edit       {reading, number, path, value, phrase?} -> {draft, diagnostics}; nothing is saved
                      {reading, path: "kind", at: [start, end], value: a kind} gives those words that kind (scriptt16.retag)
     POST /edits      {reading, edits: [edit, ...], drafts?: true} -> {snapshot, results: [{diagnostics, draft}]}: each edit as /edit
@@ -462,7 +462,13 @@ def serve(port: int):
             self.wfile.write(body)
 
         def do_GET(self):
-            name = self.path.split("?")[0].strip("/") or "index.html"
+            path, _, query = self.path.partition("?")
+            if path == "/":  # the board lives at /board/, here as on scriptt.ai; the mod's ?reading= goes with it
+                self.send_response(302)
+                self.send_header("Location", "/board/" + ("?" + query if query else ""))
+                self.end_headers()
+                return
+            name = {"board": "board/index.html"}.get(path.strip("/"), path.strip("/"))
             data = {"readings": lambda: scriptt16.saved(store()), "log": lambda: lines(LOG),
                     "worlds": lambda: {one.stem: agree.world_record(world(one.stem)) for one in sorted(WORLDS.glob("*.py"))} | {agree.identity(world()): agree.world_record(world())}}
             if name in data:

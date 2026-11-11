@@ -39,9 +39,8 @@ def _():
     here: pathlib.Path = pathlib.Path(__file__).resolve().parent
     sys.path[:0] = [str(here), str(here.parent / "scriptt")]
     import agree
-    import expected
     import scriptt16
-    from test_scriptt16 import Standin
+    from test_scriptt import Scripted
     return
 
 
@@ -68,14 +67,9 @@ def _():
 
 @app.cell
 def _():
-    """THE SPECIMEN AND d1's ANSWERS. The stand-in answers each question by its phrase, operation and path."""
-    text: str = expected.SPECIMEN
-    MOD, SEARCH = expected.MOD, expected.SEARCH
-    answers: dict = expected.script(
-        {"Redesign the mod.": "redesign", "Then show it.": "show", "Test the search too.": "test"},
-        {("Redesign the mod.", "redesign", "surface"): MOD, ("Then show it.", "show", "subject"): expected.Ref(0), ("Test the search too.", "test", "subject"): SEARCH},
-        refers={0: ("redesign", ("the mod",))})
-    d1 = Standin(answers, expected.World("next"))
+    """THE SPECIMEN AND d1's ANSWERS. A scripted stand-in for d1 picks the option whose description says what each sentence asks for."""
+    text: str = "Redesign the mod. Then show it. Test the search too."
+    d1 = Scripted({"Redesign the mod.": {"redesign", "the mod"}, "Then show it.": {"show", "ref:redesign"}, "Test the search too.": {"test", "the search"}})
     reading: scriptt16.Reading = scriptt16.read(text, world, [], d1, join=False)
     json.loads(json.dumps(scriptt16.record(reading)))["phrases"]
     return
