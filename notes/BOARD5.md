@@ -27,9 +27,11 @@ node web/audit-run.mjs --accept --shots web/site/audits/board5/shots 8c7eae08 ff
 
 ## Every drag is a Dragology spec
 
-- Words (grab a link; its kind floats as a chip): `d.closest` over `d.dropTarget`s (each line of every link in view, each place
-  in view, each place in the rail) `.whenFar(unlink)`, `.withFloating({ghost})`. Dropped on words = those words get this kind
-  (adjacent words in the same phrase = the link widens over both); on a place = `/edit {constant, type, at}`; far = `(none)`.
+- Words (grab a link; its kind floats as a translucent chip): `d.reactTo(verdicts known, …)` of `d.closest` over
+  `d.dropTarget`s (the rail's places, the places in view the engine has not refused and the rail does not hide, each line of
+  every link in view) `.whenFar(unlink)`, `.withFloating()`. Dropped on words = those words get this kind (adjacent words in the
+  same phrase = the link widens over both); on a place = `/edit {constant, type, at}` where the type is the words' own kind when
+  it is a type of the world, else the place's declared type (under Maybe/Many/Later, its argument); far = `(none)`.
 - Handles of the open link: `d.closest` over the word boundaries ±12 words; widen = retag the wider span, narrow = the words
   let go become `(none)`.
 - Types, constructed types (`Many/Maybe/Later[T]` on a type page), d1's options, functions: onto words (retag).
@@ -38,9 +40,12 @@ node web/audit-run.mjs --accept --shots web/site/audits/board5/shots 8c7eae08 ff
   place, or far = cleared (`{hole, reason: "cleared"}`).
 - The scroll bar is `d.vary` on the scroll position.
 - A custom modifier, `drafted`, draws the engine's `/edit` draft for whatever state the spec chose, and redraws when the answer
-  arrives; a refused state drops as no change and shows the engine's codes. While a thing is held the rail (bottom of the view)
-  lists the places of the whole reading, frozen for the hold, each with the engine's verdict from one `POST /edits`
-  (`drafts: false`): `✓`, `✕`, `…`. A refusal in the dock names the rule, the place with its declared type, and what was offered.
+  arrives; a refused state drops as no change and shows the engine's codes. When a drag starts, one `POST /edits`
+  (`drafts: false`) asks the engine about every place of the reading and every word the thing could retag. Until it answers the
+  rail shows `… n`; then it lists every place the engine accepts, `✓ fn #id.place : Type`, on rows growing up to half the view,
+  and counts the refused (`✕ n`); places in the text carry ✓/✕ and words a dashed ✓/✕ outline. The targets are rebuilt then
+  (`d.reactTo`), so refused places are not targets. A refusal in the dock names the rule, the place with its declared type,
+  and what was offered.
 - Keyboard: arrows move between links; Enter opens; Space picks up; arrows cycle the same options (each previewed); Enter drops;
   Escape cancels; `]` `[` `{` `}` widen/narrow; Tab switches to the right column; `a` accepts, `z` undoes.
 
@@ -55,6 +60,7 @@ node web/audit-run.mjs --accept --shots web/site/audits/board5/shots 8c7eae08 ff
   `/rerun`, the scroll bar (`d.vary`), pulling a filled place's value away (cleared), a value moved from one place to
   another, the pointer drag of a d1 option, double Accept, a stale snapshot (`⟳`), wheel scrolling of the page column.
 - While a thing is held the view cannot scroll (a Dragology drag holds one state); the rail is the way to reach places
-  out of view, two rows and `+n`.
+  out of view. Beyond half the view of rows it counts `+n` (not reached on the five prompts: at most 22 places).
+- Holes and `ƒ ▢` are drop places, not things to pick up. The key in the header is a key, not a control.
 - Operation chips sit inline after their phrase. Max said "It's not plugs and sockets embedded in text"; NEVER-AGAIN C24
   makes this an open decision for Max.
