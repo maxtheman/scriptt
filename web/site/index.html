@@ -36,7 +36,7 @@
   #dock .was { color:var(--mute); text-decoration:line-through; }
   #dock .now { color:var(--accent); font-weight:600; }
   #dock .no { color:var(--no); font-weight:600; }
-  #dock .sep { color:var(--faint); }
+  #dock .sep { color:var(--mute); }
   #dock .grow { flex:1; }
 </style>
 </head>
@@ -52,7 +52,7 @@
     <span><i style="border-color:var(--fn)"></i>ƒ</span>
     <span><i style="border-color:var(--faint);border-bottom-style:dotted"></i>(none)</span>
     <span><i style="border-color:var(--no);border-bottom-style:dotted"></i>null</span>
-    <span>⇠ at</span><span>↩ ref</span><span>▢ hole</span><span>∅ empty</span><span>⧗ pending</span><span>⏲ deferred</span><span style="color:var(--no)">● complete ✕</span>
+    <span style="color:var(--type)">• T</span><span>⇠ at</span><span>↩ ref</span><span>▢ hole</span><span>∅ empty</span><span>⧗ pending</span><span>⏲ deferred</span><span style="color:var(--no)">● complete ✕</span>
   </span>
 </header>
 <div id="board" tabindex="0" aria-label="message"></div>
