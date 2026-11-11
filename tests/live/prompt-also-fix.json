@@ -1,0 +1,2547 @@
+{
+ "label": "live: the real d1 of .scriptt/config.json",
+ "d1": {
+  "url": "http://127.0.0.1:8765/v1/decide",
+  "key_file": "~/Library/Application Support/CoreAI/clients/world-harness.token",
+  "body": {
+   "model": "d1-2b",
+   "priority": "bulk",
+   "autoload": true
+  },
+  "block": false
+ },
+ "event": {
+  "hook_event_name": "UserPromptSubmit",
+  "session_id": "live",
+  "prompt": "Redesign the mod. Test the search too."
+ },
+ "answer": {
+  "hookSpecificOutput": {
+   "hookEventName": "UserPromptSubmit",
+   "additionalContext": "scriptt: d1 read this message against .scriptt/world.py (reading 0f27cf43). Obligations: 6.\n#0 redesign(surface='the mod') -> Later[Surface]  (pending)   \"Redesign the mod.\"   evidence: a file written\n#1 build(code=...) -> Later[Code]  (pending)   \"Redesign the mod.\"   evidence: a file written\n#2 ?   \"Redesign the mod.\"\n#3 ?   \"Redesign the mod.\"\n#4 test(subject='the search') -> Observed   \"Test the search too.\"   evidence: a command that runs and exits 0\n#5 research(topic=#4) -> Many[Observed]   \"Test the search too.\"   evidence: a command that runs and exits 0\nDeclared in world.py:\n  def redesign(surface: Surface) -> Later[Surface]   change how the page or the interface looks, or how its information is ordered\n  def build(code: Code) -> Later[Code]   write or change code\n  def test(subject: Subject) -> Observed   test or verify that something works\n  def research(topic: Words) -> Many[Observed]   look something up, or find inspiration or sources\n  Surface = 'the page' | 'the site' | 'the website' | 'the ui' | 'the mod' | 'the pane' | 'the visualization'\n  Code = 'the harness' | 'the hook' | 'the search' | 'the world' | 'the tests' | 'the skill' | 'the notebook'\n  Subject = Surface | Code | Path\nOpen holes, each a ... above. Fill each from the conversation, or ask for that 1 thing:\n  #1 build.code: Code, d1 chose none of the candidates\nUnresolved requests, each a ? above: no function of world.py fits (#2 d1 chose none of the candidates, #3 d1 rejected the candidates it was offered and a limit cut the others).\n  For each: say in 1 line what it asks, do it, and propose the function to add to .scriptt/world.py.\nAt the end of the turn each obligation is checked: work by evidence only (the commands you ran, the files you wrote; your words are not evidence of work), an answer or a rule by d1's judgment of your reply."
+  }
+ },
+ "line": {
+  "form": 5,
+  "id": "0f27cf439a524e17a25400e48cc6bf49",
+  "text": "Redesign the mod. Test the search too.",
+  "source": "bb70ebcd32fc7e59",
+  "world": "b193ec94c1e33177",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 18,
+    "brand": "Asked",
+    "starts_by": "the first word",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "constant": "the mod",
+        "type": "Surface",
+        "at": [
+         9,
+         16
+        ]
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": true,
+       "deferred": true,
+       "ready": true
+      }
+     },
+     {
+      "id": "1",
+      "function": "build",
+      "type": "Later[Code]",
+      "parameters": {
+       "code": "Code"
+      },
+      "arguments": {
+       "code": {
+        "hole": "Code",
+        "reason": "rejected"
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": false,
+       "pending": true,
+       "deferred": true,
+       "ready": false
+      }
+     }
+    ],
+    "unresolved": [
+     {
+      "id": "2",
+      "reason": "rejected",
+      "place": 2
+     },
+     {
+      "id": "3",
+      "reason": "bounded",
+      "place": 3
+     }
+    ]
+   },
+   {
+    "start": 18,
+    "end": 38,
+    "brand": "Asked",
+    "starts_by": "after .",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "4",
+      "function": "test",
+      "type": "Observed",
+      "parameters": {
+       "subject": "Subject"
+      },
+      "arguments": {
+       "subject": {
+        "constant": "the search",
+        "type": "Code",
+        "at": [
+         23,
+         33
+        ]
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": false,
+       "deferred": false,
+       "ready": true
+      }
+     },
+     {
+      "id": "5",
+      "function": "research",
+      "type": "Many[Observed]",
+      "parameters": {
+       "topic": "Words"
+      },
+      "arguments": {
+       "topic": {
+        "ref": "4"
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": false,
+       "deferred": false,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": []
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     9,
+     16
+    ]
+   },
+   {
+    "constant": "the search",
+    "type": "Code",
+    "at": [
+     23,
+     33
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.\nTest the search too.",
+    "asked": {
+     "join": {
+      "type": "boolean",
+      "instructions": "Is the second text part of the same request as the first text?"
+     }
+    },
+    "answers": {
+     "join": {
+      "id": "join",
+      "type": "boolean",
+      "value": false,
+      "p_true": 0.4854002389344088,
+      "probabilities": {
+       "false": 0.5145997610655912,
+       "true": 0.4854002389344088
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": 0.4854002389344088
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "explain",
+        "description": "explain or answer something: say why, how or what, or confirm or deny it"
+       },
+       {
+        "id": "research",
+        "description": "look something up, or find inspiration or sources"
+       },
+       {
+        "id": "redesign",
+        "description": "change how the page or the interface looks, or how its information is ordered"
+       },
+       {
+        "id": "build",
+        "description": "write or change code"
+       },
+       {
+        "id": "release",
+        "description": "release, deploy, push, tag, or change a version number"
+       },
+       {
+        "id": "delegate",
+        "description": "have another agent, a sub agent or a new session do part of the work"
+       },
+       {
+        "id": "show",
+        "description": "show or open something so that the user can see it"
+       },
+       {
+        "id": "test",
+        "description": "test or verify that something works"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule about how to work or what to avoid, from now on"
+       },
+       {
+        "id": "save",
+        "description": "save or store data so that it can be found later"
+       },
+       {
+        "id": "propose",
+        "description": "propose an idea and wait for the user's yes or no"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "id": "what",
+      "type": "choice",
+      "value": "redesign",
+      "confidence": 0.7157998578256847,
+      "option_order": [
+       "explain",
+       "research",
+       "redesign",
+       "build",
+       "release",
+       "delegate",
+       "show",
+       "test",
+       "follow",
+       "save",
+       "propose",
+       "(none)",
+       "(nothing)"
+      ],
+      "probabilities": {
+       "explain": 0.00900759774023387,
+       "research": 0.007537576279927907,
+       "redesign": 0.7157998578256847,
+       "build": 0.09051237571971128,
+       "release": 0.005932208173995686,
+       "delegate": 0.014457816167730937,
+       "show": 0.005355741320652174,
+       "test": 0.002743707030973155,
+       "follow": 0.005247352438881397,
+       "save": 0.003884067986550244,
+       "propose": 0.011018794514818903,
+       "(none)": 0.11039885911069416,
+       "(nothing)": 0.018104045690145527
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "redesign"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how the page or the interface looks, or how its information is ordered. Which surface does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "id": "which",
+      "type": "choice",
+      "value": "0",
+      "confidence": 0.8622674122265699,
+      "option_order": [
+       "0",
+       "none"
+      ],
+      "probabilities": {
+       "0": 0.8622674122265699,
+       "none": 0.1377325877734302
+      }
+     }
+    },
+    "function": "redesign",
+    "operation": 0,
+    "path": "surface",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       9,
+       16
+      ]
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the mod",
+     "type": "Surface",
+     "at": [
+      9,
+      16
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how the page or the interface looks, or how its information is ordered. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "explain",
+        "description": "explain or answer something: say why, how or what, or confirm or deny it"
+       },
+       {
+        "id": "research",
+        "description": "look something up, or find inspiration or sources"
+       },
+       {
+        "id": "build",
+        "description": "write or change code"
+       },
+       {
+        "id": "release",
+        "description": "release, deploy, push, tag, or change a version number"
+       },
+       {
+        "id": "delegate",
+        "description": "have another agent, a sub agent or a new session do part of the work"
+       },
+       {
+        "id": "show",
+        "description": "show or open something so that the user can see it"
+       },
+       {
+        "id": "test",
+        "description": "test or verify that something works"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule about how to work or what to avoid, from now on"
+       },
+       {
+        "id": "save",
+        "description": "save or store data so that it can be found later"
+       },
+       {
+        "id": "propose",
+        "description": "propose an idea and wait for the user's yes or no"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "id": "also",
+      "type": "choice",
+      "value": "build",
+      "confidence": 0.33896560422099076,
+      "option_order": [
+       "explain",
+       "research",
+       "build",
+       "release",
+       "delegate",
+       "show",
+       "test",
+       "follow",
+       "save",
+       "propose",
+       "(none)",
+       "(nothing)"
+      ],
+      "probabilities": {
+       "explain": 0.024969120144620088,
+       "research": 0.012642922148687364,
+       "build": 0.33896560422099076,
+       "release": 0.012532624410665138,
+       "delegate": 0.08391166217537457,
+       "show": 0.014126991802437223,
+       "test": 0.005531815695194709,
+       "follow": 0.03926608443024569,
+       "save": 0.004023494503933536,
+       "propose": 0.07229859508310042,
+       "(none)": 0.29290827774023953,
+       "(nothing)": 0.09882280764451103
+      }
+     }
+    },
+    "function": null,
+    "operation": 1,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "build"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to write or change code. Which code does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the harness'"
+       },
+       {
+        "id": "1",
+        "description": "'the hook'"
+       },
+       {
+        "id": "2",
+        "description": "'the search'"
+       },
+       {
+        "id": "3",
+        "description": "'the world'"
+       },
+       {
+        "id": "4",
+        "description": "'the tests'"
+       },
+       {
+        "id": "5",
+        "description": "'the skill'"
+       },
+       {
+        "id": "6",
+        "description": "'the notebook'"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "id": "which",
+      "type": "choice",
+      "value": "none",
+      "confidence": 0.6342019193076519,
+      "option_order": [
+       "0",
+       "1",
+       "2",
+       "3",
+       "4",
+       "5",
+       "6",
+       "none"
+      ],
+      "probabilities": {
+       "0": 0.17440523415855833,
+       "1": 0.05798860471805819,
+       "2": 0.0132666233470162,
+       "3": 0.016758640203577868,
+       "4": 0.023380051606530318,
+       "5": 0.05901379415792897,
+       "6": 0.020985132500678336,
+       "none": 0.6342019193076519
+      }
+     }
+    },
+    "function": "build",
+    "operation": 1,
+    "path": "code",
+    "offered": [
+     {
+      "constant": "the harness",
+      "type": "Code",
+      "at": [
+       -1,
+       -1
+      ]
+     },
+     {
+      "constant": "the hook",
+      "type": "Code",
+      "at": [
+       -1,
+       -1
+      ]
+     },
+     {
+      "constant": "the search",
+      "type": "Code",
+      "at": [
+       -1,
+       -1
+      ]
+     },
+     {
+      "constant": "the world",
+      "type": "Code",
+      "at": [
+       -1,
+       -1
+      ]
+     },
+     {
+      "constant": "the tests",
+      "type": "Code",
+      "at": [
+       -1,
+       -1
+      ]
+     },
+     {
+      "constant": "the skill",
+      "type": "Code",
+      "at": [
+       -1,
+       -1
+      ]
+     },
+     {
+      "constant": "the notebook",
+      "type": "Code",
+      "at": [
+       -1,
+       -1
+      ]
+     }
+    ],
+    "cut": [],
+    "chosen": "none"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how the page or the interface looks, or how its information is ordered; write or change code. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "explain",
+        "description": "explain or answer something: say why, how or what, or confirm or deny it"
+       },
+       {
+        "id": "research",
+        "description": "look something up, or find inspiration or sources"
+       },
+       {
+        "id": "release",
+        "description": "release, deploy, push, tag, or change a version number"
+       },
+       {
+        "id": "delegate",
+        "description": "have another agent, a sub agent or a new session do part of the work"
+       },
+       {
+        "id": "show",
+        "description": "show or open something so that the user can see it"
+       },
+       {
+        "id": "test",
+        "description": "test or verify that something works"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule about how to work or what to avoid, from now on"
+       },
+       {
+        "id": "save",
+        "description": "save or store data so that it can be found later"
+       },
+       {
+        "id": "propose",
+        "description": "propose an idea and wait for the user's yes or no"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "id": "also",
+      "type": "choice",
+      "value": "(none)",
+      "confidence": 0.4072699753045684,
+      "option_order": [
+       "explain",
+       "research",
+       "release",
+       "delegate",
+       "show",
+       "test",
+       "follow",
+       "save",
+       "propose",
+       "(none)",
+       "(nothing)"
+      ],
+      "probabilities": {
+       "explain": 0.020462521950694697,
+       "research": 0.008772028595372048,
+       "release": 0.008772028595372048,
+       "delegate": 0.22576129640776701,
+       "show": 0.011920388494263969,
+       "test": 0.004992102021602797,
+       "follow": 0.06620457573797496,
+       "save": 0.0037714590702344285,
+       "propose": 0.13581070965948738,
+       "(none)": 0.4072699753045684,
+       "(nothing)": 0.10626291416266219
+      }
+     }
+    },
+    "function": null,
+    "operation": 2,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(none)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how the page or the interface looks, or how its information is ordered; write or change code; something else that it asks the reader to do or to answer. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "explain",
+        "description": "explain or answer something: say why, how or what, or confirm or deny it"
+       },
+       {
+        "id": "research",
+        "description": "look something up, or find inspiration or sources"
+       },
+       {
+        "id": "release",
+        "description": "release, deploy, push, tag, or change a version number"
+       },
+       {
+        "id": "delegate",
+        "description": "have another agent, a sub agent or a new session do part of the work"
+       },
+       {
+        "id": "show",
+        "description": "show or open something so that the user can see it"
+       },
+       {
+        "id": "test",
+        "description": "test or verify that something works"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule about how to work or what to avoid, from now on"
+       },
+       {
+        "id": "save",
+        "description": "save or store data so that it can be found later"
+       },
+       {
+        "id": "propose",
+        "description": "propose an idea and wait for the user's yes or no"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "id": "also",
+      "type": "choice",
+      "value": "(none)",
+      "confidence": 0.5230201361200526,
+      "option_order": [
+       "explain",
+       "research",
+       "release",
+       "delegate",
+       "show",
+       "test",
+       "follow",
+       "save",
+       "propose",
+       "(none)",
+       "(nothing)"
+      ],
+      "probabilities": {
+       "explain": 0.017819165862744606,
+       "research": 0.00907545806515029,
+       "release": 0.009593336298503046,
+       "delegate": 0.1744094584913763,
+       "show": 0.013228251357783102,
+       "test": 0.005195040377287342,
+       "follow": 0.05359252580592571,
+       "save": 0.0041245733302655695,
+       "propose": 0.13023330482143117,
+       "(none)": 0.5230201361200526,
+       "(nothing)": 0.05970874946948027
+      }
+     }
+    },
+    "function": null,
+    "operation": 3,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(none)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Test the search too.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "explain",
+        "description": "explain or answer something: say why, how or what, or confirm or deny it"
+       },
+       {
+        "id": "research",
+        "description": "look something up, or find inspiration or sources"
+       },
+       {
+        "id": "redesign",
+        "description": "change how the page or the interface looks, or how its information is ordered"
+       },
+       {
+        "id": "build",
+        "description": "write or change code"
+       },
+       {
+        "id": "release",
+        "description": "release, deploy, push, tag, or change a version number"
+       },
+       {
+        "id": "delegate",
+        "description": "have another agent, a sub agent or a new session do part of the work"
+       },
+       {
+        "id": "show",
+        "description": "show or open something so that the user can see it"
+       },
+       {
+        "id": "test",
+        "description": "test or verify that something works"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule about how to work or what to avoid, from now on"
+       },
+       {
+        "id": "save",
+        "description": "save or store data so that it can be found later"
+       },
+       {
+        "id": "propose",
+        "description": "propose an idea and wait for the user's yes or no"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "id": "what",
+      "type": "choice",
+      "value": "test",
+      "confidence": 0.8661040649777624,
+      "option_order": [
+       "explain",
+       "research",
+       "redesign",
+       "build",
+       "release",
+       "delegate",
+       "show",
+       "test",
+       "follow",
+       "save",
+       "propose",
+       "(none)",
+       "(nothing)"
+      ],
+      "probabilities": {
+       "explain": 0.005632627550890853,
+       "research": 0.04033354253174428,
+       "redesign": 0.0027618620514251895,
+       "build": 0.0019339598631889228,
+       "release": 0.0009036671369611558,
+       "delegate": 0.004645060484404772,
+       "show": 0.00893574632696779,
+       "test": 0.8661040649777624,
+       "follow": 0.0023796304465289247,
+       "save": 0.002317892015335013,
+       "propose": 0.0024217002982944167,
+       "(none)": 0.03297169450577939,
+       "(nothing)": 0.028658551810716908
+      }
+     }
+    },
+    "function": null,
+    "operation": 4,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "test"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Test the search too.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to test or verify that something works. Which subject does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the search'"
+       },
+       {
+        "id": "1",
+        "description": "build(code=...)"
+       },
+       {
+        "id": "2",
+        "description": "redesign(surface='the mod')"
+       },
+       {
+        "id": "3",
+        "description": "'the mod'"
+       },
+       {
+        "id": "4",
+        "description": "redesign(surface=...)"
+       },
+       {
+        "id": "5",
+        "description": "build(code=...)"
+       },
+       {
+        "id": "6",
+        "description": "show(subject=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "id": "which",
+      "type": "choice",
+      "value": "0",
+      "confidence": 0.9722783270391521,
+      "option_order": [
+       "0",
+       "1",
+       "2",
+       "3",
+       "4",
+       "5",
+       "6",
+       "none"
+      ],
+      "probabilities": {
+       "0": 0.9722783270391521,
+       "1": 0.0021333254107087276,
+       "2": 0.0019092151721043509,
+       "3": 0.00285696604396062,
+       "4": 0.0013845929228903703,
+       "5": 0.0008476518497168017,
+       "6": 0.00491860907886858,
+       "none": 0.013671312482598497
+      }
+     }
+    },
+    "function": "test",
+    "operation": 4,
+    "path": "subject",
+    "offered": [
+     {
+      "constant": "the search",
+      "type": "Code",
+      "at": [
+       23,
+       33
+      ]
+     },
+     {
+      "ref": "1"
+     },
+     {
+      "ref": "0"
+     },
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       9,
+       16
+      ]
+     },
+     {
+      "id": null,
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "hole": "Surface",
+        "reason": ""
+       }
+      }
+     },
+     {
+      "id": null,
+      "function": "build",
+      "type": "Later[Code]",
+      "parameters": {
+       "code": "Code"
+      },
+      "arguments": {
+       "code": {
+        "hole": "Code",
+        "reason": ""
+       }
+      }
+     },
+     {
+      "id": null,
+      "function": "show",
+      "type": "Subject",
+      "parameters": {
+       "subject": "Subject"
+      },
+      "arguments": {
+       "subject": {
+        "hole": "Subject",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the search",
+     "type": "Code",
+     "at": [
+      23,
+      33
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Test the search too.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to test or verify that something works. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "explain",
+        "description": "explain or answer something: say why, how or what, or confirm or deny it"
+       },
+       {
+        "id": "research",
+        "description": "look something up, or find inspiration or sources"
+       },
+       {
+        "id": "redesign",
+        "description": "change how the page or the interface looks, or how its information is ordered"
+       },
+       {
+        "id": "build",
+        "description": "write or change code"
+       },
+       {
+        "id": "release",
+        "description": "release, deploy, push, tag, or change a version number"
+       },
+       {
+        "id": "delegate",
+        "description": "have another agent, a sub agent or a new session do part of the work"
+       },
+       {
+        "id": "show",
+        "description": "show or open something so that the user can see it"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule about how to work or what to avoid, from now on"
+       },
+       {
+        "id": "save",
+        "description": "save or store data so that it can be found later"
+       },
+       {
+        "id": "propose",
+        "description": "propose an idea and wait for the user's yes or no"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "id": "also",
+      "type": "choice",
+      "value": "research",
+      "confidence": 0.3669996973471138,
+      "option_order": [
+       "explain",
+       "research",
+       "redesign",
+       "build",
+       "release",
+       "delegate",
+       "show",
+       "follow",
+       "save",
+       "propose",
+       "(none)",
+       "(nothing)"
+      ],
+      "probabilities": {
+       "explain": 0.07234207812724734,
+       "research": 0.3669996973471138,
+       "redesign": 0.008528326593172689,
+       "build": 0.007220387059071494,
+       "release": 0.002062446435486392,
+       "delegate": 0.014094261846045399,
+       "show": 0.06474239347114617,
+       "follow": 0.008115208231906266,
+       "save": 0.006461870492165333,
+       "propose": 0.006221111902610666,
+       "(none)": 0.2939417308711127,
+       "(nothing)": 0.1492704876229217
+      }
+     }
+    },
+    "function": null,
+    "operation": 5,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "research"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Test the search too.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to look something up, or find inspiration or sources. Which topic does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "test(subject='the search')"
+       },
+       {
+        "id": "1",
+        "description": "'Test the search too.'"
+       },
+       {
+        "id": "2",
+        "description": "'Redesign the mod.'"
+       },
+       {
+        "id": "3",
+        "description": "delegate(helper=...)"
+       },
+       {
+        "id": "4",
+        "description": "test(subject=...)"
+       },
+       {
+        "id": "5",
+        "description": "propose(idea=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "id": "which",
+      "type": "choice",
+      "value": "0",
+      "confidence": 0.6113369159469093,
+      "option_order": [
+       "0",
+       "1",
+       "2",
+       "3",
+       "4",
+       "5",
+       "none"
+      ],
+      "probabilities": {
+       "0": 0.6113369159469093,
+       "1": 0.1934192126143013,
+       "2": 0.007967457469648508,
+       "3": 0.011311945930725799,
+       "4": 0.029398839678809952,
+       "5": 0.010332714963910358,
+       "none": 0.13623291339569474
+      }
+     }
+    },
+    "function": "research",
+    "operation": 5,
+    "path": "topic",
+    "offered": [
+     {
+      "ref": "4"
+     },
+     {
+      "constant": "Test the search too.",
+      "type": "Asked",
+      "at": [
+       18,
+       38
+      ]
+     },
+     {
+      "constant": "Redesign the mod.",
+      "type": "Asked",
+      "at": [
+       0,
+       18
+      ]
+     },
+     {
+      "id": null,
+      "function": "delegate",
+      "type": "Later[Written]",
+      "parameters": {
+       "helper": "Words"
+      },
+      "arguments": {
+       "helper": {
+        "hole": "Words",
+        "reason": ""
+       }
+      }
+     },
+     {
+      "id": null,
+      "function": "test",
+      "type": "Observed",
+      "parameters": {
+       "subject": "Subject"
+      },
+      "arguments": {
+       "subject": {
+        "hole": "Subject",
+        "reason": ""
+       }
+      }
+     },
+     {
+      "id": null,
+      "function": "propose",
+      "type": "Later[Asked]",
+      "parameters": {
+       "idea": "Words"
+      },
+      "arguments": {
+       "idea": {
+        "hole": "Words",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "ref": "4"
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Test the search too.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to test or verify that something works; look something up, or find inspiration or sources. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "explain",
+        "description": "explain or answer something: say why, how or what, or confirm or deny it"
+       },
+       {
+        "id": "research",
+        "description": "look something up, or find inspiration or sources"
+       },
+       {
+        "id": "redesign",
+        "description": "change how the page or the interface looks, or how its information is ordered"
+       },
+       {
+        "id": "build",
+        "description": "write or change code"
+       },
+       {
+        "id": "release",
+        "description": "release, deploy, push, tag, or change a version number"
+       },
+       {
+        "id": "delegate",
+        "description": "have another agent, a sub agent or a new session do part of the work"
+       },
+       {
+        "id": "show",
+        "description": "show or open something so that the user can see it"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule about how to work or what to avoid, from now on"
+       },
+       {
+        "id": "save",
+        "description": "save or store data so that it can be found later"
+       },
+       {
+        "id": "propose",
+        "description": "propose an idea and wait for the user's yes or no"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "id": "also",
+      "type": "choice",
+      "value": "research",
+      "confidence": 0.4859970498423227,
+      "option_order": [
+       "explain",
+       "research",
+       "redesign",
+       "build",
+       "release",
+       "delegate",
+       "show",
+       "follow",
+       "save",
+       "propose",
+       "(none)",
+       "(nothing)"
+      ],
+      "probabilities": {
+       "explain": 0.05248704034352498,
+       "research": 0.4859970498423227,
+       "redesign": 0.00633392279115961,
+       "build": 0.006793855076827019,
+       "release": 0.0020069012075628377,
+       "delegate": 0.010225944696036583,
+       "show": 0.03446600956956144,
+       "follow": 0.008532134575072532,
+       "save": 0.004606896712178519,
+       "propose": 0.005393943342977825,
+       "(none)": 0.2906572778027476,
+       "(nothing)": 0.09249902404002834
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "research"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Test the search too.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to look something up, or find inspiration or sources. Which topic does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "test(subject='the search')"
+       },
+       {
+        "id": "1",
+        "description": "'Test the search too.'"
+       },
+       {
+        "id": "2",
+        "description": "'Redesign the mod.'"
+       },
+       {
+        "id": "3",
+        "description": "delegate(helper=...)"
+       },
+       {
+        "id": "4",
+        "description": "test(subject=...)"
+       },
+       {
+        "id": "5",
+        "description": "propose(idea=...)"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "id": "which",
+      "type": "choice",
+      "value": "0",
+      "confidence": 0.6113369159469093,
+      "option_order": [
+       "0",
+       "1",
+       "2",
+       "3",
+       "4",
+       "5",
+       "none"
+      ],
+      "probabilities": {
+       "0": 0.6113369159469093,
+       "1": 0.1934192126143013,
+       "2": 0.007967457469648508,
+       "3": 0.011311945930725799,
+       "4": 0.029398839678809952,
+       "5": 0.010332714963910358,
+       "none": 0.13623291339569474
+      }
+     }
+    },
+    "function": "research",
+    "operation": 6,
+    "path": "topic",
+    "offered": [
+     {
+      "ref": "4"
+     },
+     {
+      "constant": "Test the search too.",
+      "type": "Asked",
+      "at": [
+       18,
+       38
+      ]
+     },
+     {
+      "constant": "Redesign the mod.",
+      "type": "Asked",
+      "at": [
+       0,
+       18
+      ]
+     },
+     {
+      "id": null,
+      "function": "delegate",
+      "type": "Later[Written]",
+      "parameters": {
+       "helper": "Words"
+      },
+      "arguments": {
+       "helper": {
+        "hole": "Words",
+        "reason": ""
+       }
+      }
+     },
+     {
+      "id": null,
+      "function": "test",
+      "type": "Observed",
+      "parameters": {
+       "subject": "Subject"
+      },
+      "arguments": {
+       "subject": {
+        "hole": "Subject",
+        "reason": ""
+       }
+      }
+     },
+     {
+      "id": null,
+      "function": "propose",
+      "type": "Later[Asked]",
+      "parameters": {
+       "idea": "Words"
+      },
+      "arguments": {
+       "idea": {
+        "hole": "Words",
+        "reason": ""
+       }
+      }
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "ref": "4"
+    }
+   }
+  ],
+  "corrections": [],
+  "snapshot": "b5821fe14204413d8cb0c9433f3f47be"
+ },
+ "exchanges": [
+  {
+   "state": "Redesign the mod.\nTest the search too.",
+   "questions": {
+    "join": {
+     "type": "boolean",
+     "instructions": "Is the second text part of the same request as the first text?"
+    }
+   },
+   "answers": {
+    "join": {
+     "id": "join",
+     "type": "boolean",
+     "value": false,
+     "p_true": 0.4854002389344088,
+     "probabilities": {
+      "false": 0.5145997610655912,
+      "true": 0.4854002389344088
+     }
+    }
+   }
+  },
+  {
+   "state": "Redesign the mod.",
+   "questions": {
+    "what": {
+     "type": "choice",
+     "instructions": "What does this text ask the reader to do?",
+     "options": [
+      {
+       "id": "explain",
+       "description": "explain or answer something: say why, how or what, or confirm or deny it"
+      },
+      {
+       "id": "research",
+       "description": "look something up, or find inspiration or sources"
+      },
+      {
+       "id": "redesign",
+       "description": "change how the page or the interface looks, or how its information is ordered"
+      },
+      {
+       "id": "build",
+       "description": "write or change code"
+      },
+      {
+       "id": "release",
+       "description": "release, deploy, push, tag, or change a version number"
+      },
+      {
+       "id": "delegate",
+       "description": "have another agent, a sub agent or a new session do part of the work"
+      },
+      {
+       "id": "show",
+       "description": "show or open something so that the user can see it"
+      },
+      {
+       "id": "test",
+       "description": "test or verify that something works"
+      },
+      {
+       "id": "follow",
+       "description": "follow a rule about how to work or what to avoid, from now on"
+      },
+      {
+       "id": "save",
+       "description": "save or store data so that it can be found later"
+      },
+      {
+       "id": "propose",
+       "description": "propose an idea and wait for the user's yes or no"
+      },
+      {
+       "id": "(none)",
+       "description": "something else that it asks the reader to do or to answer"
+      },
+      {
+       "id": "(nothing)",
+       "description": "nothing: it is a remark, a reason, a rule or a greeting"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "what": {
+     "id": "what",
+     "type": "choice",
+     "value": "redesign",
+     "confidence": 0.7157998578256847,
+     "option_order": [
+      "explain",
+      "research",
+      "redesign",
+      "build",
+      "release",
+      "delegate",
+      "show",
+      "test",
+      "follow",
+      "save",
+      "propose",
+      "(none)",
+      "(nothing)"
+     ],
+     "probabilities": {
+      "explain": 0.00900759774023387,
+      "research": 0.007537576279927907,
+      "redesign": 0.7157998578256847,
+      "build": 0.09051237571971128,
+      "release": 0.005932208173995686,
+      "delegate": 0.014457816167730937,
+      "show": 0.005355741320652174,
+      "test": 0.002743707030973155,
+      "follow": 0.005247352438881397,
+      "save": 0.003884067986550244,
+      "propose": 0.011018794514818903,
+      "(none)": 0.11039885911069416,
+      "(nothing)": 0.018104045690145527
+     }
+    }
+   }
+  },
+  {
+   "state": "Redesign the mod.",
+   "questions": {
+    "which": {
+     "type": "choice",
+     "instructions": "The text asks the reader to change how the page or the interface looks, or how its information is ordered. Which surface does the text name for that?",
+     "options": [
+      {
+       "id": "0",
+       "description": "'the mod'"
+      },
+      {
+       "id": "none",
+       "description": "the text names none of these"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "which": {
+     "id": "which",
+     "type": "choice",
+     "value": "0",
+     "confidence": 0.8622674122265699,
+     "option_order": [
+      "0",
+      "none"
+     ],
+     "probabilities": {
+      "0": 0.8622674122265699,
+      "none": 0.1377325877734302
+     }
+    }
+   }
+  },
+  {
+   "state": "Redesign the mod.",
+   "questions": {
+    "also": {
+     "type": "choice",
+     "instructions": "The text asks the reader to change how the page or the interface looks, or how its information is ordered. Does it also ask the reader to do something else?",
+     "options": [
+      {
+       "id": "explain",
+       "description": "explain or answer something: say why, how or what, or confirm or deny it"
+      },
+      {
+       "id": "research",
+       "description": "look something up, or find inspiration or sources"
+      },
+      {
+       "id": "build",
+       "description": "write or change code"
+      },
+      {
+       "id": "release",
+       "description": "release, deploy, push, tag, or change a version number"
+      },
+      {
+       "id": "delegate",
+       "description": "have another agent, a sub agent or a new session do part of the work"
+      },
+      {
+       "id": "show",
+       "description": "show or open something so that the user can see it"
+      },
+      {
+       "id": "test",
+       "description": "test or verify that something works"
+      },
+      {
+       "id": "follow",
+       "description": "follow a rule about how to work or what to avoid, from now on"
+      },
+      {
+       "id": "save",
+       "description": "save or store data so that it can be found later"
+      },
+      {
+       "id": "propose",
+       "description": "propose an idea and wait for the user's yes or no"
+      },
+      {
+       "id": "(none)",
+       "description": "something else that it asks the reader to do or to answer"
+      },
+      {
+       "id": "(nothing)",
+       "description": "nothing: it is a remark, a reason, a rule or a greeting"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "also": {
+     "id": "also",
+     "type": "choice",
+     "value": "build",
+     "confidence": 0.33896560422099076,
+     "option_order": [
+      "explain",
+      "research",
+      "build",
+      "release",
+      "delegate",
+      "show",
+      "test",
+      "follow",
+      "save",
+      "propose",
+      "(none)",
+      "(nothing)"
+     ],
+     "probabilities": {
+      "explain": 0.024969120144620088,
+      "research": 0.012642922148687364,
+      "build": 0.33896560422099076,
+      "release": 0.012532624410665138,
+      "delegate": 0.08391166217537457,
+      "show": 0.014126991802437223,
+      "test": 0.005531815695194709,
+      "follow": 0.03926608443024569,
+      "save": 0.004023494503933536,
+      "propose": 0.07229859508310042,
+      "(none)": 0.29290827774023953,
+      "(nothing)": 0.09882280764451103
+     }
+    }
+   }
+  },
+  {
+   "state": "Redesign the mod.",
+   "questions": {
+    "which": {
+     "type": "choice",
+     "instructions": "The text asks the reader to write or change code. Which code does the text name for that?",
+     "options": [
+      {
+       "id": "0",
+       "description": "'the harness'"
+      },
+      {
+       "id": "1",
+       "description": "'the hook'"
+      },
+      {
+       "id": "2",
+       "description": "'the search'"
+      },
+      {
+       "id": "3",
+       "description": "'the world'"
+      },
+      {
+       "id": "4",
+       "description": "'the tests'"
+      },
+      {
+       "id": "5",
+       "description": "'the skill'"
+      },
+      {
+       "id": "6",
+       "description": "'the notebook'"
+      },
+      {
+       "id": "none",
+       "description": "the text names none of these"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "which": {
+     "id": "which",
+     "type": "choice",
+     "value": "none",
+     "confidence": 0.6342019193076519,
+     "option_order": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "none"
+     ],
+     "probabilities": {
+      "0": 0.17440523415855833,
+      "1": 0.05798860471805819,
+      "2": 0.0132666233470162,
+      "3": 0.016758640203577868,
+      "4": 0.023380051606530318,
+      "5": 0.05901379415792897,
+      "6": 0.020985132500678336,
+      "none": 0.6342019193076519
+     }
+    }
+   }
+  },
+  {
+   "state": "Redesign the mod.",
+   "questions": {
+    "also": {
+     "type": "choice",
+     "instructions": "The text asks the reader to change how the page or the interface looks, or how its information is ordered; write or change code. Does it also ask the reader to do something else?",
+     "options": [
+      {
+       "id": "explain",
+       "description": "explain or answer something: say why, how or what, or confirm or deny it"
+      },
+      {
+       "id": "research",
+       "description": "look something up, or find inspiration or sources"
+      },
+      {
+       "id": "release",
+       "description": "release, deploy, push, tag, or change a version number"
+      },
+      {
+       "id": "delegate",
+       "description": "have another agent, a sub agent or a new session do part of the work"
+      },
+      {
+       "id": "show",
+       "description": "show or open something so that the user can see it"
+      },
+      {
+       "id": "test",
+       "description": "test or verify that something works"
+      },
+      {
+       "id": "follow",
+       "description": "follow a rule about how to work or what to avoid, from now on"
+      },
+      {
+       "id": "save",
+       "description": "save or store data so that it can be found later"
+      },
+      {
+       "id": "propose",
+       "description": "propose an idea and wait for the user's yes or no"
+      },
+      {
+       "id": "(none)",
+       "description": "something else that it asks the reader to do or to answer"
+      },
+      {
+       "id": "(nothing)",
+       "description": "nothing: it is a remark, a reason, a rule or a greeting"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "also": {
+     "id": "also",
+     "type": "choice",
+     "value": "(none)",
+     "confidence": 0.4072699753045684,
+     "option_order": [
+      "explain",
+      "research",
+      "release",
+      "delegate",
+      "show",
+      "test",
+      "follow",
+      "save",
+      "propose",
+      "(none)",
+      "(nothing)"
+     ],
+     "probabilities": {
+      "explain": 0.020462521950694697,
+      "research": 0.008772028595372048,
+      "release": 0.008772028595372048,
+      "delegate": 0.22576129640776701,
+      "show": 0.011920388494263969,
+      "test": 0.004992102021602797,
+      "follow": 0.06620457573797496,
+      "save": 0.0037714590702344285,
+      "propose": 0.13581070965948738,
+      "(none)": 0.4072699753045684,
+      "(nothing)": 0.10626291416266219
+     }
+    }
+   }
+  },
+  {
+   "state": "Redesign the mod.",
+   "questions": {
+    "also": {
+     "type": "choice",
+     "instructions": "The text asks the reader to change how the page or the interface looks, or how its information is ordered; write or change code; something else that it asks the reader to do or to answer. Does it also ask the reader to do something else?",
+     "options": [
+      {
+       "id": "explain",
+       "description": "explain or answer something: say why, how or what, or confirm or deny it"
+      },
+      {
+       "id": "research",
+       "description": "look something up, or find inspiration or sources"
+      },
+      {
+       "id": "release",
+       "description": "release, deploy, push, tag, or change a version number"
+      },
+      {
+       "id": "delegate",
+       "description": "have another agent, a sub agent or a new session do part of the work"
+      },
+      {
+       "id": "show",
+       "description": "show or open something so that the user can see it"
+      },
+      {
+       "id": "test",
+       "description": "test or verify that something works"
+      },
+      {
+       "id": "follow",
+       "description": "follow a rule about how to work or what to avoid, from now on"
+      },
+      {
+       "id": "save",
+       "description": "save or store data so that it can be found later"
+      },
+      {
+       "id": "propose",
+       "description": "propose an idea and wait for the user's yes or no"
+      },
+      {
+       "id": "(none)",
+       "description": "something else that it asks the reader to do or to answer"
+      },
+      {
+       "id": "(nothing)",
+       "description": "nothing: it is a remark, a reason, a rule or a greeting"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "also": {
+     "id": "also",
+     "type": "choice",
+     "value": "(none)",
+     "confidence": 0.5230201361200526,
+     "option_order": [
+      "explain",
+      "research",
+      "release",
+      "delegate",
+      "show",
+      "test",
+      "follow",
+      "save",
+      "propose",
+      "(none)",
+      "(nothing)"
+     ],
+     "probabilities": {
+      "explain": 0.017819165862744606,
+      "research": 0.00907545806515029,
+      "release": 0.009593336298503046,
+      "delegate": 0.1744094584913763,
+      "show": 0.013228251357783102,
+      "test": 0.005195040377287342,
+      "follow": 0.05359252580592571,
+      "save": 0.0041245733302655695,
+      "propose": 0.13023330482143117,
+      "(none)": 0.5230201361200526,
+      "(nothing)": 0.05970874946948027
+     }
+    }
+   }
+  },
+  {
+   "state": "Test the search too.",
+   "questions": {
+    "what": {
+     "type": "choice",
+     "instructions": "What does this text ask the reader to do?",
+     "options": [
+      {
+       "id": "explain",
+       "description": "explain or answer something: say why, how or what, or confirm or deny it"
+      },
+      {
+       "id": "research",
+       "description": "look something up, or find inspiration or sources"
+      },
+      {
+       "id": "redesign",
+       "description": "change how the page or the interface looks, or how its information is ordered"
+      },
+      {
+       "id": "build",
+       "description": "write or change code"
+      },
+      {
+       "id": "release",
+       "description": "release, deploy, push, tag, or change a version number"
+      },
+      {
+       "id": "delegate",
+       "description": "have another agent, a sub agent or a new session do part of the work"
+      },
+      {
+       "id": "show",
+       "description": "show or open something so that the user can see it"
+      },
+      {
+       "id": "test",
+       "description": "test or verify that something works"
+      },
+      {
+       "id": "follow",
+       "description": "follow a rule about how to work or what to avoid, from now on"
+      },
+      {
+       "id": "save",
+       "description": "save or store data so that it can be found later"
+      },
+      {
+       "id": "propose",
+       "description": "propose an idea and wait for the user's yes or no"
+      },
+      {
+       "id": "(none)",
+       "description": "something else that it asks the reader to do or to answer"
+      },
+      {
+       "id": "(nothing)",
+       "description": "nothing: it is a remark, a reason, a rule or a greeting"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "what": {
+     "id": "what",
+     "type": "choice",
+     "value": "test",
+     "confidence": 0.8661040649777624,
+     "option_order": [
+      "explain",
+      "research",
+      "redesign",
+      "build",
+      "release",
+      "delegate",
+      "show",
+      "test",
+      "follow",
+      "save",
+      "propose",
+      "(none)",
+      "(nothing)"
+     ],
+     "probabilities": {
+      "explain": 0.005632627550890853,
+      "research": 0.04033354253174428,
+      "redesign": 0.0027618620514251895,
+      "build": 0.0019339598631889228,
+      "release": 0.0009036671369611558,
+      "delegate": 0.004645060484404772,
+      "show": 0.00893574632696779,
+      "test": 0.8661040649777624,
+      "follow": 0.0023796304465289247,
+      "save": 0.002317892015335013,
+      "propose": 0.0024217002982944167,
+      "(none)": 0.03297169450577939,
+      "(nothing)": 0.028658551810716908
+     }
+    }
+   }
+  },
+  {
+   "state": "Test the search too.",
+   "questions": {
+    "which": {
+     "type": "choice",
+     "instructions": "The text asks the reader to test or verify that something works. Which subject does the text name for that?",
+     "options": [
+      {
+       "id": "0",
+       "description": "'the search'"
+      },
+      {
+       "id": "1",
+       "description": "build(code=...)"
+      },
+      {
+       "id": "2",
+       "description": "redesign(surface='the mod')"
+      },
+      {
+       "id": "3",
+       "description": "'the mod'"
+      },
+      {
+       "id": "4",
+       "description": "redesign(surface=...)"
+      },
+      {
+       "id": "5",
+       "description": "build(code=...)"
+      },
+      {
+       "id": "6",
+       "description": "show(subject=...)"
+      },
+      {
+       "id": "none",
+       "description": "the text names none of these"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "which": {
+     "id": "which",
+     "type": "choice",
+     "value": "0",
+     "confidence": 0.9722783270391521,
+     "option_order": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "none"
+     ],
+     "probabilities": {
+      "0": 0.9722783270391521,
+      "1": 0.0021333254107087276,
+      "2": 0.0019092151721043509,
+      "3": 0.00285696604396062,
+      "4": 0.0013845929228903703,
+      "5": 0.0008476518497168017,
+      "6": 0.00491860907886858,
+      "none": 0.013671312482598497
+     }
+    }
+   }
+  },
+  {
+   "state": "Test the search too.",
+   "questions": {
+    "also": {
+     "type": "choice",
+     "instructions": "The text asks the reader to test or verify that something works. Does it also ask the reader to do something else?",
+     "options": [
+      {
+       "id": "explain",
+       "description": "explain or answer something: say why, how or what, or confirm or deny it"
+      },
+      {
+       "id": "research",
+       "description": "look something up, or find inspiration or sources"
+      },
+      {
+       "id": "redesign",
+       "description": "change how the page or the interface looks, or how its information is ordered"
+      },
+      {
+       "id": "build",
+       "description": "write or change code"
+      },
+      {
+       "id": "release",
+       "description": "release, deploy, push, tag, or change a version number"
+      },
+      {
+       "id": "delegate",
+       "description": "have another agent, a sub agent or a new session do part of the work"
+      },
+      {
+       "id": "show",
+       "description": "show or open something so that the user can see it"
+      },
+      {
+       "id": "follow",
+       "description": "follow a rule about how to work or what to avoid, from now on"
+      },
+      {
+       "id": "save",
+       "description": "save or store data so that it can be found later"
+      },
+      {
+       "id": "propose",
+       "description": "propose an idea and wait for the user's yes or no"
+      },
+      {
+       "id": "(none)",
+       "description": "something else that it asks the reader to do or to answer"
+      },
+      {
+       "id": "(nothing)",
+       "description": "nothing: it is a remark, a reason, a rule or a greeting"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "also": {
+     "id": "also",
+     "type": "choice",
+     "value": "research",
+     "confidence": 0.3669996973471138,
+     "option_order": [
+      "explain",
+      "research",
+      "redesign",
+      "build",
+      "release",
+      "delegate",
+      "show",
+      "follow",
+      "save",
+      "propose",
+      "(none)",
+      "(nothing)"
+     ],
+     "probabilities": {
+      "explain": 0.07234207812724734,
+      "research": 0.3669996973471138,
+      "redesign": 0.008528326593172689,
+      "build": 0.007220387059071494,
+      "release": 0.002062446435486392,
+      "delegate": 0.014094261846045399,
+      "show": 0.06474239347114617,
+      "follow": 0.008115208231906266,
+      "save": 0.006461870492165333,
+      "propose": 0.006221111902610666,
+      "(none)": 0.2939417308711127,
+      "(nothing)": 0.1492704876229217
+     }
+    }
+   }
+  },
+  {
+   "state": "Test the search too.",
+   "questions": {
+    "which": {
+     "type": "choice",
+     "instructions": "The text asks the reader to look something up, or find inspiration or sources. Which topic does the text name for that?",
+     "options": [
+      {
+       "id": "0",
+       "description": "test(subject='the search')"
+      },
+      {
+       "id": "1",
+       "description": "'Test the search too.'"
+      },
+      {
+       "id": "2",
+       "description": "'Redesign the mod.'"
+      },
+      {
+       "id": "3",
+       "description": "delegate(helper=...)"
+      },
+      {
+       "id": "4",
+       "description": "test(subject=...)"
+      },
+      {
+       "id": "5",
+       "description": "propose(idea=...)"
+      },
+      {
+       "id": "none",
+       "description": "the text names none of these"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "which": {
+     "id": "which",
+     "type": "choice",
+     "value": "0",
+     "confidence": 0.6113369159469093,
+     "option_order": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "none"
+     ],
+     "probabilities": {
+      "0": 0.6113369159469093,
+      "1": 0.1934192126143013,
+      "2": 0.007967457469648508,
+      "3": 0.011311945930725799,
+      "4": 0.029398839678809952,
+      "5": 0.010332714963910358,
+      "none": 0.13623291339569474
+     }
+    }
+   }
+  },
+  {
+   "state": "Test the search too.",
+   "questions": {
+    "also": {
+     "type": "choice",
+     "instructions": "The text asks the reader to test or verify that something works; look something up, or find inspiration or sources. Does it also ask the reader to do something else?",
+     "options": [
+      {
+       "id": "explain",
+       "description": "explain or answer something: say why, how or what, or confirm or deny it"
+      },
+      {
+       "id": "research",
+       "description": "look something up, or find inspiration or sources"
+      },
+      {
+       "id": "redesign",
+       "description": "change how the page or the interface looks, or how its information is ordered"
+      },
+      {
+       "id": "build",
+       "description": "write or change code"
+      },
+      {
+       "id": "release",
+       "description": "release, deploy, push, tag, or change a version number"
+      },
+      {
+       "id": "delegate",
+       "description": "have another agent, a sub agent or a new session do part of the work"
+      },
+      {
+       "id": "show",
+       "description": "show or open something so that the user can see it"
+      },
+      {
+       "id": "follow",
+       "description": "follow a rule about how to work or what to avoid, from now on"
+      },
+      {
+       "id": "save",
+       "description": "save or store data so that it can be found later"
+      },
+      {
+       "id": "propose",
+       "description": "propose an idea and wait for the user's yes or no"
+      },
+      {
+       "id": "(none)",
+       "description": "something else that it asks the reader to do or to answer"
+      },
+      {
+       "id": "(nothing)",
+       "description": "nothing: it is a remark, a reason, a rule or a greeting"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "also": {
+     "id": "also",
+     "type": "choice",
+     "value": "research",
+     "confidence": 0.4859970498423227,
+     "option_order": [
+      "explain",
+      "research",
+      "redesign",
+      "build",
+      "release",
+      "delegate",
+      "show",
+      "follow",
+      "save",
+      "propose",
+      "(none)",
+      "(nothing)"
+     ],
+     "probabilities": {
+      "explain": 0.05248704034352498,
+      "research": 0.4859970498423227,
+      "redesign": 0.00633392279115961,
+      "build": 0.006793855076827019,
+      "release": 0.0020069012075628377,
+      "delegate": 0.010225944696036583,
+      "show": 0.03446600956956144,
+      "follow": 0.008532134575072532,
+      "save": 0.004606896712178519,
+      "propose": 0.005393943342977825,
+      "(none)": 0.2906572778027476,
+      "(nothing)": 0.09249902404002834
+     }
+    }
+   }
+  },
+  {
+   "state": "Test the search too.",
+   "questions": {
+    "which": {
+     "type": "choice",
+     "instructions": "The text asks the reader to look something up, or find inspiration or sources. Which topic does the text name for that?",
+     "options": [
+      {
+       "id": "0",
+       "description": "test(subject='the search')"
+      },
+      {
+       "id": "1",
+       "description": "'Test the search too.'"
+      },
+      {
+       "id": "2",
+       "description": "'Redesign the mod.'"
+      },
+      {
+       "id": "3",
+       "description": "delegate(helper=...)"
+      },
+      {
+       "id": "4",
+       "description": "test(subject=...)"
+      },
+      {
+       "id": "5",
+       "description": "propose(idea=...)"
+      },
+      {
+       "id": "none",
+       "description": "the text names none of these"
+      }
+     ]
+    }
+   },
+   "answers": {
+    "which": {
+     "id": "which",
+     "type": "choice",
+     "value": "0",
+     "confidence": 0.6113369159469093,
+     "option_order": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "none"
+     ],
+     "probabilities": {
+      "0": 0.6113369159469093,
+      "1": 0.1934192126143013,
+      "2": 0.007967457469648508,
+      "3": 0.011311945930725799,
+      "4": 0.029398839678809952,
+      "5": 0.010332714963910358,
+      "none": 0.13623291339569474
+     }
+    }
+   }
+  }
+ ]
+}
