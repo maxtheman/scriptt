@@ -74,5 +74,18 @@ Output of each run is stored in `web/site/audits/vNN-run.txt` next to the build.
 - J01 For 16 readings chosen to cover each kind (specimen, conjunction, shared result, record, several, maybe, through result, many of records, unresolved hole, given, unknown, empty list, reshape, chain, whole many, bounded), for every movable piece (value, operation, function, parameter label), up to 3 accepted and 2 refused targets: a real drag held over an accepted target shows the same reading that the drop commits; a drop on an accepted target changes the reading (except a place dragged onto itself); a drop on a refused target changes nothing, previews nothing, and has a reason of more than 5 characters. At least 100 drags.
 - J02 No script error or unhandled rejection occurs during the whole run.
 
+## K. The ten questions about one word (added after Max asked for them with click counts, before v12 was audited; adds items, loosens none)
+Word: "the mod" in the specimen. One click on the word opens its card. Each of K01..K09 is answered by that single click (the probe counts clicks); K10 by two. Answers must come from the record and the world, compared with the engine files where the engine has the number.
+- K01 What is it tagged as: the type as a link, and its kind.
+- K02 Which operation and argument place use it: both as links.
+- K03 Whether that operation is ready / waiting / deferred, as the engine's flags say.
+- K04 What the model was asked and answered about it: the probability of the chosen option and of the alternative, equal to the record's `answers`.
+- K05 What else is in its type: the members are drawn in the world graph (all of them) with no further click.
+- K06 Which functions take it: exactly the functions whose declared parameters contain its type (computed independently from worlds.json).
+- K07 Where it can go and why: the places that accept it, each with its reason.
+- K08 What it could be retagged as: the types with a member of these words, or the statement that only its own type has them (half: engine data has no word in two types).
+- K09 How to extend or shrink what it covers: each option checked against the world's members and refused with the reason when the words are not a member (half: engine data has no longer member).
+- K10 How a word that is not yet a value becomes one: add it to a type (a labelled world draft), 2 clicks; then it is a value that a real drag binds into a place.
+
 ## Scoring
-Each lettered item counts one: 45 items (A4 B2 C7 D6 E6 F7 G3 H5 I3 J2). The denominator is stated on each run. A criterion passes only when its whole sentence is verified by the probe; a probe covering part of a sentence is recorded as partial (0.5) and says which part is missing. The independent review of the probes (a sub-agent that read the specs, the criteria and audit.js) is stored in web/site/audits/ with each run; its verdicts, not the probes' own PASS lines, give the honest score.
+Each lettered item counts one: 55 items (A4 B2 C7 D6 E6 F7 G3 H5 I3 J2 K10). The denominator is stated on each run. A criterion passes only when its whole sentence is verified by the probe; a probe covering part of a sentence is recorded as partial (0.5) and says which part is missing. The independent review of the probes (a sub-agent that read the specs, the criteria and audit.js) is stored in web/site/audits/ with each run; its verdicts, not the probes' own PASS lines, give the honest score.

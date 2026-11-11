@@ -308,6 +308,27 @@ window.AUDIT = async function () {
       }
     }
     P("J01", drags > 100 && bad.length === 0, `${drags} real drags (${okN} to accepted targets, ${noN} to refused) over ${cases.length} readings: the preview equals the drop, refusals change nothing and say why; failures: ${bad.slice(0, 6).join(" | ") || "none"} (${bad.length})`); }
+  // ---- K the ten questions about one word, and the clicks it takes to answer each (criteria K01..K10 in ACCEPTANCE-V11.md)
+  try { await pick(iSpec); await revert(); let clicks = 0; const w = wor[eng[iSpec].world];
+    clicks++; await click(byK("u-9")); const card = $("sel"), txt = card.textContent.replace(/\s+/g, " "), r0 = eng[iSpec];
+    const occ = (t, n) => nameOf(t) === n || (t.constructor === "Many" || t.constructor === "Maybe" || t.constructor === "Later" ? occ(t.of, n) : t.sum ? t.alternatives.some((a) => !a.member && occ(a, n)) : false);
+    const dec = r0.decisions.find((d) => d.function === "redesign" && d.path === "surface"), pTop = Math.round(dec.answers.which.probabilities["0"] * 100), pNone = Math.round(dec.answers.which.probabilities.none * 100);
+    const row = (label) => [...card.querySelectorAll(".row")].find((e) => e.querySelector(".k")?.textContent === label);
+    const expectFns = Object.keys(w.functions).filter((f) => w.functions[f].parameters.some(([, t]) => occ(t, "Surface"))).sort(), gotFns = [...(row("taken by")?.querySelectorAll("[data-go]") ?? [])].map((a) => a.dataset.go.slice(3)).sort();
+    const spans = [...card.querySelectorAll("details")].find((d) => d.querySelector("summary")?.textContent === "span");
+    const K = { 1: !!card.querySelector('[data-go="ty-Surface"]') && /Surface\s*\*/.test(txt), 2: !!card.querySelector('[data-go="pl-0-surface"]') && !!card.querySelector('[data-go="op-0"]'), 3: /ready · later/.test(txt) && r0.phrases[0].terms[0].judgments.ready && r0.phrases[0].terms[0].judgments.deferred,
+      4: txt.includes(`${pTop} 0`) && txt.includes(`${pNone} none`) && /offered 1/.test(txt), 5: $$("#board [data-role=member]").length === w.types.Surface.alternatives.length, 6: JSON.stringify(gotFns) === JSON.stringify(expectFns) && gotFns.length > 0,
+      7: $$("#sel .chip.ok").length >= 3 && /Surface is accepted|Surface is accepted by|accepted by/.test(txt), 8: /only Surface has/.test(txt), 9: !!spans && [...spans.querySelectorAll(".chip.no")].length >= 3 && /is not a member of/.test(spans.textContent) };
+    // 10: a word that is not yet a value ("too.") becomes one by adding it to a type: 2 clicks; then it binds by a real drag
+    const tooEl = $$("#board [data-role=word]").find((e) => e.dataset.text === "too."); let k10 = false, k10note = "no word";
+    if (tooEl) { let c2 = 0; c2++; await click(tooEl); const btn = [...$("sel").querySelectorAll("button[data-act]")].find((b) => /member of Code/.test(b.parentElement.textContent)); if (btn) { c2++; btn.click(); await sleep(600);
+        const mem = $$("#board [data-role=member]").map((e) => e.textContent), isVal = $$("#board [data-role=value]").some((e) => e.dataset.text === "too.");
+        await press(byK(`u-${tooEl.dataset.k.slice(2)}`), byK("pl-2-subject")); const bound = placeText("pl-2-subject");
+        k10 = c2 <= 2 && mem.some((t) => /too\./.test(t) && /≈/.test(t)) && isVal && /too\./.test(bound); k10note = `clicks ${c2}; member shown ≈ ${mem.some((t) => /≈/.test(t))}; now a value ${isVal}; bound by drag: "${bound}"`; } else k10note = "no add button"; }
+    K[10] = k10;
+    for (let q = 1; q <= 10; q++) P(`K${String(q).padStart(2, "0")}`, !!K[q] && (q === 10 || clicks === 1), `question ${q}: answered by ${q === 10 ? "2" : clicks} click(s), ${K[q] ? "answer shown" : "answer MISSING"}${q === 10 ? " — " + k10note : ""}${q === 8 ? " (data has no word in two types: the retag action itself cannot be exercised on engine data)" : ""}${q === 9 ? " (engine data has no member that makes a longer span valid: only refusals are exercised)" : ""}`, q === 8 || q === 9);
+  } catch (e) { P("K01", false, "the K block crashed: " + e.message); }
+  await revert();
   P("J02", (window.__errs ?? []).length === 0, `script errors during the whole run: ${(window.__errs ?? []).length} ${(window.__errs ?? []).slice(0, 3).join(" | ")}`);
   await revert();
   const line = `SCORE ${scoreN}/${scoreD} (viewport ${innerWidth}px, ${N} readings, ${Object.keys(wor).length} worlds)`;

@@ -1,0 +1,10 @@
+Run 1 of audit.js on the first v11 build (1280x900 pane, built-in browser, real PointerEvents). Raw output, not edited.
+PASS A01 PASS A02 PASS A03 PASS A04 PASS B01 PASS B02 PASS C01 PASS C02 PASS C03 PASS C04 PASS C05 PASS C06 PASS C07
+PASS D01 PASS D02 PASS D03 PASS D04 PASS D05(see run note) PASS D06 PASS E01 PASS E02 PASS E03 PASS E04 FAIL E05 PASS E06
+PASS F01 PASS F02 PASS F03 FAIL F04 PASS F05 PASS F06 PASS F07 FAIL G01 PASS G02 HALF G03 PASS H01 PASS H02 PASS H03 PASS H04 PASS H05 PASS I01 PASS I02 PASS I03
+FAIL E05 followed 2 links, Back 7 times, back at "the mod"   (navigation history was not reset by a click on the board)
+FAIL F04 hover show.subject lights ; hover "the mod" lights    (after any click, HELD stayed set, so hover did nothing: a real bug)
+FAIL G01 stepped 9 decisions ...; a step lights u-0,u-9,u-16  (probe indexed the wrong decision; the page lit the phrase)
+HALF G03 (reload half not run)
+SCORE 39.5/43 (viewport 1280px, 52 readings, 9 worlds)
+Known weakness found afterwards: D05 expected set was computed by direct name mention only; holding Surface lights only redesign although show and test take Surface through Subject (inconsistent with D04).
