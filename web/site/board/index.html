@@ -37,6 +37,8 @@
   #board { position:absolute; top:40px; left:0; right:0; bottom:56px; overflow:hidden; }
   #board svg { display:block; touch-action:none; user-select:none; -webkit-user-select:none; }
   #board svg :focus, #board:focus, #board:focus-visible { outline:none; }
+  body[data-drag="hold"], body[data-drag="hold"] * { cursor:grabbing !important; }
+  body[data-drag="resize"], body[data-drag="resize"] * { cursor:ew-resize !important; }
   #dock { position:absolute; left:0; right:0; bottom:0; height:56px; border-top:1px solid var(--rule); background:var(--card);
           display:flex; gap:10px; align-items:center; padding:0 16px; font:13px var(--code); overflow-x:auto; white-space:nowrap; }
   #dock .was { color:var(--mute); text-decoration:line-through; }
@@ -59,7 +61,7 @@
   <span><i style="border-color:var(--fn)"></i>ƒ function</span><span><i style="border-color:var(--faint);border-bottom-style:dotted"></i>(none)</span>
   <span><i style="border-color:var(--no);border-bottom-style:dotted"></i>null</span><span>• T  d1's top choice</span>
   <span>⇠ at</span><span>↩ ref</span><span>▢ hole</span><span>∅ empty</span><span>⧗ pending</span><span>⏲ deferred</span>
-  <span>✓ ✕ engine</span><span>⊂ brand</span><span>| sum</span><span>∋ members</span><span>⟷ relations</span><span>✎ corrections</span><span>⟳ newer</span><span>⊘ not built</span>
+  <span>✓ ✕ engine</span><span>⊂ brand</span><span>| sum</span><span>∋ members</span><span>⟷ relations</span><span>✎ corrections</span><span>⟳ newer</span><span>⌕ where it applies</span>
 </div>
 <div id="board" tabindex="0" aria-label="message"></div>
 <div id="dock" role="status" aria-live="polite"></div>

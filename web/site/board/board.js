@@ -345,7 +345,9 @@ function options(th) {
       places = placeOptions((pl) => wordsValue(p, pl));
       break;
     }
-    case "type": onPieces((q) => (q.kind === th.name ? null : th.name)); break;
+    case "type": onPieces((q) => (q.kind === th.name ? null : th.name));
+      if (parseT(th.name) && parseT(th.name).con === "Maybe") places = placeOptions((pl) => (pl.declared === th.name ? { empty: th.name } : undefined)); // Maybe[T] into a Maybe[T] place: the deliberate absence
+      break;
     case "con": onPieces((q) => (cat(q.kind) === "type" ? `${th.con}[${q.kind}]` : null)); break;
     case "opt": onPieces((q) => (q.kind === th.kind ? null : th.kind)); break;
     case "fn": {
@@ -452,6 +454,32 @@ function handleSpec(p, side, d) {
   return d.closest(st).with(drafted());
 }
 
+// ---------- the open page as a filter: which links and operations of the message it applies to ----------
+const named = (s, name) => !!s && new RegExp(`(^|[^\\w])${name.replace(/[^\w]/g, "\\$&")}([^\\w]|$)`).test(s); // a type name inside a type expression
+function focusOf() {
+  const o = S.open;
+  if (!o) return null;
+  let tgt = o.t === "piece" ? o.p.kind : o.t === "type" || o.t === "fn" ? o.name : o.t === "place" ? o.pl.declared : o.t === "op" ? o.term.function : null;
+  if (!tgt || tgt === "(none)") return null;
+  if (o.t === "type" && parseT(tgt) && parseT(tgt).arg === "*") return null; // a constructor page: nothing in the text is "Later[*]"
+  const pieces = new Set(), ops = new Set();
+  if (isFn(tgt)) {
+    for (const p of S.base.pieces || []) if (p.kind === tgt) pieces.add(p.start);
+    for (const { t } of allTerms(S.base)) if (t.function === tgt) ops.add(t.id);
+  } else {
+    const base = inner(tgt);
+    for (const p of S.base.pieces || []) if (p.kind && named(p.kind, base)) pieces.add(p.start);
+    for (const { t } of allTerms(S.base)) if (named(t.type, base) || Object.values(t.parameters || {}).some((d) => named(d, base))) ops.add(t.id);
+  }
+  return { tgt, pieces, ops };
+}
+function jumpTo(id, line) { // a jump: the line two below the top of the view, the link or operation in focus
+  const L = layout(S.base);
+  S.scroll = Math.max(0, Math.min(Math.max(0, L.lines.length - visLines()), line - 2));
+  S.focus = id;
+  paint();
+}
+
 // ---------- drawing ----------
 // Dragology blends a state into the next one (springs, d.between). Children are paired by dragologyKey, so each child gets a key
 // that changes whenever something that cannot be blended changes (its type, font, dash, text): a retagged word's label fades
@@ -496,6 +524,8 @@ function draggable({ state: st, d, draggedId, setState }) {
   const drawn = new Map(), foc = [];
   const changed = st.change ? new Set((rec.pieces || []).filter((p) => !(S.base.pieces || []).some((b) => b.start === p.start && b.end === p.end && b.kind === p.kind)).map((p) => p.start)) : new Set();
   const openP = S.open && S.open.t === "piece" ? S.open.p : null;
+  const FX = focusOf(); // the open page, as a filter on the text
+  const lit = (p) => !FX || (p && FX.pieces.has(p.start));
   const bg = [], words = [], links = [], ops = [], over = [];
   // the words, once, in reading order
   const segs = new Map();
@@ -504,7 +534,7 @@ function draggable({ state: st, d, draggedId, setState }) {
     for (const it of line.items) {
       if (it.k === "w") {
         if (it.st) bg.push(h("rect", { dragologyKey: "p" + it.s, transform: translate(X0 + it.x - 3, y + 12), width: it.w + 6 + 4, height: 26, fill: C.paste }));
-        words.push(txt(X0 + it.x, y + 31, it.str, it.f, C.ink, { dragologyKey: "w" + it.s, "data-s": it.s, "data-e": it.e, className: "w" })); // a word is paired with itself across states, never with another
+        words.push(txt(X0 + it.x, y + 31, it.str, it.f, lit(it.piece) ? C.ink : C.faint, { dragologyKey: "w" + it.s, "data-s": it.s, "data-e": it.e, className: "w" })); // a word is paired with itself across states, never with another
         if (it.piece) { const k = it.piece.start; const a = segs.get(k) || { p: it.piece, parts: [] }; const lp = a.parts[a.parts.length - 1]; if (lp && lp.li === li) lp.x1 = X0 + it.x + it.w; else a.parts.push({ li, y, x0: X0 + it.x, x1: X0 + it.x + it.w }); segs.set(k, a); }
       }
     }
@@ -532,7 +562,8 @@ function draggable({ state: st, d, draggedId, setState }) {
     if (isOpen) for (const s of a.parts) kids.push(h("rect", { transform: translate(s.x0 - 3, s.y + 1), width: s.x1 - s.x0 + 6, height: 40, rx: 4, fill: "none", stroke: col, strokeWidth: 1.5 }));
     const th = { t: "piece", p };
     kids.unshift(h("title", null, `${label} | ${clip(rec.text.slice(p.start, p.end))}`));
-    links.push(h("g", { id, "data-kind": label, "data-start": p.start, "data-end": p.end, role: "link", "data-label": label, className: "pc", dragologyZIndex: draggedId === id ? "/1" : false,
+    if (FX && lit(p)) for (const s of a.parts) bg.push(h("rect", { dragologyKey: `f${p.start}-${s.li}`, transform: translate(s.x0 - 3, s.y + 12), width: s.x1 - s.x0 + 6, height: 26, rx: 3, fill: colorOf(p.kind), opacity: 0.18 }));
+    links.push(h("g", { id, "data-kind": label, "data-start": p.start, "data-end": p.end, "data-lit": FX ? (lit(p) ? "1" : "0") : "", opacity: lit(p) ? 1 : 0.35, role: "link", "data-label": label, className: "pc", dragologyZIndex: draggedId === id ? "/1" : false,
       dragologyOnDrag: () => spec(th, d), onClick: () => openThing(th) }, ...kids));
     drawn.set(id, { piece: p, x: s0.x0, y: s0.y, w: s0.x1 - s0.x0, h: 40 });
     foc.push({ id, th, zone: "text", x: s0.x0, li: s0.li });
@@ -551,7 +582,7 @@ function draggable({ state: st, d, draggedId, setState }) {
       for (let li = first; li <= last && !it; li++) for (const x of L.lines[li].items) if (x.k === "w" && (side === "s" ? x.s === at : x.e === at)) { it = x; li0 = li; break; }
       if (!it) continue;
       const hx = X0 + it.x + (side === "e" ? it.w + 2 : -4), id = "hd-" + side;
-      over.push(h("g", { id, transform: translate(hx, Y(li0) + 6), role: "slider", "data-label": side === "s" ? "start" : "end", dragologyOnDrag: () => handleSpec(hp, side, d) },
+      over.push(h("g", { id, transform: translate(hx, Y(li0) + 6), role: "slider", "data-label": side === "s" ? "start" : "end", style: { cursor: "ew-resize" }, dragologyOnDrag: () => handleSpec(hp, side, d) }, // widening or narrowing a link: a resize cursor
         h("rect", { transform: translate(-5, 0), width: 12, height: 36, fill: "transparent" }), h("rect", { width: 2.5, height: 34, rx: 1, fill: C.acc }), h("circle", { transform: translate(1.25, side === "s" ? 0 : 34), r: 3.5, fill: C.acc })));
       drawn.set(id, { x: hx, y: Y(li0), w: 4, h: 36 });
     }
@@ -600,6 +631,22 @@ function draggable({ state: st, d, draggedId, setState }) {
         h("rect", { width: r.w, height: 28, rx: 5, fill: r.info ? "none" : r.v === "no" ? C.noBg : hit ? C.accBg : r.o && r.o.open ? C.card : C.tint, stroke: r.info ? C.rule : r.v === "no" ? C.no : hit ? C.acc : C.fn, strokeDasharray: r.o && r.o.open ? "4 3" : "", strokeWidth: 1.25 }),
         txt(8, 18, glyph + r.label, F.mono, r.v === "ok" ? C.fn : r.v === "no" ? C.no : C.mute)));
       drawn.set(r.id, { x: r.x, y: r.y, w: r.w, h: 28 });
+    }
+  }
+  // a staged change: ✓ and ✕ on the thing itself, after the changed link, place or operation (the dock has them too)
+  if (st.staged && !draggedId) {
+    const b = st.change;
+    let at = null;
+    if (b.path === "kind") { for (const [k, a] of segs) if (changed.has(+k)) { const lp = a.parts[a.parts.length - 1]; if (!at || lp.y > at.y || (lp.y === at.y && lp.x1 > at.x)) at = { x: lp.x1 + 6, y: lp.y + 12 }; } }
+    else if (b.number != null) { const bx = drawn.get("pl-" + b.number + "-" + b.path.replace(/\./g, "_")); if (bx) at = { x: bx.x + bx.w + 4, y: bx.y - 3 }; }
+    else { const fresh = allTerms(rec).find((x) => !allTerms(S.base).some((y) => y.t.id === x.t.id)), bx = fresh && drawn.get("op-" + fresh.t.id); if (bx) at = { x: bx.x + bx.w + 4, y: bx.y }; }
+    if (at) {
+      const okv = verdict(S.staged.e) === "ok";
+      const btn = (id, x, glyph, col, fn, name) => h("g", { id, transform: translate(x, at.y), role: "button", className: "stage", style: { cursor: "pointer" }, onClick: (ev) => { ev.stopPropagation(); fn(); } },
+        h("title", null, name), h("rect", { width: 24, height: 24, rx: 12, fill: C.card, stroke: col, strokeWidth: 1.5 }), txt(6.5, 17, glyph, F.monoB, col));
+      if (okv) over.push(btn("stage-ok", at.x, "✓", C.fn, accept, "✓ a"));
+      over.push(btn("stage-no", at.x + (okv ? 28 : 0), "✕", C.no, cancel, "✕ esc"));
+      drawn.set("stage-ok", { x: at.x, y: at.y, w: 24, h: 24 });
     }
   }
   // the keyboard's target
@@ -651,7 +698,8 @@ function drawOp(c, x, y, rec, d, draggedId, drawn, foc, li) {
   }
   drawn.set(id, { x, y: y + 14, w: c.w, h: 26, t });
   foc.push({ id, th: { t: "op", term: t }, zone: "text", x, li });
-  return h("g", { id, transform: translate(x, y + 14), className: "op", role: "button", "data-label": t.function, "data-op": t.id, dragologyOnDrag: () => spec({ t: "op", term: t }, d), dragologyZIndex: draggedId === id ? "/1" : false, onClick: () => openThing({ t: "op", term: t }) }, ...kids);
+  const F0 = focusOf(), litOp = !F0 || F0.ops.has(t.id);
+  return h("g", { id, transform: translate(x, y + 14), className: "op", role: "button", "data-label": t.function, "data-op": t.id, "data-lit": F0 ? (litOp ? "1" : "0") : "", opacity: litOp ? 1 : 0.35, dragologyOnDrag: () => spec({ t: "op", term: t }, d), dragologyZIndex: draggedId === id ? "/1" : false, onClick: () => openThing({ t: "op", term: t }) }, ...kids);
 }
 
 // ---------- the page of a thing (the right column): its world page and its d1 data ----------
@@ -662,10 +710,10 @@ function drawPage(st, d, draggedId, drawn, foc) {
   const chipEl = (id, x, label, col, bgc, th, opts = {}) => {
     const cw = tw(label, opts.f || F.mono) + 14;
     const g = h("g", { id, transform: translate(x, y), role: "button", "data-label": label, className: "chip", dragologyZIndex: draggedId === id ? "/1" : false, opacity: draggedId === id ? 0.6 : 1,
-      ...(opts.drag !== false && th && th.t !== "none" ? { dragologyOnDrag: () => spec(th, d) } : {}), onClick: () => opts.open ? openThing(opts.open) : th && openThing(th) },
-      h("rect", { width: cw, height: 22, rx: 4, fill: bgc || C.card, stroke: col, strokeWidth: 1, strokeDasharray: opts.dash ? "3 2" : "" }), txt(7, 15, label, opts.f || F.mono, col));
+      ...(opts.drag !== false && th && th.t !== "none" ? { dragologyOnDrag: () => spec(th, d) } : { style: { cursor: "pointer" } }), onClick: () => opts.go ? opts.go() : opts.open ? openThing(opts.open) : th && openThing(th) },
+      h("rect", { width: cw, height: 22, rx: opts.fill ? 11 : 4, fill: opts.fill ? col : bgc || C.card, stroke: col, strokeWidth: 1, strokeDasharray: opts.dash ? "3 2" : "" }), txt(7, 15, label, opts.f || F.mono, opts.fill ? C.bg : col));
     drawn.set(id, { x, y, w: cw, h: 22 });
-    foc.push({ id, th: opts.open || th, drag: th, zone: "page", x, li: y });
+    foc.push({ id, th: opts.open || th, drag: th, zone: "page", x, li: y, act: opts.go });
     els.push(g);
     return cw;
   };
@@ -689,6 +737,17 @@ function drawPage(st, d, draggedId, drawn, foc) {
     if (isFn(target)) drawFnPage(target, head, row, para, typeChip);
     else drawTypePage(target, head, row, para, typeChip);
   } else if (target === "(none)") head("(none)", C.mute);
+  // where it applies in the message: every link and operation, each a jump (the same set the text is filtered by)
+  { const fx = focusOf();
+    if (fx && (fx.pieces.size || fx.ops.size)) {
+      const L = layout(S.base), lineOf = (s0) => { const w0 = L.words.find((w) => w.s >= s0); return w0 ? w0.line : 0; };
+      head(`⌕ ${fx.pieces.size + fx.ops.size}`, C.mute);
+      const items = [];
+      for (const p of (S.base.pieces || []).filter((q) => fx.pieces.has(q.start))) { const li = lineOf(p.start); items.push([`pg-j-${p.start}`, `¶${li + 1} ${clip(S.base.text.slice(p.start, p.end)).slice(0, 26)}`, colorOf(p.kind), C.card, null, { drag: false, go: () => jumpTo("pc-" + p.start, li) }]); }
+      for (const { t } of allTerms(S.base).filter((x) => fx.ops.has(x.t.id))) { const c = L.ops.find((x) => x.t && x.t.id === t.id), li = c ? c.line : 0; items.push([`pg-j-op-${t.id}`, `¶${li + 1} ƒ ${t.function} #${t.id}`, C.fn, C.fnBg, null, { drag: false, go: () => jumpTo("op-" + t.id, li) }]); }
+      row(items);
+    }
+  }
   // the d1 data for what is open
   if (o.t === "piece") {
     head(`share ${o.p.share == null ? "—" : o.p.share.toFixed(2)} · sure ${o.p.sure} · by ${o.p.by}`, C.mute);
@@ -728,7 +787,6 @@ function drawPage(st, d, draggedId, drawn, foc) {
     }
   }
   // world editing is not built in the engine: its place, marked
-  els.push(h("g", { id: "pg-edit", transform: translate(x0, y + 4), "data-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.mute)));
   return els;
   function drawTypePage(name, head, row, para, typeChip) {
     const ty = world().types[name], pc = parseT(name);
@@ -781,9 +839,11 @@ function drawPage(st, d, draggedId, drawn, foc) {
     const f = world().functions[name];
     head(`ƒ ${name}(${f.parameters.map(([p, t]) => p + ": " + tname(t)).join(", ")}) → ${tname(f.result)}`, C.fn);
     para(f.asks, C.mute);
-    row([...f.parameters.map(([, t]) => typeChip(tname(t), "pg-p")), typeChip(tname(f.result), "pg-r")]);
-    const uses = allTerms(S.base).filter((x) => x.t.function === name);
-    if (uses.length) row(uses.map(({ t }) => [`pg-u-${t.id}`, `#${t.id}`, C.fn, C.card, { t: "op", term: t }, { open: { t: "op", term: t } }]));
+    // takes: each parameter, named, outlined; returns: the result, filled, after an arrow
+    head("takes", C.mute);
+    row(f.parameters.map(([p, t]) => { const c = typeChip(tname(t), "pg-p"); c[1] = `${p} : ${tname(t)}`; return c; }));
+    head("returns", C.mute);
+    { const r = tname(f.result), c = typeChip(r, "pg-r"); c[1] = `→ ${r}`; c[3] = colorOf(r); c[5] = { ...c[5], fill: true }; row([c]); }
   }
 }
 function termLabel(t) { // a term as the record writes it, in the page's notation
@@ -866,10 +926,11 @@ function heldType(v) { // the type of what was offered, from the request itself 
   if (!v) return "∅";
   if (v.ref != null) { const t = allTerms(S.base).find((x) => x.t.id === String(v.ref)); return t ? `↩ ${t.t.function} : ${t.t.type}` : "↩ " + v.ref; }
   if (v.hole) return "▢ " + v.hole;
+  if (v.empty) return "∅ " + v.empty;
   return `${v.at && v.at[0] >= 0 ? "“" + clip(v.constant) + "”" : v.constant} : ${v.type}`;
 }
 const clip = (s) => { s = s.replace(/\s+/g, " "); return s.length > 36 ? s.slice(0, 34) + "…" : s; };
-const valLabel = (v) => (v == null ? "∅" : v.ref != null ? "↩ " + ((allTerms(S.base).find((x) => x.t.id === String(v.ref)) || { t: { function: v.ref } }).t.function) : v.hole ? "▢ " + v.reason : v.constant != null ? (v.at && v.at[0] >= 0 ? "“" + clip(v.constant) + "”" : v.constant) : "?");
+const valLabel = (v) => (v == null ? "∅" : v.ref != null ? "↩ " + ((allTerms(S.base).find((x) => x.t.id === String(v.ref)) || { t: { function: v.ref } }).t.function) : v.hole ? "▢ " + v.reason : v.empty ? "∅ " + v.empty : v.constant != null ? (v.at && v.at[0] >= 0 ? "“" + clip(v.constant) + "”" : v.constant) : "?");
 function paintDock(st) {
   const dock = $("dock"), parts = [];
   const sp = (cls, s) => `<span class="${cls}">${esc(s)}</span>`;
@@ -1018,7 +1079,7 @@ document.addEventListener("keydown", (k) => {
   const f = FOC.find((x) => x.id === S.focus);
   if (!f) return;
   if (key === "Enter") { if (f.act) f.act(); else openThing(f.th); return k.preventDefault(); }
-  if (key === " ") { const th = f.drag || f.th; if (th.t === "place" || th.t === "un") return k.preventDefault(); S.hold = holdOf(th); paint(); return k.preventDefault(); }
+  if (key === " ") { const th = f.drag || f.th; if (!th) return k.preventDefault(); if (th.t === "place" || th.t === "un") return k.preventDefault(); S.hold = holdOf(th); paint(); return k.preventDefault(); }
 });
 $("board").addEventListener("wheel", (w) => { // scrolling the view, not moving a thing
   if (DRAGGING || !S.base) return;
@@ -1056,6 +1117,7 @@ function paint() {
 function status(st) {
   const was = DRAGGING || PENDING, wasD = DRAGGING;
   DRAGGING = st.type === "dragging"; PENDING = !!st.pendingDrag;
+  document.body.dataset.drag = DRAGGING ? (HELD && HELD.t === "handle" ? "resize" : "hold") : ""; // the cursor while dragging
   if (DRAGGING && !wasD && HELD && HELD.places) verdicts([...HELD.places, ...(HELD.retags || [])].map((o) => o.body));
   if (DRAGGING && !wasD) S.note = null; // a new drag clears the last refusal // the engine's verdict for every place, in one request
   if (!DRAGGING && !st.pendingDrag && HELD) { HELD = null; RAIL_IDS = new Set(); LIVE = null; setTimeout(paint, 0); }
