@@ -1,765 +1,898 @@
 "use strict";
-// Board 4. The message is the object. Every place (an open hole or a filled one) is a decision d1 made, and the user revisits it by
-// dropping a value into it: words from the message, a member of the world, or another operation's result. The page computes no fit,
-// validity or readiness: every drop is previewed by POST /edit and saved by POST /accept; it shows what the engine answered.
-const $ = (s, r = document) => r.querySelector(s);
-const el = (tag, props = {}, ...kids) => {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(props)) {
-    if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
-    else if (v === true) e.setAttribute(k, "");
-    else if (v !== false && v != null) e.setAttribute(k, v);
-  }
-  e.append(...kids.flat().filter(x => x != null && x !== false));
+// Board 5. The message is one wiki page over the world: every piece of `pieces` is a piped link to its kind, every operation is a
+// function span over its phrase with its places inside it. Every drag is a Dragology drag spec over candidate states; each
+// candidate state is an engine request (/edit), and the state drawn under the pointer is the engine's draft for it (the `drafted`
+// modifier below). Nothing here decides what fits: the engine's diagnostics do.
+const DG = window.Dragology;
+const { React, createRoot, DraggableRenderer, translate } = DG;
+const h = React.createElement;
+const $ = (id) => document.getElementById(id);
+
+// ---------- records ----------
+let LINES = [], LATEST = new Map(), IDX = new Map(), WORLDS = {};
+const S = { id: null, base: null, staged: null, open: null, scroll: 0, pscroll: 0, focus: null, zone: "text", hold: null, undo: [], note: null, more: {} };
+window.S = S;
+const NET = (window.__net = []);
+async function post(path, body) {
+  const t0 = performance.now();
+  let r, j;
+  try { r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); j = await r.json(); }
+  catch (x) { j = { error: String(x) }; }
+  NET.push({ path, body, ms: Math.round(performance.now() - t0), status: r && r.status, diagnostics: j.diagnostics, error: j.error });
+  return j;
+}
+async function loadAll() {
+  const [lines, worlds] = await Promise.all([fetch("/readings").then((r) => r.json()), fetch("/worlds").then((r) => r.json())]);
+  LINES = lines; WORLDS = worlds; LATEST = new Map(); IDX = new Map();
+  lines.forEach((l, i) => { LATEST.set(l.id, l); IDX.set(l.snapshot, i + 1); });
+}
+
+// ---------- the engine queue: one request at a time (the server is single threaded), the one under the pointer first ----------
+const DRAFTS = new Map();
+let Q = [], BUSY = false, DV = 0, DRAGGING = false, HELD = null;
+const bkey = (b) => S.base.snapshot + "|" + JSON.stringify(b);
+function ask(body, front) {
+  const k = bkey(body);
+  let e = DRAFTS.get(k);
+  if (!e) { e = { k, body, done: false, snap: S.base.snapshot }; DRAFTS.set(k, e); Q.push(e); }
+  if (front && !e.done && Q[0] !== e) Q = [e, ...Q.filter((x) => x !== e)];
+  pump();
   return e;
-};
-window.__net = [];
-const api = async (path, body) => {
-  window.__net.push({ path, body });
-  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  return r.json();
-};
-const FIXTURE = "stand-in fixture score";
+}
+async function pump() {
+  if (BUSY) return;
+  BUSY = true;
+  while (Q.length) {
+    const e = Q.shift();
+    if (e.snap !== S.base.snapshot) { DRAFTS.delete(e.k); continue; }
+    const r = await post("/edit", { reading: S.id, ...e.body });
+    Object.assign(e, { draft: r.draft || null, diag: r.diagnostics || [], error: r.error || null, done: true });
+    DV++;
+    if (!DRAGGING) paint();
+  }
+  BUSY = false;
+}
+const verdict = (e) => (!e || !e.done ? "wait" : e.error || (e.diag && e.diag.length) || !e.draft ? "no" : "ok");
+const peek = (body) => DRAFTS.get(bkey(body));
+const codes = (e) => (e.error ? [e.error.split(":")[0]] : (e.diag || []).map((d) => d.filter((x) => x != null).join(" · ")));
 
-const S = { lines: [], worlds: {}, log: [], id: null, base: null, pending: null, sel: null, span: null, anchor: null, focusEnd: null, held: null, hover: null, refused: null, note: "", rerun: null, cursor: 0 };
-window.__S = S;
-
-// ---- the engine's records ----
-const latest = id => S.lines.filter(l => l.id === id).at(-1);
-const snapshotsOf = id => S.lines.map((l, i) => ({ l, n: i + 1 })).filter(x => x.l.id === id);
-const terms = r => r.phrases.flatMap(p => p.terms);
-const termById = (r, id) => terms(r).find(t => String(t.id) === String(id));
-const phraseOf = (r, id) => r.phrases.find(p => p.terms.some(t => String(t.id) === String(id)));
-const world = () => S.worlds[S.base.world] || { types: {}, constructors: {}, functions: {} };
-const view = () => (S.pending && okay(S.pending) && S.pending.draft) || S.base;
-const leaves = (v, path) => v.fields ? Object.entries(v.fields).flatMap(([k, x]) => leaves(x, path + "." + k)) : [{ path, value: v }];
-const places = t => Object.entries(t.arguments).flatMap(([k, v]) => leaves(v, k));
-const constantsIn = v => v.constant !== undefined ? [v] : v.several ? v.several.flatMap(constantsIn) : v.fields ? Object.values(v.fields).flatMap(constantsIn) : [];
-const declared = (op, path) => (op.parameters || {})[path.split(".")[0]] || "";
-const pkey = (id, path) => `p:${id}:${path}`;
-const say = (v, r) => v.constant !== undefined ? `“${v.constant}”` : v.ref !== undefined ? `the result of ${(termById(r, v.ref) || {}).function || "#" + v.ref}`
-  : v.hole ? `open (${REASON[v.reason] ? REASON[v.reason].short : v.reason})` : v.empty ? `absent (${v.empty})` : v.several ? "[" + v.several.map(x => say(x, r)).join(", ") + "]"
-  : v.fields ? "{" + Object.entries(v.fields).map(([k, x]) => `${k}: ${say(x, r)}`).join(", ") + "}" : JSON.stringify(v);
-const REASON = {
-  rejected: { short: "declined", long: "d1 looked at the candidates and declined every one" },
-  "no candidate": { short: "nothing fits", long: "nothing in the message was a candidate for this place" },
-  bounded: { short: "search stopped", long: "the search stopped at its bound before a candidate was chosen" },
-  "invalid answer": { short: "bad answer", long: "d1's answer could not be read" },
-  cleared: { short: "cleared", long: "you cleared this place" },
-};
-const reasonLong = x => x;
-const readyWord = t => { const j = t.judgments || {}; return !j.valid ? "invalid" : !j.complete ? "incomplete" : j.ready ? "ready" : j.pending ? "waits" : ""; };
-const correctionAt = (r, id, path) => r.corrections.find(c => String(c.operation) === String(id) && c.path === path);
-const trim = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
-const brandAt = (r, pos) => (r.phrases.find(p => p.start <= pos && pos < p.end) || {}).brand || "Asked";
-
-async function load() {
-  const [lines, worlds, log] = await Promise.all(["/readings", "/worlds", "/log"].map(u => fetch(u).then(x => x.json())));
-  Object.assign(S, { lines, worlds, log });
-  if (!S.id) { const want = new URLSearchParams(location.search).get("r"); S.id = (want && lines.find(l => l.id.startsWith(want)) || lines.at(-1)).id; }
-  S.base = latest(S.id);
-  const ids = [...new Set(lines.map(l => l.id))], pick = $("#pick");
-  pick.hidden = ids.length < 2;
-  pick.replaceChildren(...ids.sort((a, b) => latest(b).text.length - latest(a).text.length).map(i => el("option", { value: i, selected: i === S.id }, `${latest(i).text.length} chars · ${openPlaces(latest(i)).length} open · ${trim(latest(i).text.replace(/\s+/g, " "), 40)}`)));
+// ---------- the world ----------
+const world = () => WORLDS[S.base.world] || Object.values(WORLDS)[0];
+function tname(t) {
+  if (!t) return "?";
+  if (t.constructor && typeof t.constructor === "string") return `${t.constructor}[${tname(t.of)}]`;
+  if (t.sum) return t.sum;
+  if (t.brand) return t.brand;
+  if (t.product) return t.product;
+  if (t.base) return t.base;
+  if (t.member) return t.member;
+  return "?";
+}
+const parseT = (n) => { const m = /^(\w+)\[(.+)\]$/.exec(n || ""); return m ? { con: m[1], arg: m[2] } : null; };
+const isFn = (k) => !!(k && world().functions[k]);
+const cat = (k) => (k == null ? "null" : k === "(none)" ? "none" : isFn(k) ? "fn" : parseT(k) ? "con" : "type");
+const inner = (n) => { let p = parseT(n); while (p) { n = p.arg; p = parseT(n); } return n; };
+const mentions = (t, name) => !!t && (tname(t) === name || mentions(t.of, name) || (t.alternatives || []).some((a) => !a.member && mentions(a, name)));
+function members(t) { return (t.alternatives || []).flatMap((a) => (a.member ? [{ type: t.sum, ...a }] : members(a))); }
+// d1 was given each type's docstring as the description of its option: the page shows it from there.
+function docOf(name) {
+  for (const d of S.base.decisions) if (d.path === "kind") for (const q of Object.values(d.asked || {})) for (const o of q.options || []) if (o.id === name) return o.description;
+  return null;
 }
 
-// ---- world declarations (shown, never used to decide fit; the engine decides) ----
-function membersOf(name, seen = new Set()) {
-  if (seen.has(name)) return []; seen.add(name);
-  const w = world(), m = /^(\w+)\[(.+)\]$/.exec(name);
-  if (m) return membersOf(m[2], seen);
-  const t = w.types[name];
-  if (!t || !t.sum) return [];
-  return t.alternatives.flatMap(a => a.member ? [{ member: a.member, words: a.words, sum: name }] : a.sum ? membersOf(a.sum, seen) : []);
-}
-const memberValue = m => ({ constant: m.words, type: m.sum, at: [-1, -1] });
-const sums = () => Object.entries(world().types).filter(([, t]) => t.sum).map(([n]) => n);
-
-// ---- text layer: words, phrases, bricks ----
-let W = [];  // word elements in text order: {el, s, e}
-const wordAt = s => W.findIndex(w => w.s === s);
-const tokens = text => text.split(/(\s+|[.,;:!?])/).filter(Boolean);
-
-function render() {
-  const r = view(), base = S.base, t = $("#text");
-  t.replaceChildren(); W = [];
-  const changed = S.pending && okay(S.pending) ? changedKeys(base, r) : new Set();
-  const bound = new Map();  // char -> binds, to underline words that are some place's value
-  const spansBound = [];
-  for (const op of terms(r)) for (const p of places(op)) for (const c of constantsIn(p.value)) if (c.at && c.at[0] >= 0) spansBound.push({ a: c.at[0], b: c.at[1], op, path: p.path });
-  S.bound = spansBound;
-  const marks = [];
-  for (const m of r.text.matchAll(/<pasted_content[\s\S]*?(<\/pasted_content>|$)|```[\s\S]*?```|`[^`\n]+`|^>.*$/gm)) marks.push([m.index, m.index + m[0].length, m[0][0] === ">" || m[0][0] === "<" ? "pasted" : "code"]);
-  const putWords = (parent, from, to) => {
-    let pos = from;
-    for (const piece of tokens(r.text.slice(from, to))) {
-      if (/^(\s+|[.,;:!?])$/.test(piece)) { parent.append(piece); pos += piece.length; continue; }
-      const mk = marks.find(m => pos >= m[0] && pos < m[1]);
-      const b = spansBound.some(x => pos >= x.a && pos + piece.length <= x.b);
-      const w = el("span", { class: "w" + (b ? " bnd" : "") + (mk ? " " + mk[2] : ""), "data-s": pos, "data-e": pos + piece.length, tabindex: -1 }, piece);
-      W.push({ el: w, s: pos, e: pos + piece.length }); parent.append(w); pos += piece.length;
+// ---------- the reading ----------
+const allTerms = (rec) => rec.phrases.flatMap((p, pi) => p.terms.map((t) => ({ t, p, pi })));
+function placesOf(t) {
+  const out = [], seen = new Set();
+  const walk = (args, pre, params) => {
+    for (const [k, v] of Object.entries(args || {})) {
+      const path = pre ? pre + "." + k : k;
+      seen.add(path);
+      if (v && v.fields) walk(v.fields, path, {});
+      else out.push({ t, path, v, declared: (params || {})[k] || (v && (v.hole || v.empty || v.type)) || "?" });
     }
   };
-  let pos = 0;
-  const gap = to => { if (to > pos) { const f = document.createDocumentFragment(); putWords(f, pos, to); t.append(f); } pos = Math.max(pos, to); };
-  for (const p of r.phrases) {
-    gap(p.start);
-    const kind = p.terms.length ? "req" : p.unresolved.length ? "unres" : "none";
-    const ph = el("span", { class: `ph ${kind}${p.quotes ? " quoted" : ""}`, "data-ph": p.start, "data-pe": p.end, title: p.terms.length ? "" : p.unresolved.length ? "unresolved" : "no request" });
-    for (const op of p.terms) ph.append(brick(op, r, changed));
-    for (const u of p.unresolved) ph.append(el("span", { class: "unres-chip", tabindex: 0, role: "button", "data-unres": u.id, "aria-label": `unresolved request, ${u.reason}` }, "? " + u.reason));
-    putWords(ph, p.start, p.end); t.append(ph); pos = p.end;
-  }
-  gap(r.text.length);
-  tabStop(Math.min(S.cursor, W.length - 1));
-  paintSpan(); paintGutter(); paintNeeds(r); paintLegend(r); paintInsp(); paintWorld(); paintDock();
-  $("#snap").textContent = snapLabel();
-  $("#older").disabled = $("#rerun").disabled = !!S.pending;
+  walk(t.arguments, "", t.parameters);
+  for (const [k, d] of Object.entries(t.parameters || {})) if (!seen.has(k)) out.push({ t, path: k, v: null, declared: d });
+  return out;
 }
-
-function brick(op, r, changed) {
-  const st = readyWord(op), k = pkey(op.id, "");
-  const b = el("span", { class: "brick" + (changed.has(`o:${op.id}`) ? " chg" : ""), "data-brick": op.id });
-  b.append(el("span", { class: "op" + (S.sel && S.sel.kind === "op" && S.sel.id === String(op.id) ? " sel" : ""), tabindex: 0, role: "button", "data-pick": "op", "data-op": op.id,
-    "aria-label": `operation ${op.function} number ${op.id}, result ${op.type}${st ? ", " + st : ""}. Enter to inspect, Space to pick up its result and drop it on a place.` },
-    op.function, el("span", { class: "ty" }, "→ " + op.type), st ? el("span", { class: "st " + st }, st) : null));
-  for (const pl of places(op)) b.append(placeChip(op, pl, r, changed));
-  return b;
-}
-
-function placeChip(op, pl, r, changed) {
-  const v = pl.value, k = pkey(op.id, pl.path), c = correctionAt(r, op.id, pl.path);
-  const cls = "pl" + (v.hole ? " hole" : v.constant !== undefined ? " filled" : v.ref !== undefined ? " ref" : "") + (changed.has(k) ? " chg" : "") + (S.sel && S.sel.key === k ? " sel" : "");
-  const body = v.constant !== undefined ? [el("span", { class: "k" }, "← "), `“${trim(v.constant, 30)}”`] : v.ref !== undefined ? [el("span", { class: "k" }, "← "), `result of ${(termById(r, v.ref) || {}).function || "#" + v.ref}`]
-    : v.hole ? [`open · ${(REASON[v.reason] || { short: v.reason }).short}`] : v.empty ? ["∅ none"] : v.several ? [`[${v.several.length} items]`] : [JSON.stringify(v)];
-  const e = el("span", { class: cls, tabindex: 0, role: "button", "data-place": k, "data-op": op.id, "data-path": pl.path, "data-pick": v.constant !== undefined || v.ref !== undefined ? "place" : null,
-    "aria-label": `place ${pl.path} of ${op.function}, declared ${declared(op, pl.path)}: ${say(v, r)}${c ? ", corrected by you" : ""}. Enter to inspect${v.constant !== undefined || v.ref !== undefined ? ", Space to pick its value up" : ""}. A value dropped here replaces d1's choice.` },
-    el("span", { class: "k" }, pl.path + " "), ...body, c ? el("span", { class: "mark" }, c.status === "invalidated" ? " ✎✕" : " ✎") : null);
-  return e;
-}
-
-const find = k => document.querySelector(`[data-place="${CSS.escape(k)}"]`);
-function placeEls(op, path) { return find(pkey(op, path)); }
-function tabStop(i) { W.forEach((w, j) => { w.el.tabIndex = j === i ? 0 : -1; w.el.classList.toggle("cur", j === i); }); S.cursor = i; }
-
-// ---- selection: a span of words, with ends you can drag ----
-function setSpan(a, b, opts = {}) {  // word indexes, inclusive
-  if (a == null) { S.span = null; S.anchor = S.focusEnd = null; paintSpan(); return; }
-  const lo = Math.min(a, b), hi = Math.max(a, b);
-  S.span = { a: lo, b: hi }; S.anchor = opts.anchor ?? a; S.focusEnd = opts.focusEnd ?? b;
-  paintSpan();
-}
-const spanText = () => S.span ? S.base.text.slice(W[S.span.a].s, W[S.span.b].e) : "";
-const spanChars = () => S.span ? [W[S.span.a].s, W[S.span.b].e] : null;
-function paintSpan() {
-  document.querySelectorAll(".insel").forEach(e => e.classList.remove("insel"));
-  document.querySelectorAll(".hdl").forEach(e => e.remove());
-  if (!S.span || !W.length) return;
-  for (let i = S.span.a; i <= S.span.b; i++) W[i].el.classList.add("insel");
-  const n = S.span.b - S.span.a + 1;
-  const h0 = el("span", { class: "hdl", "data-hdl": "start", tabindex: -1, role: "separator", "aria-label": "start of the selection: drag to change" }), h1 = el("span", { class: "hdl", "data-hdl": "end", tabindex: -1, role: "separator", "aria-label": "end of the selection: drag to change" });
-  W[S.span.a].el.before(h0); W[S.span.b].el.after(h1);
-}
-function linkSpan(a, b, on) {
-  for (const w of W) w.el.classList.toggle("link", on && w.s >= a && w.e <= b);
-}
-
-// ---- the structure gutter: one tick per operation, open place and unresolved request, at its height in the text ----
-function paintGutter() {
-  const g = $("#gutter"), t = $("#text"); if (!g || !t.offsetHeight) return;
-  const H = t.offsetHeight, top0 = t.getBoundingClientRect().top + scrollY, items = [];
-  for (const b of document.querySelectorAll(".brick")) items.push({ e: b, kind: "op", y: b.getBoundingClientRect().top + scrollY - top0, label: b.querySelector(".op").textContent });
-  for (const h of document.querySelectorAll(".pl.hole")) items.push({ e: h, kind: "hole", y: h.getBoundingClientRect().top + scrollY - top0, label: "open place " + h.textContent });
-  for (const u of document.querySelectorAll(".unres-chip")) items.push({ e: u, kind: "unres", y: u.getBoundingClientRect().top + scrollY - top0, label: u.textContent });
-  g.replaceChildren(...items.map(it => el("button", { class: it.kind, tabindex: -1, title: it.label, "aria-label": "jump to " + it.label, style: `top:${Math.max(0, Math.min(98.5, it.y / H * 100)).toFixed(2)}%`, onclick: () => { it.e.scrollIntoView({ block: "center" }); it.e.focus({ preventScroll: true }); } })), el("div", { class: "view", id: "gview" }));
-  paintView();
-}
-function paintView() { const v = $("#gview"), t = $("#text"); if (!v) return; const r = t.getBoundingClientRect(), H = t.offsetHeight; const a = Math.max(0, -r.top) / H, b = Math.min(1, (innerHeight - r.top) / H); v.style.top = (a * 100) + "%"; v.style.height = Math.max(0.5, (b - a) * 100) + "%"; }
-addEventListener("scroll", () => requestAnimationFrame(paintView), { passive: true });
-addEventListener("resize", () => requestAnimationFrame(paintGutter));
-function jump(sel, dir) {
-  const all = [...document.querySelectorAll(sel)]; if (!all.length) return;
-  const cur = all.indexOf(document.activeElement.closest(sel) || null);
-  let i;
-  if (cur >= 0) i = (cur + dir + all.length) % all.length; else { const y = innerHeight / 2; i = dir > 0 ? all.findIndex(e => e.getBoundingClientRect().top > y) : all.map(e => e.getBoundingClientRect().top).findLastIndex(t => t < y - 40); if (i < 0) i = dir > 0 ? 0 : all.length - 1; }
-  all[i].focus({ preventScroll: true }); all[i].scrollIntoView({ block: "center" }); if (S.held) hoverOn(targetAt(all[i]));
-}
-
-// ---- counts, needs, legend ----
-function paintLegend(r) {
-  const req = r.phrases.filter(p => p.terms.length).length, un = r.phrases.filter(p => !p.terms.length && p.unresolved.length).length, none = r.phrases.length - req - un;
-  $("#legend").replaceChildren(...[el("span", {}, `${r.text.length.toLocaleString()} ch · ${r.phrases.length} ¶`), el("span", { title: "request" }, el("i", { class: "sw" }), req), el("span", { title: "no request" }, el("i", { class: "sw none" }), none), un ? el("span", { title: "unresolved" }, el("i", { class: "sw unres" }), un) : null].filter(Boolean));
-}
-function openPlaces(r) {
+const pkey = (t, path) => `${t.id}-${path.replace(/\./g, "_")}`;
+function kindWords(rec) { // the words of each kind question, found in order in the phrase's text
+  if (rec.__kw) return rec.__kw;
   const out = [];
-  for (const op of terms(r)) for (const p of places(op)) if (p.value.hole) out.push({ op, path: p.path, reason: p.value.reason });
-  return out;
-}
-function paintNeeds(r) {
-  const n = $("#needs"), open = openPlaces(r), un = r.phrases.flatMap(p => p.unresolved.map(u => ({ u, p })));
-  n.replaceChildren();
-  if (!open.length && !un.length) return;
-  n.append(el("span", { class: "lead" }, `open ${open.length}${un.length ? " · ? " + un.length : ""}`));
-  for (const o of open) n.append(el("button", { "data-jump": pkey(o.op.id, o.path), onclick: () => { const e = find(pkey(o.op.id, o.path)); e.scrollIntoView({ block: "center" }); selectPlace(o.op.id, o.path, e); } }, `${o.op.function}#${o.op.id}.${o.path} · ${(REASON[o.reason] || { short: o.reason }).short}`));
-  for (const x of un) n.append(el("button", { class: "u", onclick: () => { const e = document.querySelector(`[data-unres="${CSS.escape(String(x.u.id))}"]`); e.scrollIntoView({ block: "center" }); selectUnres(x.u.id, e); } }, `? #${x.u.id} · ${(REASON[x.u.reason] || { short: x.u.reason }).short}`));
-}
-
-// ---- what the engine's draft changed ----
-function changedKeys(a, b) { const out = new Set(); for (const c of diff(a, b)) if (c.key) out.add(c.key); return out; }
-const JUDGE = ["valid", "complete", "pending", "deferred", "ready"];
-function diff(a, b) {
-  const out = [], ta = new Map(terms(a).map(t => [String(t.id), t])), tb = new Map(terms(b).map(t => [String(t.id), t]));
-  for (const [id, t] of tb) {
-    if (!ta.has(id)) { out.push({ text: `+ ${t.function}#${id} ${places(t).map(p => p.path + " ← " + say(p.value, b)).join(", ")} ${readyWord(t)}`, key: `o:${id}` }); continue; }
-    const u = ta.get(id), pa = Object.fromEntries(places(u).map(p => [p.path, p.value])), pb = Object.fromEntries(places(t).map(p => [p.path, p.value]));
-    for (const path of new Set([...Object.keys(pa), ...Object.keys(pb)])) {
-      const x = pa[path] ? say(pa[path], a) : "(none)", y = pb[path] ? say(pb[path], b) : "(none)";
-      if (x !== y) out.push({ text: `${t.function}#${id}.${path}`, was: x, now: y, key: pkey(id, path) });
+  for (const d of rec.decisions) {
+    if (d.path !== "kind" || !d.phrase) continue;
+    let at = d.phrase[0];
+    for (const [w, q] of Object.entries(d.asked || {})) {
+      const m = /the words "(.*)" are part/.exec(q.instructions || "");
+      if (!m) continue;
+      const i = rec.text.indexOf(m[1], at);
+      if (i < 0 || i > d.phrase[1]) continue;
+      out.push({ s: i, e: i + m[1].length, w, q, a: (d.answers || {})[w], d });
+      at = i + m[1].length;
     }
-    for (const j of JUDGE) if ((u.judgments || {})[j] !== (t.judgments || {})[j]) out.push({ text: `${t.function}#${id} · ${j}`, was: String((u.judgments || {})[j]), now: String((t.judgments || {})[j]), key: `o:${id}` });
   }
-  for (const [id, t] of ta) if (!tb.has(id)) out.push({ text: `operation ${t.function}#${id} removed` });
-  if (a.fulfillment && !b.fulfillment) out.push({ text: "stop check cleared" });
+  Object.defineProperty(rec, "__kw", { value: out, enumerable: false });
   return out;
 }
 
-// ---- the engine: one preview rule ----
-const cache = new Map();
-let busy = Promise.resolve();
-async function ask(body) {
-  const k = S.base.snapshot + JSON.stringify(body);
-  if (cache.has(k)) return cache.get(k);
-  const run = busy.then(async () => {
-    let r; for (let tries = 0; ; tries++) { try { r = await api("/edit", body); break; } catch (e) { if (tries) { r = { error: "the engine did not answer: " + e.message }; break; } } }
-    return { body, draft: r.draft || null, diagnostics: r.diagnostics || [], error: r.error };
+// ---------- measures ----------
+const F = { text: '16px Georgia, "Iowan Old Style", serif', it: 'italic 16px Georgia, "Iowan Old Style", serif', code: '13.5px ui-monospace, "SF Mono", Menlo, monospace', mono: '12px ui-monospace, "SF Mono", Menlo, monospace', monoB: '600 12px ui-monospace, "SF Mono", Menlo, monospace', small: '10.5px ui-monospace, "SF Mono", Menlo, monospace', head: '600 13px system-ui, -apple-system, sans-serif' };
+const CTX = document.createElement("canvas").getContext("2d");
+const MW = new Map();
+const tw = (s, f) => { const k = f + "\u0000" + s; let w = MW.get(k); if (w == null) { CTX.font = f; w = CTX.measureText(s).width; MW.set(k, w); } return w; };
+const LH = 46, TOP = 14, X0 = 28;
+let BW = 1200, BH = 800, TW = 720, PX = 800, PW = 380, C = {};
+function sizes() {
+  const b = $("board");
+  BW = Math.max(900, b.clientWidth); BH = Math.max(400, b.clientHeight);
+  TW = Math.min(760, Math.round(BW * 0.58) - X0); PX = X0 + TW + 56; PW = BW - PX - 16;
+  const cs = getComputedStyle(document.documentElement), v = (n) => cs.getPropertyValue(n).trim();
+  C = { ink: v("--ink"), mute: v("--mute"), faint: v("--faint"), rule: v("--rule"), bg: v("--bg"), card: v("--card"), tint: v("--tint"), type: v("--type"), typeBg: v("--type-bg"), fn: v("--fn"), fnBg: v("--fn-bg"), con: v("--con"), conBg: v("--con-bg"), acc: v("--accent"), accBg: v("--accent-bg"), no: v("--no"), noBg: v("--no-bg"), paste: v("--paste") };
+}
+const colorOf = (k) => ({ type: C.type, con: C.con, fn: C.fn, none: C.faint, null: C.no })[cat(k)];
+const visLines = () => Math.floor((BH - TOP - (HELD || S.hold ? 52 : 8)) / LH);
+
+// ---------- layout: words, then the function spans after their phrase, wrapped ----------
+const LAY = new WeakMap();
+function layout(rec) {
+  let L = LAY.get(rec);
+  if (L && L.tw === TW) return L;
+  const text = rec.text, words = [];
+  // pasted text: lines that start with ">" and lines inside ``` fences, and phrases that are not the user's own words
+  const style = new Uint8Array(text.length + 1);
+  let off = 0, fence = false;
+  for (const line of text.split("\n")) {
+    const tl = line.trim();
+    if (tl.startsWith("```")) { style.fill(2, off, off + line.length); fence = !fence; }
+    else if (fence) style.fill(2, off, off + line.length);
+    else if (tl.startsWith(">")) style.fill(1, off, off + line.length);
+    off += line.length + 1;
+  }
+  for (const p of rec.phrases) if (p.brand && p.brand !== "Asked") for (let i = p.start; i < p.end; i++) style[i] = style[i] || 1;
+  const pieces = (rec.pieces || []).slice().sort((a, b) => a.start - b.start);
+  let pi = 0;
+  for (const m of text.matchAll(/\S+/g)) {
+    const s = m.index, e = s + m[0].length;
+    while (pi < pieces.length && pieces[pi].end <= s) pi++;
+    const p = pieces[pi] && pieces[pi].start <= s && e <= pieces[pi].end ? pieces[pi] : null;
+    const st = style[s], f = st === 2 ? F.code : st === 1 ? F.it : F.text;
+    words.push({ s, e, str: m[0], piece: p, st, f, w: tw(m[0], f) });
+  }
+  // chips: after the last word of each phrase that asks for something
+  const after = new Map();
+  for (const ph of rec.phrases) {
+    if (!ph.terms.length && !ph.unresolved.length) continue;
+    let last = -1;
+    for (let i = 0; i < words.length; i++) if (words[i].s >= ph.start && words[i].e <= ph.end) last = i;
+    if (last < 0) continue;
+    const list = after.get(last) || [];
+    for (const t of ph.terms) { const c = opChip(t, ph); measureOp(c, rec); list.push(c); }
+    for (const u of ph.unresolved) list.push(unChip(u, ph));
+    after.set(last, list);
+  }
+  const lines = [{ items: [] }];
+  let x = 0, prevEnd = 0;
+  const put = (it, gap) => {
+    if (x > 0 && x + gap + it.w > TW) { lines.push({ items: [] }); x = 0; gap = 0; }
+    x += gap; it.x = x; it.line = lines.length - 1; lines[lines.length - 1].items.push(it); x += it.w;
+  };
+  const SP = tw(" ", F.text);
+  words.forEach((w, i) => {
+    const nl = (text.slice(prevEnd, w.s).match(/\n/g) || []).length;
+    if (i > 0 && nl) { lines.push({ items: [] }); x = 0; if (nl > 1) { lines.push({ items: [] }); } }
+    w.k = "w"; put(w, x > 0 ? SP : 0);
+    for (const c of after.get(i) || []) put(c, 10);
+    prevEnd = w.e;
   });
-  busy = run.catch(() => 0);
-  const p = run; cache.set(k, p); return p;
+  L = { tw: TW, words, lines, ops: [...after.values()].flat() };
+  LAY.set(rec, L);
+  return L;
 }
-const okay = r => r && r.draft && !r.diagnostics.length && !r.error;
-const diagWords = (d, r) => `${d[0] == null ? "+" : (termById(r || S.base, d[0]) || {}).function + "#" + d[0]}.${d[1]} · ${d[2]}`;
-const takes = () => "";
-const heldType = h => h.value ? (h.value.type || (h.value.ref !== undefined ? "the result of an operation" : "a value")) : "a function";
-const refusalWords = (res, r) => res.error ? res.error : res.diagnostics.map(d => diagWords(d, r)).join("; ") || "refused";
-
-// ---- what can be held ----
-// kinds: words (the selected span), member (a world member), result (another operation's result), value (the value of a place, to retag),
-//        fn (a world function, dropped on a phrase)
-function heldWords() {
-  const [a, b] = spanChars();
-  return { kind: "words", label: `“${trim(spanText(), 60)}”`, value: { constant: S.base.text.slice(a, b), type: brandAt(S.base, a), at: [a, b] } };
+function slotOf(pl, rec) {
+  const v = pl.v;
+  if (!v) return { g: "∅", tone: "no", f: F.mono };
+  if (v.hole) return { g: `▢ ${pl.declared} · ${v.reason}`, tone: "hole", f: F.mono };
+  if (v.empty) return { g: `∅ ${v.empty}`, tone: "empty", f: F.mono };
+  if (v.ref != null) { const r = allTerms(rec).find((x) => x.t.id === String(v.ref)); return { g: `↩ ${r ? r.t.function : v.ref}`, tone: "ref", f: F.mono }; }
+  if (v.several) return { g: `[${v.several.length}]`, tone: "val", f: F.mono };
+  if (v.at && v.at[0] >= 0) return { g: "⇠", tone: "val", f: F.mono };
+  return { g: String(v.constant), tone: "val", f: F.mono };
 }
-const heldMember = m => ({ kind: "member", label: `${m.words} (${m.sum}.${m.member})`, value: memberValue(m) });
-const heldResult = op => ({ kind: "result", label: `the result of ${op.function}#${op.id}`, value: { ref: String(op.id) }, from: null });
-function heldPlace(op, pl) { const v = pl.value; return { kind: v.ref !== undefined ? "result" : "value", label: say(v, S.base), value: v, from: pkey(op.id, pl.path) }; }
-const heldFn = (name, fn) => ({ kind: "fn", label: `${name}()`, fn: name, sig: fn });
-function pickFrom(node) {
-  const d = node.dataset;
-  if (d.pick === "op") return heldResult(termById(S.base, d.op));
-  if (d.pick === "place") { const op = termById(S.base, d.op), pl = places(op).find(p => p.path === d.path); return heldPlace(op, pl); }
-  if (d.pick === "member") { const m = membersOf(d.sum).find(x => x.member === d.member); return heldMember(m); }
-  if (d.pick === "fn") return heldFn(d.fn, world().functions[d.fn]);
-  if (d.pick === "result") return heldResult(termById(S.base, d.op));
-  if (d.pick === "cand") return node._held;
-  return null;
-}
-
-// ---- targets: previewing a drop with the engine ----
-function targetAt(node) {
-  const p = node && node.closest && node.closest("[data-place]");
-  if (p) return { kind: "place", el: p, key: p.dataset.place, op: p.dataset.op, path: p.dataset.path };
-  const ph = node && node.closest && node.closest(".ph");
-  if (ph && S.held && S.held.kind === "fn") return { kind: "phrase", el: ph, key: "ph:" + ph.dataset.ph, start: +ph.dataset.ph, end: +ph.dataset.pe };
-  return null;
-}
-async function previewTarget(tg, held) {
-  if (tg.kind === "place") {
-    if (held.from === tg.key) return { here: true, what: "that is where it already is" };
-    const op = termById(S.base, tg.op), cur = places(op).find(p => p.path === tg.path);
-    const body = { reading: S.id, number: +tg.op, path: tg.path, value: held.value };
-    const res = await ask(body);
-    return { ...res, what: `${held.label} → ${op.function}#${op.id}.${tg.path}`, same: cur && JSON.stringify(cur.value) === JSON.stringify(held.value) };
+function opChip(t, ph) {
+  const parts = [{ k: "name", str: t.function + "(", f: F.monoB }];
+  for (const pl of placesOf(t)) {
+    parts.push({ k: "path", str: pl.path + ":", f: F.mono, pl });
+    parts.push({ k: "slot", pl });
   }
-  // a function onto a phrase: the engine builds the new operation from the thing, in whichever parameter takes it
-  const p = S.base.phrases.find(x => x.start === tg.start), a = S.span && S.span.a != null ? spanChars() : null;
-  const at = a && a[0] >= p.start && a[1] <= p.end ? a : [p.start, p.end];
-  const text = S.base.text.slice(at[0], at[1]).trim() || S.base.text.slice(p.start, p.end);
-  const val = { constant: text, type: p.brand || "Asked", at: [S.base.text.indexOf(text, at[0]), S.base.text.indexOf(text, at[0]) + text.length] };
-  const options = [];
-  for (const [param] of held.sig.parameters) {
-    const body = { reading: S.id, number: null, path: `${held.fn}.${param}`, value: val };
-    options.push({ param, res: await ask(body), body });
+  parts.push({ k: "close", str: ") → " + (t.type === "NoneType" ? "None" : t.type), f: F.mono });
+  return { k: "op", t, ph, parts, w: 0, measure: true };
+}
+const unChip = (u, ph) => ({ k: "un", u, ph, str: `ƒ ▢ ${u.reason}`, w: tw(`ƒ ▢ ${u.reason}`, F.mono) + 12 });
+function measureOp(c, rec) {
+  let x = 6;
+  for (const p of c.parts) {
+    if (p.k === "slot") { const sl = slotOf(p.pl, rec); p.sl = sl; p.w = tw(sl.g, sl.f) + 10; }
+    else p.w = tw(p.str, p.f);
+    p.x = x; x += p.w + (p.k === "path" ? 3 : p.k === "slot" ? 6 : 0);
   }
-  const good = options.find(o => okay(o.res)), pick = good || options[0];
-  return { ...pick.res, body: pick.body, options, what: `${held.fn}(${pick.param}) on “${trim(text, 40)}”`, fnPhrase: tg.start };
+  c.w = x + 6;
 }
 
-let hoverTimer = 0;
-function hoverOn(tg) {
-  const k = tg && tg.key;
-  if (S.hover && S.hover.key === k) return;
-  document.querySelectorAll(".hot").forEach(h => h.classList.remove("hot"));
-  document.querySelectorAll("[data-fit]").forEach(h => h.removeAttribute("data-fit"));
-  clearTimeout(hoverTimer);
-  if (!tg || !S.held) { S.hover = null; return paintDock(); }
-  tg.el.classList.add("hot");
-  const h = S.hover = { key: k, tg, res: null };
-  paintDock();
-  hoverTimer = setTimeout(async () => {
-    const res = await previewTarget(tg, S.held);
-    if (S.hover === h) { h.res = res; if (!res.here) tg.el.dataset.fit = okay(res) ? "ok" : "no"; paintDock(); }
-  }, 80);
+// ---------- the states ----------
+// A state: the record drawn (`r`), the engine request it stands for (`change`, a /edit body), and view things.
+const base = () => ({ r: S.base, change: null, scroll: S.scroll });
+const cur = () => (S.staged ? { ...base(), r: S.staged.e.draft || S.base, change: S.staged.body, staged: true } : base());
+function stateFor(body, extra) { return { ...base(), change: body, ...extra }; }
+function withDraft(st) {
+  if (!st.change) return st;
+  const e = ask(st.change, false), v = verdict(e);
+  if (v === "ok") return { ...st, r: e.draft, wait: false };
+  if (v === "no") return { ...st, r: S.base, change: null, refused: { body: st.change, codes: codes(e), target: st.target }, wait: false };
+  return { ...st, wait: true };
 }
-function endHold(note) {
-  S.held = null; S.hover = null; clearTimeout(hoverTimer); stopScroll();
-  document.body.classList.remove("carrying");
-  document.querySelectorAll(".hot").forEach(h => h.classList.remove("hot"));
-  document.querySelectorAll("[data-fit]").forEach(h => h.removeAttribute("data-fit"));
-  document.querySelectorAll(".ghost").forEach(g => g.remove());
-  document.querySelectorAll(".chip.held").forEach(c => c.classList.remove("held"));
-  if (note) S.note = note;
-  paintDock();
-}
-function beginHold(h, from) {
-  if (S.pending) return;
-  S.held = h; S.refused = null; S.sel = S.sel; document.body.classList.add("carrying");
-  S.note = ""; paintDock();
-}
-async function dropOn(tg) {
-  const h = S.held; if (!h || !tg) return;
-  const res = S.hover && S.hover.key === tg.key && S.hover.res ? S.hover.res : await previewTarget(tg, h);
-  const anchor = tg.el;
-  endHold();
-  if (res.here || res.same) { S.note = "="; return paintDock(); }
-  stage(res, res.what, tg.key, anchor);
-}
-
-// ---- the transaction: preview -> consequence -> cancel or accept ----
-function stage(res, what, anchorKey) {
-  if (!okay(res)) { S.refused = { what, res, anchor: anchorKey }; S.pending = null; render(); return refocus(anchorKey); }
-  S.pending = { body: res.body, draft: res.draft, diagnostics: res.diagnostics, what, anchor: anchorKey, failure: null };
-  S.sel = null; S.refused = null; S.note = "";
-  render();
-  $("#accept") && $("#accept").focus();
-}
-function refocus(k) { if (!k) return; const e = k.startsWith("ph:") ? document.querySelector(`.ph[data-ph="${k.slice(3)}"] .w`) : find(k); if (e) { e.focus({ preventScroll: true }); } }
-function cancel() { const a = S.pending && S.pending.anchor; S.pending = null; S.note = ""; render(); refocus(a); }
-let accepting = false;
-async function accept() {
-  if (accepting || !S.pending) return; accepting = true;
-  try { await accept1(); } catch (e) { if (S.pending) { S.pending.failure = "Not saved: " + e.message; paintDock(); } } finally { accepting = false; }
-}
-async function accept1() {
-  const P = S.pending, fresh = await fetch("/readings").then(r => r.json()), now = fresh.filter(l => l.id === S.id).at(-1);
-  if (now.snapshot !== S.base.snapshot) { P.failure = "Not saved: store has a newer snapshot"; paintDock(); return; }
-  const r = await api("/accept", P.body);
-  if (r.error || (r.diagnostics || []).length || !r.saved) { P.failure = "Not saved: " + (r.error || (r.diagnostics || []).map(d => diagWords(d)).join("; ")); paintDock(); return; }
-  const a = P.anchor; S.pending = null; cache.clear(); await load();
-  S.note = `✓ saved · ${S.base.snapshot.slice(0, 6)} · ✎ ${S.base.corrections.length}`; render(); refocus(a);
-}
-async function rerun() {
-  const btn = $("#rerun"); btn.disabled = true; btn.textContent = "Rerunning…";
-  S.note = "…"; paintDock();
-  let r; try { r = await api("/rerun", { reading: S.id }); } finally { btn.textContent = "Rerun with d1"; btn.disabled = !!S.pending; }
-  if (r.error) { S.note = "✕ " + r.error; return paintDock(); }
-  cache.clear(); await load();
-  S.sel = { kind: "rerun", data: { corrections: r.corrections || [], diagnostics: r.diagnostics || [], saved: !!r.saved } };
-  S.note = r.saved ? `✓ ${S.base.snapshot.slice(0, 6)}` : "not saved"; render();
-}
-async function restore(n) {
-  const r = await api("/restore", { snapshot: n });
-  cache.clear(); await load(); S.sel = null; S.note = r.saved ? `✓ #${n}` : "✕ " + JSON.stringify(r.diagnostics || r.error); render();
-}
-const snapLabel = () => { const all = snapshotsOf(S.id); return `snapshot ${all.findIndex(x => x.l === S.base) + 1} of ${all.length} · ${S.base.corrections.length} correction${S.base.corrections.length === 1 ? "" : "s"}${S.pending ? " · previewing" : ""}`; };
-
-// ---- the dock ----
-function consequence(res) {
-  const ch = diff(S.base, res.draft), out = [];
-  
-  for (const x of ch.slice(0, 7)) out.push(el("div", { class: "chgline" }, x.was !== undefined ? [el("strong", {}, x.text), ": ", el("span", { class: "was" }, x.was), " → ", x.now] : x.text));
-  if (ch.length > 7) out.push(el("div", { class: "mute" }, `+${ch.length - 7}`));
-  if (!ch.length) out.push(el("div", { class: "mute" }, "="));
-  return out;
-}
-function paintDock() {
-  const d = $("#dock"), inn = el("div", { class: "in" });
-  d.replaceChildren(inn);
-  const P = S.pending;
-  if (P) {
-    d.className = "stage";
-    inn.append(el("div", { class: "head" }, P.what), ...consequence(P));
-    if (P.failure) inn.append(el("div", { class: "no", role: "alert" }, P.failure));
-    inn.append(el("div", { class: "actions" }, el("button", { class: "primary", id: "accept", onclick: accept }, "Accept"), el("button", { id: "cancel", onclick: cancel }, "Cancel")));
-    return;
+// The modifier: whatever state the spec under it chose, draw the engine's draft for it, and redraw when an answer arrives.
+class Drafted extends DG.Modifier {
+  constructor(ctx, innerSpec) { super(ctx, innerSpec); this.name = "drafted"; this.cache = new Map(); }
+  frame(frame) {
+    const r = this.inner.run(frame), st = r.dropState;
+    if (!st || !st.change) return r;
+    const e = ask(st.change, true);
+    let c = this.cache.get(e.k);
+    if (!c || c.dv !== DV) { const next = withDraft(st); c = { dv: DV, next, preview: DG.renderStateReadOnly(this.ctx, next) }; this.cache.set(e.k, c); }
+    LIVE = c.next; paintDock(c.next);
+    return { ...r, preview: () => c.preview, dropState: c.next };
   }
-  if (S.held) {
-    d.className = "";
-    const H = S.hover;
-    inn.append(el("div", { class: "head" }, S.held.label));
-    if (H) {
-      if (!H.res) inn.append(el("div", { class: "mute" }, "…"));
-      else if (H.res.here || H.res.same) inn.append(el("div", { class: "mute" }, "="));
-      else if (okay(H.res)) inn.append(el("div", { class: "ok" }, "✓ " + H.res.what), ...consequence(H.res));
-      else inn.append(el("div", { class: "no" }, "✕ " + refusalWords(H.res) + (H.tg.kind === "place" ? ` · ${declared(termById(S.base, H.tg.op), H.tg.path)} ← ${heldType(S.held)}` : "")));
-    }
-    return;
-  }
-  if (S.refused) {
-    d.className = "refuse";
-    const R = S.refused;
-    inn.append(el("div", { class: "head no" }, "✕ " + R.what), el("div", { class: "no" }, refusalWords(R.res)), el("div", { class: "actions" }, el("button", { id: "dismiss", onclick: () => { S.refused = null; paintDock(); refocus(R.anchor); } }, "Dismiss")));
-    return;
-  }
-  d.className = "idle";
-  inn.append(S.note || "");
 }
+const drafted = DG.modifier(Drafted);
+let LIVE = null;
 
-// ---- the inspector ----
-function closeInsp() { const s = S.sel; S.sel = null; paintInsp(); document.querySelectorAll(".sel").forEach(e => e.classList.remove("sel")); if (s && s.origin) s.origin.focus(); }
-function selectPlace(opId, path, origin) {
-  S.sel = { kind: "place", key: pkey(opId, path), op: String(opId), path, origin };
-  const op = termById(S.base, opId), pl = places(op).find(p => p.path === path);
-  if (pl && pl.value.constant !== undefined && pl.value.at[0] >= 0) { const a = wordAt(W.find(w => w.s >= pl.value.at[0])?.s), b = W.map(w => w.e).lastIndexOf(pl.value.at[1]); if (a >= 0 && b >= a) setSpan(a, b); }
-  document.querySelectorAll(".sel").forEach(e => e.classList.remove("sel")); origin && origin.classList.add("sel");
-  paintInsp(true);
+// ---------- what a held thing can do: each option is a target element and an engine request ----------
+let DRAWN = new Map(); // id -> box, from the last drawing of the current state
+const visible = (id) => DRAWN.has(id);
+function piecesVisible() { return [...DRAWN.keys()].filter((k) => k.startsWith("pc-")).map((k) => DRAWN.get(k).piece).filter(Boolean); }
+const retag = (a, b, kind) => ({ path: "kind", at: [a, b], value: kind });
+function wordsValue(p, pl) {
+  const k = p.kind, ty = (cat(k) === "type" || cat(k) === "con") && k !== "(none)" ? k : inner(pl.declared);
+  return { constant: S.base.text.slice(p.start, p.end), type: ty, at: [p.start, p.end] };
 }
-function selectUnres(id, origin) { S.sel = { kind: "unres", id: String(id), origin }; paintInsp(true); }
-function selectOp(id, origin) { S.sel = { kind: "op", id: String(id), origin }; document.querySelectorAll(".sel").forEach(e => e.classList.remove("sel")); origin && origin.classList.add("sel"); paintInsp(true); }
-function selectWord(origin) { S.sel = { kind: "word", origin }; paintInsp(true); }
-
-const tname = n => el("button", { class: "link", onclick: () => { S.sel = { ...S.sel, typeView: n }; paintInsp(true); } }, n);
-const go = (label, fn) => el("button", { class: "link", onclick: fn }, label);
-
-function scoreBlock(d) {
+function allPlaces(rec) { return allTerms(rec).flatMap(({ t }) => placesOf(t)); }
+function placeOptions(valueOf, skip) {
   const out = [];
-  for (const [q, spec] of Object.entries(d.asked || {})) {
-    const ans = (d.answers || {})[q] || {}, p = ans.probabilities || {}, entries = Object.entries(p).sort((x, y) => y[1] - x[1]);
-    out.push(el("div", { class: "q" }, spec.instructions));
-    const optDesc = id => ((spec.options || []).find(o => String(o.id) === String(id)) || {}).description;
-    const win = entries[0] && entries[0][0];
-    for (const [id, v] of entries.slice(0, 8)) {
-      const desc = optDesc(id);
-      out.push(el("div", { class: "opt" + (id === win ? " chosen" : "") }, el("span", { class: "bar", style: `width:${Math.max(2, Math.round(v * 70))}px` }), `${(v * 100).toFixed(v < .01 ? 1 : 0)}% `, el("span", { class: "t" }, id), desc && id !== desc ? " " + trim(desc, 90) : "", id === win ? " ◂" : ""));
-    }
-    if (entries.length > 8) out.push(el("div", { class: "mute" }, `+${entries.length - 8} · ${(entries.slice(8).reduce((n, e) => n + e[1], 0) * 100).toFixed(1)}%`));
-    out.push(el("div", { class: "prov" }, "score · source not recorded"));
+  for (const pl of allPlaces(S.base)) {
+    if (skip && skip(pl)) continue;
+    const v = valueOf(pl);
+    if (v === undefined) continue;
+    const body = { number: +pl.t.id, path: pl.path, value: v }, id = "pl-" + pkey(pl.t, pl.path);
+    out.push({ target: id, body, pl, open: !pl.v || !!pl.v.hole });
   }
-  if ((d.offered || []).length) out.push(el("div", { class: "mute" }, "offered: " + d.offered.map(offeredWords).join(", ") + ((d.cut || []).length ? ` · cut ${d.cut.length}` : "")));
   return out;
 }
-const offeredWords = o => o.constant !== undefined ? `“${trim(o.constant, 50)}”` : o.ref !== undefined ? `the result of #${o.ref}` : o.function ? `${o.function}()` : JSON.stringify(o);
-const decisionsFor = (r, pred) => r.decisions.filter(pred);
-
-function candidatesFor(op, path) {
-  const r = S.base, ty = declared(op, path), out = [];
-  const seen = new Set();
-  const add = (group, label, value, sub) => { const k = JSON.stringify(value); if (seen.has(group + k)) return; seen.add(group + k); out.push({ group, label, value, sub }); };
-  for (const d of decisionsFor(r, d => String(d.operation) === String(op.id) && d.path === path)) for (const o of d.offered || []) {
-    if (o.constant !== undefined) add("offered", `“${trim(o.constant, 60)}”`, o); else if (o.ref !== undefined) add("offered", `the result of #${o.ref}`, o);
+function options(th) {
+  const P = piecesVisible(), out = [];
+  const onPieces = (kindOf, skip) => { for (const q of P) { if (skip && skip(q)) continue; const k = kindOf(q); if (k) out.push({ target: "pc-" + q.start, body: retag(q.start, q.end, k), piece: q }); } };
+  let places = [];
+  switch (th.t) {
+    case "piece": {
+      const p = th.p, ph = S.base.phrases.find((x) => x.start <= p.start && p.end <= x.end);
+      out.push({ target: "pc-" + p.start, body: null, self: true });
+      if (p.kind != null) for (const q of P) {
+        if (q.start === p.start) continue;
+        const near = ph && ph.start <= q.start && q.end <= ph.end && !(S.base.pieces || []).some((o) => o !== p && o !== q && o.start >= Math.min(p.end, q.end) && o.end <= Math.max(p.start, q.start));
+        out.push({ target: "pc-" + q.start, body: near ? retag(Math.min(p.start, q.start), Math.max(p.end, q.end), p.kind) : retag(q.start, q.end, p.kind), piece: q });
+      }
+      places = placeOptions((pl) => wordsValue(p, pl));
+      break;
+    }
+    case "type": onPieces((q) => (q.kind === th.name ? null : th.name)); break;
+    case "con": onPieces((q) => (cat(q.kind) === "type" ? `${th.con}[${q.kind}]` : null)); break;
+    case "opt": onPieces((q) => (q.kind === th.kind ? null : th.kind)); break;
+    case "fn": {
+      onPieces((q) => (q.kind === th.name ? null : th.name));
+      const [param, tree] = world().functions[th.name].parameters[0] || [];
+      if (param) for (const ph of S.base.phrases) for (const u of ph.unresolved) {
+        const id = "un-" + u.id;
+        if (!visible(id) && !RAIL_IDS.has(id)) continue;
+        const a = ph.start + (S.base.text.slice(ph.start, ph.end).length - S.base.text.slice(ph.start, ph.end).trimStart().length), said = S.base.text.slice(a, ph.end).trimEnd();
+        out.push({ target: id, body: { number: null, path: `${th.name}.${param}`, value: { constant: said, type: inner(tname(tree)), at: [a, a + said.length] } }, un: u });
+      }
+      break;
+    }
+    case "member": places = placeOptions(() => ({ constant: th.words, type: th.type, at: [-1, -1] })); break;
+    case "op": places = placeOptions(() => ({ ref: th.t.id }), (pl) => pl.t.id === th.t.id); break;
+    case "val": places = placeOptions(() => th.pl.v, (pl) => pl.t.id === th.pl.t.id && pl.path === th.pl.path); break;
   }
-  const ph = phraseOf(r, op.id);
-  if (ph) { const raw = r.text.slice(ph.start, ph.end), lead = raw.length - raw.trimStart().length, txt = raw.trim(); if (txt) add("phrase", `“${trim(txt.replace(/\s+/g, " "), 60)}”`, { constant: txt, type: ph.brand || "Asked", at: [ph.start + lead, ph.start + lead + txt.length] }, `characters ${ph.start + lead}–${ph.start + lead + txt.length}`); }
-  if (S.span) { const [a, b] = spanChars(); add("selection", `“${trim(spanText(), 60)}”`, heldWords().value, `characters ${a}–${b}`); }
-  for (const m of membersOf(ty)) add("members · " + (m.sum), `${m.words}`, memberValue(m), m.member);
-  for (const t of terms(r)) if (String(t.id) !== String(op.id)) add("results", `${t.function}#${t.id} → ${t.type}`, { ref: String(t.id) });
+  for (const o of places) ask(o.body, false); // the engine's verdict for each place, in the background
+  return { out, places };
+}
+function far(th) {
+  if (th.t === "piece" && th.p.kind !== "(none)") return retag(th.p.start, th.p.end, "(none)");
+  if (th.t === "val") return { number: +th.pl.t.id, path: th.pl.path, value: { hole: th.pl.declared, reason: "cleared" } };
+  return null;
+}
+// places brought near: every place of the reading that the engine has not refused, in a rail at the bottom of the view
+let RAIL_IDS = new Set();
+function railItems() {
+  const held = HELD || (S.hold && S.hold.th);
+  if (!held || !held.places) return [];
+  const out = [];
+  let x = X0;
+  for (const o of held.places.slice().sort((a, b) => (b.open - a.open))) {
+    const v = verdict(peek(o.body));
+    if (v === "no") continue;
+    const label = `${o.pl.t.function}.${o.pl.path}`, w = tw(label, F.mono) + 26;
+    if (x + w > X0 + TW + 40) break;
+    out.push({ id: "rl-" + pkey(o.pl.t, o.pl.path), o, label, x, w, v });
+    x += w + 6;
+  }
   return out;
 }
-
-async function candidateList(box, op, path, group) {
-  const list = candidatesFor(op, path).filter(c => c.group === group || (group === "members" && c.group.startsWith("members")));
-  for (const c of list) {
-    const row = el("div", { class: "item" });
-    const b = el("button", { class: "chip", "data-cand": c.label, "data-pick": "cand", onclick: async () => { const res = await ask({ reading: S.id, number: +op.id, path, value: c.value }); stage({ ...res }, `${c.label} → ${op.function}#${op.id}.${path}`, pkey(op.id, path)); } }, c.label);
-    const v = el("span", { class: "verdict mute" }, c.sub || "");
-    b._held = { kind: c.value.ref !== undefined ? "result" : c.value.at && c.value.at[0] < 0 ? "member" : "words", label: c.label, value: c.value };
-    row.append(b, v); box.append(row);
-    const curV = places(op).find(p => p.path === path).value; if (JSON.stringify(curV) === JSON.stringify(c.value) || (c.value.constant !== undefined && curV.constant === c.value.constant && JSON.stringify(curV.at) === JSON.stringify(c.value.at))) { v.className = "verdict mute"; v.textContent = "="; continue; }
-    if (group !== "results") ask({ reading: S.id, number: +op.id, path, value: c.value }).then(res => { v.className = "verdict " + (okay(res) ? "ok" : "no"); v.textContent = (c.sub ? c.sub + " · " : "") + (okay(res) ? "✓" : "✕ " + refusalWords(res)); });
+function spec(th, d) {
+  const start = cur();
+  HELD = th; DRAGGING = true; RAIL_IDS = new Set();
+  const { out, places } = options(th);
+  th.places = places;
+  RAIL_IDS = new Set(railItems().map((r) => r.id));
+  const opts = [...out, ...places.filter((o) => visible(o.target)), ...railItems().map((r) => ({ ...r.o, target: r.id }))];
+  const fb = far(th), farState = fb ? stateFor(fb, { pull: true }) : base();
+  const targets = opts.map((o) => d.dropTarget(o.target, o.body ? stateFor(o.body, { target: o.target }) : base(), { boundsState: start }));
+  const sp = targets.length ? d.closest(targets).whenFar(farState) : d.fixed(farState);
+  return sp.with(drafted()).withFloating({ ghost: true });
+}
+// widen or narrow a link: the handle snaps to each word boundary near it; each boundary is a retag
+function handleStates(p, side) {
+  const L = layout(S.base), ws = L.words, i0 = ws.findIndex((w) => w.s === p.start), i1 = ws.findIndex((w) => w.e === p.end);
+  const out = [];
+  if (i0 < 0 || i1 < 0) return out;
+  for (let j = Math.max(0, (side === "e" ? i0 : i0 - 12)); j <= Math.min(ws.length - 1, side === "e" ? i1 + 12 : i1); j++) {
+    let body = null, s = p.start, e = p.end;
+    if (side === "e") { e = ws[j].e; if (e > p.end) body = retag(p.start, e, p.kind); else if (e < p.end) body = retag(ws[j + 1].s, p.end, "(none)"); }
+    else { s = ws[j].s; if (s < p.start) body = retag(s, p.end, p.kind); else if (s > p.start) body = retag(p.start, ws[j - 1].e, "(none)"); }
+    out.push({ ...base(), change: body, handle: { p: p.start, side, at: side === "e" ? e : s }, prop: { s, e, kind: p.kind } });
   }
+  return out;
+}
+function handleSpec(p, side, d) {
+  HELD = { t: "handle", p }; DRAGGING = true;
+  const st = handleStates(p, side);
+  return d.closest(st).with(drafted());
 }
 
-function paintInsp(focus) {
-  const c = $("#insp"), sel = S.sel;
-  c.replaceChildren();
-  if (!sel) { c.hidden = true; return; }
-  c.hidden = false;
-  const r = S.base;
-  c.append(el("button", { class: "x", "aria-label": "close the inspector", onclick: closeInsp }, "×"));
-  if (sel.typeView) { typePanel(c, sel.typeView); return focus && ($(".x", c) || c).focus(); }
-  if (sel.kind === "history") {
-    c.append(el("h2", {}, "Snapshots"));
-    for (const { l, n } of snapshotsOf(S.id).reverse().slice(0, 40)) c.append(el("div", { class: "item" }, `store line #${n} · ${l.snapshot.slice(0, 6)} · ${l.corrections.length} corrections${l.fulfillment ? " · checked" : ""} `, el("button", { class: "link", disabled: l === r, onclick: () => restore(n) }, l === r ? "latest" : "Restore")));
-  } else if (sel.kind === "rerun") {
-    c.append(el("h2", {}, "Rerun"));
-    for (const k of sel.data.corrections) c.append(el("div", { class: "chgline" }, `${k.function || "op " + k.operation}.${k.path}: `, el("strong", { class: k.status === "retained" ? "ok" : "no" }, k.status), k.reason ? ` — ${k.reason}` : ""));
-  } else if (sel.kind === "word") {
-    wordPanel(c);
-  } else if (sel.kind === "unres") {
-    const u = r.phrases.flatMap(p => p.unresolved).find(u => String(u.id) === sel.id); if (!u) return closeInsp();
-    c.append(el("h2", {}, "? unresolved"), el("p", { class: "sub" }, u.reason));
-    const up = r.phrases.find(p => p.unresolved.includes(u)); if (up) c.append(el("p", { class: "mute" }, `“${trim(r.text.slice(up.start, up.end).replace(/\s+/g, " "), 140)}”`));
-    for (const d of decisionsFor(r, d => String(d.operation) === String(u.id))) c.append(...scoreBlock(d));
-  } else if (sel.kind === "op") {
-    opPanel(c);
-  } else if (sel.kind === "place") {
-    placePanel(c);
-  }
-  if (focus) { const f = $("button.chip", c) || $(".x", c); f && f.focus({ preventScroll: true }); }
-}
-
-function placePanel(c) {
-  const r = S.base, op = termById(r, S.sel.op), pl = op && places(op).find(p => p.path === S.sel.path);
-  if (!pl) return closeInsp();
-  const v = pl.value, ty = declared(op, pl.path), cor = correctionAt(r, op.id, pl.path), ph = phraseOf(r, op.id);
-  c.append(el("h2", {}, `${op.function}#${op.id} · ${pl.path}`));
-  c.append(el("p", { class: "sub" }, tname(ty), cor ? ` · ✎ ${cor.status}${cor.reason ? " · " + cor.reason : ""}` : ""));
-  if (v.hole) c.append(el("p", { class: "no" }, `open · ${v.reason}`));
-  else c.append(el("p", {}, el("strong", {}, say(v, r))));
-  if (v.constant !== undefined && v.at[0] >= 0) {
-    c.append(el("h3", {}, "Span"));
-    const adj = (label, a, b) => { const A = Math.max(0, a), B = Math.min(r.text.length, b); return el("button", { "data-adj": label, disabled: A >= B, onclick: () => adjust(op, pl, a, b) }, label); };
-    const i0 = W.findIndex(w => w.s >= v.at[0]), i1 = W.map(w => w.e).lastIndexOf(v.at[1]);
-    const prev = W[i0 - 1], next = W[i1 + 1];
-    c.append(el("div", { class: "actions" },
-      adjust1("◂ +", prev ? [prev.s, v.at[1]] : null, op, pl), adjust1("◂ −", i1 > i0 ? [W[i0 + 1].s, v.at[1]] : null, op, pl),
-      adjust1("− ▸", i1 > i0 ? [v.at[0], W[i1 - 1].e] : null, op, pl), adjust1("+ ▸", next ? [v.at[0], next.e] : null, op, pl)));
-  }
-  const ds = decisionsFor(r, d => String(d.operation) === String(op.id) && d.path === pl.path);
-  c.append(el("h3", {}, "d1"));
-  if (!ds.length) c.append(el("p", { class: "mute" }, "—"));
-  ds.forEach((d, i) => c.append(el("details", { open: i === 0 }, el("summary", {}, `question${ds.length > 1 ? " " + (i + 1) : ""}`), ...scoreBlock(d))));
-  c.append(el("h3", {}, "Put here"));
-  const groups = [...new Set(candidatesFor(op, pl.path).map(x => x.group))];
-  for (const g of groups) {
-    const box = el("div"), isRes = g === "results";
-    const cnt = candidatesFor(op, pl.path).filter(x => x.group === g).length;
-    const det = el("details", { open: !isRes }, el("summary", {}, `${g} (${cnt})`), box);
-    c.append(det);
-    if (!isRes) candidateList(box, op, pl.path, g);
-    else det.addEventListener("toggle", () => { if (det.open && !box.childNodes.length) candidateList(box, op, pl.path, g); });
-  }
-  c.append(el("div", { class: "actions" }, el("button", { "data-clear": 1, disabled: v.hole !== undefined, onclick: async () => stage(await ask({ reading: S.id, number: +op.id, path: pl.path, value: null }), `Clear ${op.function}#${op.id}.${pl.path}`, pkey(op.id, pl.path)) }, "Clear")));
-}
-function adjust1(label, ab, op, pl) { return el("button", { "data-adj": label, disabled: !ab, onclick: () => adjust(op, pl, ab[0], ab[1]) }, label); }
-async function adjust(op, pl, a, b) {
-  const value = { constant: S.base.text.slice(a, b), type: pl.value.type, at: [a, b] };
-  stage(await ask({ reading: S.id, number: +op.id, path: pl.path, value }), `Change the words at ${op.function}#${op.id}.${pl.path} to “${trim(value.constant, 50)}”`, pkey(op.id, pl.path));
-}
-
-function wordPanel(c) {
-  const r = S.base;
-  if (!S.span) { c.append(el("h2", {}, "—")); return; }
-  const [a, b] = spanChars(), p = r.phrases.find(p => p.start <= a && a < p.end);
-  c.append(el("h2", {}, `“${trim(spanText(), 70)}”`), el("p", { class: "sub" }, `${S.span.b - S.span.a + 1} · ${a}–${b}${p && p.quotes ? " · quoted" : ""}${W[S.span.a].el.classList.contains("pasted") ? " · looks pasted" : ""}`));
-  if (p) {
-    c.append(el("p", {}, p.terms.length ? p.terms.map(t => t.function + "#" + t.id).join(" + ") : p.unresolved.length ? "?" : "∅"));
-    for (const t of p.terms) c.append(el("div", {}, go(`${t.function}#${t.id}`, () => selectOp(t.id, document.querySelector(`.op[data-op="${t.id}"]`)))));
-  }
-  c.append(el("h3", {}, "Put at"));
-  const open = openPlaces(r);
-  for (const o of open.slice(0, 12)) c.append(el("div", { class: "item" }, el("button", { class: "chip", "data-use": pkey(o.op.id, o.path), onclick: async () => { const h = heldWords(); stage(await ask({ reading: S.id, number: +o.op.id, path: o.path, value: h.value }), `${h.label} → ${o.op.function}#${o.op.id}.${o.path}`, pkey(o.op.id, o.path)); } }, `${o.op.function}#${o.op.id}.${o.path}`), el("span", { class: "verdict mute" }, o.reason)));
-  if (open.length > 12) c.append(el("p", { class: "mute" }, `+${open.length - 12}`));
-}
-
-function opPanel(c) {
-  const r = S.base, op = termById(r, S.sel.id); if (!op) return closeInsp();
-  const p = phraseOf(r, op.id), fn = world().functions[op.function], j = op.judgments || {};
-  c.append(el("h2", {}, `${op.function}#${op.id}`), el("p", { class: "sub" }, `“${trim(r.text.slice(p.start, p.end).replace(/\s+/g, " "), 60)}” → `, tname(op.type)));
-  if (fn) { c.append(el("p", {}, fn.asks)); for (const [n] of fn.parameters) c.append(el("div", {}, el("span", { class: "t" }, n), " : ", tname(op.parameters[n] || "?"))); }
-  c.append(el("p", {}, `valid ${j.valid} · complete ${j.complete} · ready ${j.ready} · pending ${j.pending}`));
-  for (const d of j.diagnostics || []) c.append(el("p", { class: "no" }, diagWords(d, r)));
-    const ds = decisionsFor(r, d => String(d.operation) === String(op.id) && d.path == null && d.function == null);
-  if (ds.length) c.append(el("details", {}, el("summary", {}, "d1"), ...ds.flatMap(scoreBlock)));
-  c.append(el("h3", {}, "Places"));
-  for (const pl of places(op)) c.append(el("div", {}, go(`${pl.path}: ${say(pl.value, r)}`, () => { const e = find(pkey(op.id, pl.path)); selectPlace(op.id, pl.path, e); })));
-}
-
-function typePanel(c, name) {
-  const w = world(), m = /^(\w+)\[(.+)\]$/.exec(name), t = w.types[name];
-  c.append(el("button", { class: "link", onclick: () => { S.sel = { ...S.sel, typeView: null }; paintInsp(true); } }, "← back"), el("h2", {}, name), el("p", { class: "sub" }, t ? `kind ${t.kind}` : m ? "constructed" : "undeclared"));
-  if (m) { const k = w.constructors[m[1]]; c.append(el("p", {}, el("span", { class: "t" }, m[1]), `: ${k ? k.kind + ", " + k.describes : "(not declared)"}`), el("p", {}, "of ", tname(m[2]))); }
-  if (t) {
-    if (t.sum) c.append(el("p", {}, "sum: ", t.alternatives.map(a => a.member ? `${a.member}=“${a.words}”` : a.sum ? a.sum : "?").join(" | ")));
-    else if (t.brand) c.append(el("p", {}, "brand of ", tname(t.of.brand || t.of.base || "?"), ""));
-    else if (t.base) c.append(el("p", {}, `the base type ${t.base}`));
-  }
-  const holders = terms(S.base).flatMap(op => places(op).filter(p => declared(op, p.path) === name).map(p => `${op.function}#${op.id}.${p.path}`));
-  if (holders.length) c.append(el("p", {}, holders.slice(0, 12).join(", ") + (holders.length > 12 ? "…" : "")));
-}
-
-// ---- the world: what can be carried ----
-function paintWorld() {
-  const w = $("#world"), w0 = world(), open = w.querySelector("details[open]");
-  const keep = new Set([...w.querySelectorAll("details[open]")].map(d => d.dataset.k));
-  w.replaceChildren(el("h2", {}, "World"));
-  const det = (k, title, ...kids) => { const d = el("details", { "data-k": k }, el("summary", {}, title), ...kids); if (keep.has(k)) d.open = true; return d; };
-  w.append(det("members", `Members (${sums().reduce((n, s) => n + membersOf(s).length, 0)})`, ...sums().map(s => el("div", { class: "tyrow" }, el("div", { class: "tn" }, s), el("div", { class: "item" }, ...membersOf(s).map(m => el("button", { class: "chip", "data-pick": "member", "data-sum": s, "data-member": m.member, title: `${s}.${m.member}`, "aria-label": `world member ${m.words}, of ${s}. Space or Enter to pick up, then Tab to a place and Enter.` }, m.words)))))));
-  w.append(det("fns", `Functions (${Object.keys(w0.functions).length})`, ...Object.entries(w0.functions).map(([n, f]) => el("div", { class: "item" }, el("button", { class: "chip fn", "data-pick": "fn", "data-fn": n, "aria-label": `function ${n}: ${f.asks}. Space or Enter to pick up, then move to a word and press Enter to add it to that phrase.` }, n + "(" + f.parameters.map(p => p[0]).join(", ") + ")"), el("span", { class: "verdict mute" }, trim(f.asks, 48))))));
-  const ops = terms(S.base);
-  w.append(det("results", `Results (${ops.length})`, ...ops.map(op => el("div", { class: "item" }, el("button", { class: "chip", "data-pick": "result", "data-op": op.id, "aria-label": `the result of ${op.function} number ${op.id}. Space or Enter to pick up.` }, `${op.function}#${op.id}`), el("span", { class: "verdict mute" }, `→ ${op.type}`)))));
-}
-
-// ---- auto-scroll while carrying: a long message has to be reachable mid-drag ----
-let scrollRaf = 0, lastY = 0;
-function scrollLoop() { const h = innerHeight; const dy = lastY < 90 ? -Math.ceil((90 - lastY) / 4) : lastY > h - 200 ? Math.ceil((lastY - (h - 200)) / 4) : 0; if (dy) scrollBy(0, dy); scrollRaf = S.held || ptr ? requestAnimationFrame(scrollLoop) : 0; }
-function stopScroll() { cancelAnimationFrame(scrollRaf); scrollRaf = 0; }
-
-// ---- pointer ----
-let ptr = null, swallowClick = false;
-const wordIndexOf = n => { const w = n && n.closest && n.closest(".w"); return w ? W.findIndex(x => x.el === w) : -1; };
-document.addEventListener("pointerdown", e => {
-  if (e.button !== 0 || S.pending) return;
-  if (S.held && S.held.clickHeld) return;  // click-click mode: the click handler drops
-  const t = e.target;
-  if (t.closest("#insp, #dock, header, #needs") && !t.closest("#insp [data-pick]")) return;
-  const hdl = t.closest(".hdl");
-  if (hdl) { e.preventDefault(); ptr = { mode: "handle", which: hdl.dataset.hdl, x: e.clientX, y: e.clientY, moved: false }; return; }
-  const pick = t.closest("[data-pick]");
-  if (pick) { e.preventDefault(); ptr = { mode: "carry", pick, x: e.clientX, y: e.clientY, started: false }; return; }
-  const wi = wordIndexOf(t);
-  if (wi >= 0) {
-    e.preventDefault();
-    if (S.span && wi >= S.span.a && wi <= S.span.b && !e.shiftKey) ptr = { mode: "carry-sel", x: e.clientX, y: e.clientY, started: false, wi };
-    else ptr = { mode: "select", from: e.shiftKey && S.anchor != null ? S.anchor : wi, x: e.clientX, y: e.clientY, moved: false, wi };
-  }
-});
-document.addEventListener("pointermove", e => {
-  if (!ptr) { if (S.held && S.held.clickHeld) hoverFollow(e); return; }
-  lastY = e.clientY;
-  const far = Math.hypot(e.clientX - ptr.x, e.clientY - ptr.y) >= 5;
-  if (ptr.mode === "carry" || ptr.mode === "carry-sel") {
-    if (!ptr.started) {
-      if (!far) return;
-      let h; try { h = ptr.mode === "carry" ? pickFrom(ptr.pick) : heldWords(); } catch { h = null; }
-      if (!h) { ptr = null; return; }
-      ptr.started = true; beginHold(h); if (!S.held) { ptr = null; return; }
-      ptr.ghost = el("div", { class: "ghost" }, h.label); document.body.append(ptr.ghost);
-      if (!scrollRaf) scrollRaf = requestAnimationFrame(scrollLoop);
-    }
-    ptr.ghost.style.left = e.clientX + 14 + "px"; ptr.ghost.style.top = e.clientY + 14 + "px";
-    hoverFollow(e);
-  } else if (ptr.mode === "select" || ptr.mode === "handle") {
-    if (!far && !ptr.moved) return; ptr.moved = true;
-    const wi = wordIndexOf(document.elementFromPoint(e.clientX, e.clientY));
-    if (wi < 0) return;
-    if (ptr.mode === "select") setSpan(ptr.from, wi, { anchor: ptr.from, focusEnd: wi });
-    else { const other = ptr.which === "start" ? S.span.b : S.span.a; setSpan(other, wi, { anchor: other, focusEnd: wi }); }
-    if (!scrollRaf) scrollRaf = requestAnimationFrame(scrollLoop);
-  }
-});
-function hoverFollow(e) { const stack = document.elementsFromPoint(e.clientX, e.clientY); const tg = stack.map(x => targetAt(x)).find(Boolean); hoverOn(tg || null); }
-document.addEventListener("pointerup", async e => {
-  if (!ptr) return;
-  const p = ptr; ptr = null; stopScroll();
-  if (p.mode === "carry" || p.mode === "carry-sel") {
-    if (!p.started) { if (p.mode === "carry-sel") { setSpan(p.wi, p.wi); tabStop(p.wi); } return; }  // a click: the click handler inspects
-    p.ghost.remove(); swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);
-    const stack = document.elementsFromPoint(e.clientX, e.clientY), tg = stack.map(x => targetAt(x)).find(Boolean);
-    if (tg) { if (!S.hover || S.hover.key !== tg.key) hoverOn(tg); await dropOn(tg); }
-    else { endHold(""); }
-  } else if (p.mode === "select") {
-    swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);
-    if (!p.moved) setSpan(p.from === p.wi ? p.wi : Math.min(p.from, p.wi), p.from === p.wi ? p.wi : Math.max(p.from, p.wi), { anchor: p.from === p.wi ? p.wi : p.from, focusEnd: p.wi });
-    tabStop(S.focusEnd ?? p.wi); W[S.cursor].el.focus({ preventScroll: true });
-    selectWord(W[S.cursor].el); S.note = ""; paintDock();
-  } else if (p.mode === "handle") {
-    swallowClick = true; setTimeout(() => { swallowClick = false; }, 0); selectWord(W[S.focusEnd].el); S.note = ""; paintDock();
-  }
-});
-addEventListener("pointercancel", () => { if (ptr && ptr.ghost) ptr.ghost.remove(); if (ptr && ptr.started) endHold("Drag cancelled: nothing changed."); ptr = null; stopScroll(); });
-
-// click: inspect (no drag happened); or, in click-click mode, drop
-document.addEventListener("click", e => {
-  if (swallowClick) return;
-  const t = e.target;
-  if (S.held && S.held.clickHeld) {
-    const tg = targetAt(t); if (tg) { if (!S.hover || S.hover.key !== tg.key) hoverOn(tg); return void dropOn(tg); }
-    if (!t.closest("[data-pick]")) return void endHold("Cancelled: nothing changed.");
-  }
-  if (t.closest("#insp, #dock, header, #needs")) return;
-  const pl = t.closest("[data-place]"); if (pl) { if (S.pending) return; return selectPlace(pl.dataset.op, pl.dataset.path, pl); }
-  const un = t.closest("[data-unres]"); if (un) return selectUnres(un.dataset.unres, un);
-  const op = t.closest(".op[data-op]"); if (op) return selectOp(op.dataset.op, op);
-  const pk = t.closest("#world [data-pick]"); if (pk && !S.pending) { const h = pickFrom(pk); beginHold(h); S.held.clickHeld = true; pk.classList.add("chip", "held"); S.note = ""; paintDock(); return; }
-});
-
-// ---- keyboard ----
-function focusWord(i, extend, moveAnchor) {
-  i = Math.max(0, Math.min(W.length - 1, i));
-  if (extend) { if (!S.span) { S.anchor = S.cursor; S.focusEnd = S.cursor; } if (moveAnchor) S.anchor = i; else S.focusEnd = i; setSpan(S.anchor, S.focusEnd, { anchor: S.anchor, focusEnd: S.focusEnd }); paintDock(); }
-  tabStop(i); W[i].el.focus(); W[i].el.scrollIntoView({ block: "nearest" });
-  if (S.held && S.held.kind === "fn") hoverOn(targetAt(W[i].el));
-}
-const phraseStarts = () => [...document.querySelectorAll(".ph")].map(p => wordAt(+(p.querySelector(".w") || { dataset: { s: -1 } }).dataset.s)).filter(i => i >= 0);
-addEventListener("keydown", e => {
-  const t = e.target;
-  if (e.key === "Escape") {
-    if (S.held) { const h = S.held; endHold("Cancelled: nothing changed."); return; }
-    if (S.pending) return cancel();
-    if (S.refused) { S.refused = null; return paintDock(); }
-    if (S.sel && S.sel.typeView) { S.sel = { ...S.sel, typeView: null }; return paintInsp(true); }
-    if (S.sel) return closeInsp();
-    if (S.span) { setSpan(null); return; }
-    return;
-  }
-  if (t.closest && t.closest("#insp, #dock, header, #needs") && !S.held) return;
-  if (!e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "]" || e.key === "[")) { e.preventDefault(); return jump(".pl.hole", e.key === "]" ? 1 : -1); }
-  if (!e.metaKey && !e.ctrlKey && !e.altKey && (e.key === "u" || e.key === "U") && !S.held) { e.preventDefault(); return jump(".unres-chip", 1); }
-  const inWord = t.classList && t.classList.contains("w");
-  if (S.held && (e.key === "o" || e.key === "O") && !e.metaKey && !e.ctrlKey) {  // jump to the next open place
-    const all = [...document.querySelectorAll(".pl.hole")]; if (!all.length) return;
-    const i = all.indexOf(document.activeElement); e.preventDefault(); const n = all[(i + 1) % all.length]; n.focus(); n.scrollIntoView({ block: "center" }); hoverOn(targetAt(n)); return;
-  }
-  if (inWord) {
-    const i = W.findIndex(w => w.el === t);
-    if (i !== S.cursor) tabStop(i);
-    if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); focusWord(i + (e.key === "ArrowRight" ? 1 : -1), e.shiftKey, e.altKey); return; }
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const ps = phraseStarts(), cur = ps.filter(x => x <= i).at(-1) ?? 0, k = ps.indexOf(cur); focusWord(e.key === "ArrowDown" ? ps[Math.min(ps.length - 1, k + 1)] : (i > cur ? cur : ps[Math.max(0, k - 1)]), e.shiftKey); return; }
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      if (S.held) { const tg = targetAt(t); if (tg) { if (!S.hover || S.hover.key !== tg.key) hoverOn(tg); return void dropOn(tg); } return; }
-      if (!S.span || i < S.span.a || i > S.span.b) setSpan(i, i);
-      if (e.key === "Enter") { selectWord(t); S.note = ""; paintDock(); $("#insp button.chip") && 0; return; }
-      const h = heldWords(); beginHold(h); S.note = ""; placeCursorOnFirstPlace(); return;
-    }
-    return;
-  }
-  const pick = t.closest && t.closest("[data-pick]");
-  const plc = t.closest && t.closest("[data-place]"), un = t.closest && t.closest("[data-unres]");
-  if (e.key === "Enter" || e.key === " ") {
-    if (S.held && plc) { e.preventDefault(); const tg = targetAt(plc); if (!S.hover || S.hover.key !== tg.key) hoverOn(tg); return void dropOn(tg); }
-    if (S.held) return;
-    if (e.key === " " && pick && !S.pending) { e.preventDefault(); const h = pickFrom(pick); beginHold(h); S.note = ""; if (pick.closest("#world")) { pick.classList.add("held"); placeCursorOnFirstPlace(); } return; }
-    if (e.key === "Enter" && !S.pending) {
-      if (plc) { e.preventDefault(); return selectPlace(plc.dataset.op, plc.dataset.path, plc); }
-      if (un) { e.preventDefault(); return selectUnres(un.dataset.unres, un); }
-      const op = t.closest(".op[data-op]"); if (op) { e.preventDefault(); return selectOp(op.dataset.op, op); }
-      if (pick && pick.closest("#world")) { e.preventDefault(); const h = pickFrom(pick); beginHold(h); pick.classList.add("held"); placeCursorOnFirstPlace(); return; }
+// ---------- drawing ----------
+const txt = (x, y, s, f, fill, extra = {}) => h("text", { transform: translate(x, y), style: { font: f }, fill, ...extra }, s);
+let FOC = [];
+function draggable({ state: st, d, draggedId }) {
+  const display = !st.change && !st.prop && !st.refused && !st.pull;
+  const rec = st.r, L = layout(rec), scroll = st.scroll ?? S.scroll, n = visLines();
+  const first = Math.max(0, Math.floor(scroll)), last = Math.min(L.lines.length - 1, first + n);
+  const Y = (li) => TOP + (li - scroll) * LH;
+  const drawn = new Map(), foc = [];
+  const changed = st.change ? new Set((rec.pieces || []).filter((p) => !(S.base.pieces || []).some((b) => b.start === p.start && b.end === p.end && b.kind === p.kind)).map((p) => p.start)) : new Set();
+  const openP = S.open && S.open.t === "piece" ? S.open.p : null;
+  const bg = [], words = [], links = [], ops = [], over = [];
+  // the words, once, in reading order
+  const segs = new Map();
+  for (let li = first; li <= last; li++) {
+    const line = L.lines[li], y = Y(li);
+    for (const it of line.items) {
+      if (it.k === "w") {
+        if (it.st) bg.push(h("rect", { transform: translate(X0 + it.x - 3, y + 12), width: it.w + 6 + 4, height: 26, fill: C.paste }));
+        words.push(txt(X0 + it.x, y + 31, it.str, it.f, C.ink, { "data-s": it.s, "data-e": it.e, className: "w" }));
+        if (it.piece) { const k = it.piece.start; const a = segs.get(k) || { p: it.piece, parts: [] }; const lp = a.parts[a.parts.length - 1]; if (lp && lp.li === li) lp.x1 = X0 + it.x + it.w; else a.parts.push({ li, y, x0: X0 + it.x, x1: X0 + it.x + it.w }); segs.set(k, a); }
+      }
     }
   }
-});
-function placeCursorOnFirstPlace() {
-  if (S.held && S.held.kind === "fn") { const f = W[S.cursor]; f && f.el.focus(); paintDock(); return; }
-  const p = document.querySelector(".pl.hole") || document.querySelector(".pl"); if (p) { p.focus(); p.scrollIntoView({ block: "center" }); hoverOn(targetAt(p)); }
+  // the links: one per piece, piped to its kind
+  for (const [k, a] of segs) {
+    const p = a.p, col = colorOf(p.kind), c = cat(p.kind), id = "pc-" + k, isOpen = openP && openP.start === p.start, ch = changed.has(p.start);
+    const kids = [];
+    for (const s of a.parts) {
+      if (ch) bg.push(h("rect", { transform: translate(s.x0 - 3, s.y + 12), width: s.x1 - s.x0 + 6, height: 26, rx: 3, fill: C.accBg }));
+      kids.push(h("rect", { transform: translate(s.x0 - 2, s.y + 2), width: s.x1 - s.x0 + 4, height: 38, fill: "transparent" }));
+      if (c !== "none") kids.push(h("rect", { transform: translate(s.x0, s.y + 35), width: s.x1 - s.x0, height: p.sure || p.by === "user" ? 2 : 1.25, fill: ch ? C.acc : col, opacity: c === "null" ? 0.9 : 1, ...(c === "con" || c === "null" ? { style: { strokeDasharray: "3 2" } } : {}) }));
+      else kids.push(h("rect", { transform: translate(s.x0, s.y + 36), width: s.x1 - s.x0, height: 0.75, fill: C.faint, opacity: 0.6 }));
+    }
+    const s0 = a.parts[0], label = p.kind == null ? "null" : p.kind;
+    const lw = tw(label, F.small);
+    if (c !== "none" && (lw <= s0.x1 - s0.x0 + 14 || isOpen || ch || draggedId === id)) kids.push(txt(s0.x0, s0.y + 11, label, F.small, ch ? C.acc : col, { fontWeight: p.by === "user" ? 700 : 400 }));
+    else if (c !== "none") kids.push(h("circle", { transform: translate(s0.x0 + 2, s0.y + 8), r: 2, fill: col }));
+    if (isOpen) for (const s of a.parts) kids.push(h("rect", { transform: translate(s.x0 - 3, s.y + 1), width: s.x1 - s.x0 + 6, height: 40, rx: 4, fill: "none", stroke: col, strokeWidth: 1.5 }));
+    const th = { t: "piece", p };
+    links.push(h("g", { id, "data-kind": label, "data-start": p.start, "data-end": p.end, role: "link", "aria-label": label, className: "pc", dragologyZIndex: draggedId === id ? "/1" : false,
+      dragologyOnDrag: () => spec(th, d), onClick: () => openThing(th) }, ...kids));
+    drawn.set(id, { piece: p, x: s0.x0, y: s0.y, w: s0.x1 - s0.x0, h: 40 });
+    foc.push({ id, th, zone: "text", x: s0.x0, li: s0.li });
+  }
+  // a proposal the engine has not answered yet: drawn dashed, with its kind
+  if (st.prop && st.wait) {
+    for (let li = first; li <= last; li++) for (const it of L.lines[li].items) if (it.k === "w" && it.s >= st.prop.s && it.e <= st.prop.e) over.push(h("rect", { transform: translate(X0 + it.x - 2, Y(li) + 12), width: it.w + 6, height: 27, fill: "none", stroke: C.acc, strokeWidth: 1, strokeDasharray: "3 2" }));
+  }
+  // handles of the open link
+  const hp = openP && (S.base.pieces || []).find((p) => p.start === openP.start);
+  if (hp && !st.refused) {
+    const hl = st.handle && st.handle.p === hp.start ? st.handle : null;
+    for (const side of ["s", "e"]) {
+      const at = hl && hl.side === side ? hl.at : side === "s" ? hp.start : hp.end;
+      let it = null, li0 = -1;
+      for (let li = first; li <= last && !it; li++) for (const x of L.lines[li].items) if (x.k === "w" && (side === "s" ? x.s === at : x.e === at)) { it = x; li0 = li; break; }
+      if (!it) continue;
+      const hx = X0 + it.x + (side === "e" ? it.w + 2 : -4), id = "hd-" + side;
+      over.push(h("g", { id, transform: translate(hx, Y(li0) + 6), role: "slider", "aria-label": side === "s" ? "start" : "end", dragologyOnDrag: () => handleSpec(hp, side, d) },
+        h("rect", { transform: translate(-5, 0), width: 12, height: 36, fill: "transparent" }), h("rect", { width: 2.5, height: 34, rx: 1, fill: C.acc }), h("circle", { transform: translate(1.25, side === "s" ? 0 : 34), r: 3.5, fill: C.acc })));
+      drawn.set(id, { x: hx, y: Y(li0), w: 4, h: 36 });
+    }
+  }
+  // function spans: a bracket under the phrase, and the function with its places after it
+  const terms = allTerms(rec);
+  for (let li = first; li <= last; li++) {
+    const y = Y(li);
+    for (const it of L.lines[li].items) {
+      if (it.k === "op") {
+        ops.push(drawOp(it, X0 + it.x, y, rec, d, draggedId, drawn, foc, li));
+      } else if (it.k === "un") {
+        const id = "un-" + it.u.id, x = X0 + it.x;
+        const pr = st.refused && st.refused.target === id;
+        ops.push(h("g", { id, transform: translate(x, y + 14), className: "un", role: "button", "aria-label": `ƒ ${it.u.reason}`, onClick: () => openThing({ t: "un", u: it.u, ph: it.ph }) },
+          h("rect", { width: it.w, height: 24, rx: 4, fill: pr ? C.noBg : C.card, stroke: pr ? C.no : C.fn, strokeDasharray: "4 3" }), txt(6, 16, it.str, F.mono, C.fn)));
+        drawn.set(id, { x, y: y + 14, w: it.w, h: 24 });
+        foc.push({ id, th: { t: "un", u: it.u, ph: it.ph }, zone: "text", x, li });
+      }
+    }
+  }
+  for (const { t, p } of terms) { // the bracket of each operation under the words of its phrase
+    for (let li = first; li <= last; li++) {
+      const ws = L.lines[li].items.filter((x) => x.k === "w" && x.s >= p.start && x.e <= p.end);
+      if (!ws.length) continue;
+      const a = X0 + ws[0].x, b = X0 + ws[ws.length - 1].x + ws[ws.length - 1].w, y = Y(li) + 41;
+      bg.push(h("rect", { transform: translate(a, y), width: b - a, height: 1.5, fill: C.fn, opacity: 0.55 }));
+      if (ws[0].s <= p.start + 2) bg.push(h("rect", { transform: translate(a, y - 4), width: 1.5, height: 5.5, fill: C.fn, opacity: 0.55 }));
+    }
+  }
+  // the page of the open thing, or the world
+  const page = drawPage(st, d, draggedId, drawn, foc);
+  // the rail: places that take what is held, brought near
+  const rail = [];
+  const ri = railItems();
+  if (ri.length) {
+    const y = BH - 44;
+    rail.push(h("rect", { transform: translate(0, y - 6), width: X0 + TW + 48, height: 50, fill: C.card, opacity: 0.96 }));
+    rail.push(h("rect", { transform: translate(0, y - 6), width: X0 + TW + 48, height: 1, fill: C.rule }));
+    for (const r of ri) {
+      const hit = st.target === r.id || (S.hold && S.hold.opts[S.hold.i] && S.hold.opts[S.hold.i].target === r.id);
+      rail.push(h("g", { id: r.id, transform: translate(r.x, y), className: "rail" },
+        h("rect", { width: r.w, height: 28, rx: 5, fill: hit ? C.accBg : r.o.open ? C.card : C.tint, stroke: hit ? C.acc : C.fn, strokeDasharray: r.o.open ? "4 3" : "", strokeWidth: 1.25 }),
+        txt(8, 18, (r.v === "ok" ? "✓ " : "… ") + r.label, F.mono, r.v === "ok" ? C.fn : C.mute)));
+      drawn.set(r.id, { x: r.x, y, w: r.w, h: 28 });
+    }
+  }
+  // the keyboard's target
+  if (S.hold && display === false) {
+    const o = S.hold.opts[S.hold.i], b = o && DRAWN.get(o.target);
+    if (b) over.push(h("rect", { transform: translate(b.x - 4, b.y - 1), width: b.w + 8, height: b.h + 2, rx: 5, fill: "none", stroke: C.acc, strokeWidth: 2 }));
+  }
+  const fb = S.focus && (drawn.get(S.focus) || DRAWN.get(S.focus));
+  if (fb && !draggedId) over.push(h("rect", { transform: translate(fb.x - 4, fb.y - 2), width: fb.w + 8, height: fb.h + 4, rx: 5, fill: "none", stroke: C.acc, strokeWidth: 2, strokeDasharray: "2 2" }));
+  // the scroll bar, dragged through the library (d.vary on the scroll position)
+  const total = Math.max(1, L.lines.length - n), trackH = BH - TOP * 2 - (ri.length ? 52 : 0);
+  const thumbH = Math.max(30, trackH * Math.min(1, n / Math.max(1, L.lines.length)));
+  const sb = L.lines.length > n ? h("g", { id: "sb", transform: translate(X0 + TW + 30, TOP + (trackH - thumbH) * Math.min(1, Math.max(0, scroll / total))),
+    dragologyOnDrag: () => d.vary({ ...st, scroll }, DG.param("scroll"), { constraint: (s) => DG.inOrder([0, s.scroll, total]) }) },
+    h("rect", { transform: translate(-5, 0), width: 14, height: thumbH, fill: "transparent" }), h("rect", { width: 4, height: thumbH, rx: 2, fill: C.rule })) : null;
+  if (display) { DRAWN = drawn; FOC = foc; }
+  return h("g", { id: "root" },
+    h("rect", { id: "paper", width: BW, height: BH, fill: C.bg }),
+    h("g", { id: "bg" }, ...bg), h("g", { id: "words" }, ...words), h("g", { id: "ops" }, ...ops), h("g", { id: "links" }, ...links),
+    h("g", { id: "page" }, ...page), h("g", { id: "over" }, ...over), sb, rail.length ? h("g", { id: "railg" }, ...rail) : null);
 }
-document.addEventListener("focusin", e => {
-  if (e.target.classList && e.target.classList.contains("w")) { const i = W.findIndex(w => w.el === e.target); if (i >= 0 && i !== S.cursor) tabStop(i); }
-  if (!S.held || ptr) return;
-  const tg = targetAt(e.target);
-  if (tg) hoverOn(tg);
+function drawOp(c, x, y, rec, d, draggedId, drawn, foc, li) {
+  const t = c.t, id = "op-" + t.id, kids = [], j = t.judgments || {};
+  kids.push(h("rect", { width: c.w, height: 26, rx: 4, fill: C.fnBg, opacity: 0.6 }));
+  for (const p of c.parts) {
+    if (p.k === "slot") {
+      const pid = "pl-" + pkey(t, p.pl.path), sl = p.sl, hole = sl.tone === "hole" || sl.tone === "no";
+      const th = { t: "val", pl: p.pl };
+      kids.push(h("g", { id: pid, transform: translate(p.x, 3), role: "button", "aria-label": `${t.function}.${p.pl.path}`, "data-place": `${t.id}.${p.pl.path}`,
+        ...(sl.tone !== "hole" && sl.tone !== "no" ? { dragologyOnDrag: () => spec(th, d), dragologyZIndex: draggedId === pid ? "/1" : false } : {}),
+        onClick: (ev) => { ev.stopPropagation(); openThing({ t: "place", pl: p.pl }); } },
+        h("rect", { width: p.w, height: 20, rx: 3, fill: hole ? C.card : C.bg, stroke: hole ? C.no : C.type, strokeWidth: 1, strokeDasharray: hole ? "3 2" : "" }),
+        txt(5, 14, sl.g, sl.f, hole ? C.no : sl.tone === "ref" ? C.fn : C.type)));
+      drawn.set(pid, { x: x + p.x, y: y + 17, w: p.w, h: 20, pl: p.pl });
+      foc.push({ id: pid, th: { t: "place", pl: p.pl }, drag: th, zone: "text", x: x + p.x, li });
+    } else kids.push(txt(p.x, 17, p.str, p.f, p.k === "name" ? C.fn : C.mute));
+  }
+  if (j.pending || j.deferred) kids.push(txt(c.w + 3, 10, j.pending ? "⧗" : "⏲", F.small, C.mute));
+  if (j.complete === false) kids.push(h("circle", { transform: translate(c.w - 2, 2), r: 3, fill: C.no }));
+  drawn.set(id, { x, y: y + 14, w: c.w, h: 26, t });
+  foc.push({ id, th: { t: "op", t }, zone: "text", x, li });
+  return h("g", { id, transform: translate(x, y + 14), className: "op", role: "button", "aria-label": t.function, dragologyOnDrag: () => spec({ t: "op", t }, d), dragologyZIndex: draggedId === id ? "/1" : false, onClick: () => openThing({ t: "op", t }) }, ...kids);
+}
+
+// ---------- the page of a thing (the right column): its world page and its d1 data ----------
+function drawPage(st, d, draggedId, drawn, foc) {
+  const els = [], x0 = PX, w = PW;
+  let y = TOP + 4 - S.pscroll;
+  const head = (s, col) => { els.push(txt(x0, y + 12, s, F.head, col || C.mute)); y += 22; };
+  const chipEl = (id, x, label, col, bgc, th, opts = {}) => {
+    const cw = tw(label, opts.f || F.mono) + 14;
+    const g = h("g", { id, transform: translate(x, y), role: "button", "aria-label": label, className: "chip", dragologyZIndex: draggedId === id ? "/1" : false,
+      ...(opts.drag !== false && th && th.t !== "none" ? { dragologyOnDrag: () => spec(th, d) } : {}), onClick: () => opts.open ? openThing(opts.open) : th && openThing(th) },
+      h("rect", { width: cw, height: 22, rx: 4, fill: bgc || C.card, stroke: col, strokeWidth: 1, strokeDasharray: opts.dash ? "3 2" : "" }), txt(7, 15, label, opts.f || F.mono, col));
+    drawn.set(id, { x, y, w: cw, h: 22 });
+    foc.push({ id, th: opts.open || th, drag: th, zone: "page", x, li: y });
+    els.push(g);
+    return cw;
+  };
+  const row = (items) => { let x = x0; for (const it of items) { if (x + tw(it[1], F.mono) + 14 > x0 + w && x > x0) { x = x0; y += 28; } x += chipEl(...[it[0], x, ...it.slice(1)]) + 6; } y += 30; };
+  const para = (s, col, f = F.mono) => { for (const ln of wrap(s, f, w)) { els.push(txt(x0, y + 12, ln, f, col || C.mute)); y += 16; } y += 6; };
+  const typeChip = (name, idp) => [idp + "-" + name.replace(/\W/g, "_"), name, colorOf(name), cat(name) === "con" ? C.conBg : C.typeBg, cat(name) === "fn" ? { t: "fn", name } : { t: "type", name }, { dash: cat(name) === "con", open: { t: cat(name) === "fn" ? "fn" : "type", name } }];
+  const o = S.open;
+  if (!o) { drawWorld(els, chipEl, head, () => y, (v) => (y = v), drawn, foc, d, draggedId); return els; }
+  // the link target
+  const target = o.t === "piece" ? o.p.kind : o.t === "type" || o.t === "fn" ? o.name : o.t === "op" ? o.t.function : o.t === "place" ? o.pl.declared : o.t === "un" ? null : null;
+  els.push(h("g", { id: "pg-close", transform: translate(x0 + w - 18, y), role: "button", "aria-label": "close", onClick: () => openThing(null) }, h("rect", { width: 18, height: 18, fill: "transparent" }), txt(4, 13, "×", F.head, C.mute)));
+  if (o.t === "un") {
+    head(`ƒ ▢ · ${o.u.reason}`, C.fn);
+    const ds = S.base.decisions.filter((x) => String(x.operation) === String(o.u.id));
+    drawDecisions(ds, els, () => y, (v) => (y = v), para);
+    head("ƒ", C.fn);
+    row(Object.keys(world().functions).map((f) => ["pg-f-" + f, f, C.fn, C.fnBg, { t: "fn", name: f }, { open: { t: "fn", name: f } }]));
+    return els;
+  }
+  if (target != null && target !== "(none)") {
+    if (isFn(target)) drawFnPage(target, head, row, para, typeChip);
+    else drawTypePage(target, head, row, para, typeChip);
+  } else if (target === "(none)") head("(none)", C.faint);
+  // the d1 data for what is open
+  if (o.t === "piece") {
+    head(`share ${o.p.share == null ? "—" : o.p.share.toFixed(2)} · sure ${o.p.sure} · by ${o.p.by}`, C.mute);
+    const kw = kindWords(S.base).filter((k) => k.s >= o.p.start && k.e <= o.p.end);
+    if (kw.length) {
+      head("d1 · kind", C.ink);
+      for (const k of kw.slice(0, 6)) {
+        els.push(txt(x0, y + 12, `${k.w}  “${k.str || S.base.text.slice(k.s, k.e)}”`, F.mono, C.mute)); y += 18;
+        const pr = Object.entries((k.a && k.a.probabilities) || {}).sort((a, b) => b[1] - a[1]);
+        const show = S.more[k.s] ? pr : pr.slice(0, 4);
+        for (const [opt, pv] of show) {
+          const id = `pg-o-${k.s}-${opt.replace(/\W/g, "_")}`, col = colorOf(opt), bw = Math.max(2, (w - 150) * pv), chosen = k.a && k.a.value === opt;
+          els.push(h("g", { id, transform: translate(x0, y), role: "button", "aria-label": `${opt} ${pv.toFixed(2)}`, dragologyOnDrag: () => spec({ t: "opt", kind: opt }, d), dragologyZIndex: draggedId === id ? "/1" : false,
+            onClick: () => stageBody(retag(o.p.start, o.p.end, opt)) },
+            h("rect", { width: w, height: 18, fill: "transparent" }), txt(0, 13, (chosen ? "● " : "  ") + opt, F.mono, col), h("rect", { transform: translate(120, 5), width: bw, height: 8, rx: 2, fill: col, opacity: 0.7 }), txt(124 + bw, 13, pv.toFixed(2), F.small, C.mute)));
+          drawn.set(id, { x: x0, y, w, h: 18 }); foc.push({ id, th: { t: "opt", kind: opt }, zone: "page", x: x0, li: y, act: () => stageBody(retag(o.p.start, o.p.end, opt)) });
+          y += 19;
+        }
+        if (pr.length > 4) { const id = `pg-m-${k.s}`; els.push(h("g", { id, transform: translate(x0, y), role: "button", onClick: () => { S.more[k.s] = !S.more[k.s]; paint(); } }, h("rect", { width: 60, height: 16, fill: "transparent" }), txt(0, 12, S.more[k.s] ? "−" : `+${pr.length - 4}`, F.mono, C.mute))); drawn.set(id, { x: x0, y, w: 60, h: 16 }); foc.push({ id, zone: "page", x: x0, li: y, act: () => { S.more[k.s] = !S.more[k.s]; paint(); } }); y += 18; }
+        y += 4;
+      }
+      const d0 = kw[0].d, sid = `pg-st-${d0.phrase[0]}`;
+      els.push(h("g", { id: sid, transform: translate(x0, y), role: "button", onClick: () => { S.more["st" + d0.phrase[0]] = !S.more["st" + d0.phrase[0]]; paint(); } }, h("rect", { width: 80, height: 16, fill: "transparent" }), txt(0, 12, (S.more["st" + d0.phrase[0]] ? "▾" : "▸") + " state", F.mono, C.mute)));
+      drawn.set(sid, { x: x0, y, w: 80, h: 16 }); foc.push({ id: sid, zone: "page", x: x0, li: y, act: () => { S.more["st" + d0.phrase[0]] = !S.more["st" + d0.phrase[0]]; paint(); } });
+      y += 20;
+      if (S.more["st" + d0.phrase[0]]) { para(d0.state, C.mute); para(kw[0].q.instructions, C.mute); }
+    }
+  }
+  if (o.t === "op" || o.t === "place") {
+    const t = o.t === "op" ? o.t : o.pl.t, j = t.judgments || {};
+    head(`#${t.id} · ` + ["valid", "complete", "pending", "deferred", "ready"].map((k) => `${k} ${j[k] ? "✓" : "✕"}`).join("  "), C.mute);
+    for (const pl of o.t === "op" ? placesOf(t) : [o.pl]) {
+      const sl = slotOf(pl, S.base);
+      head(`${t.function}.${pl.path} : ${pl.declared}   ${sl.g}`, C.ink);
+      if (pl.v && pl.v.at && pl.v.at[0] >= 0) para(`at ${pl.v.at.join("–")}`, C.mute);
+      drawDecisions(S.base.decisions.filter((x) => String(x.operation) === String(t.id) && (x.path == null || x.path === pl.path)), els, () => y, (v) => (y = v), para);
+    }
+  }
+  // world editing is not built in the engine: its place, marked
+  els.push(h("g", { id: "pg-edit", transform: translate(x0, y + 4), "aria-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.faint)));
+  return els;
+  function drawTypePage(name, head, row, para, typeChip) {
+    const ty = world().types[name], pc = parseT(name);
+    if (pc) {
+      const con = world().constructors[pc.con] || {};
+      head(`${name} : *`, C.con);
+      head(`${pc.con} : ${con.kind || "?"}`, C.con);
+      if (con.describes) para(con.describes, C.mute);
+      row([typeChip(pc.arg, "pg-a")]);
+      return;
+    }
+    if (!ty) { head(name, C.no); return; }
+    head(`${name} : ${ty.kind}`, colorOf(name));
+    const doc = docOf(name);
+    if (doc && doc !== name) para(doc, C.mute);
+    if (ty.brand) { const chain = []; let t = ty.of; while (t) { chain.push(tname(t)); t = t.of; } head(`${name} ⊂ ${chain.join(" ⊂ ")}`, C.mute); row(chain.map((c) => typeChip(c, "pg-b"))); }
+    if (ty.sum) {
+      const alts = ty.alternatives || [];
+      const tys = alts.filter((a) => !a.member).map((a) => tname(a));
+      if (tys.length) { head(tys.join(" | "), C.mute); row(tys.map((c) => typeChip(c, "pg-u"))); }
+      const ms = members(ty);
+      if (ms.length) { head(`${ms.length} ·`, C.mute); row(ms.map((m) => [`pg-m-${m.type}-${m.member}`, m.words, C.type, C.card, { t: "member", type: m.type, words: m.words }, { open: { t: "type", name: m.type } }])); }
+    }
+    row(Object.keys(world().constructors).map((c) => typeChip(`${c}[${name}]`, "pg-c")));
+    const fs = Object.entries(world().functions);
+    const takes = fs.filter(([, f]) => f.parameters.some(([, t]) => mentions(t, name)));
+    const gives = fs.filter(([, f]) => mentions(f.result, name));
+    if (takes.length) { head(`→ ƒ`, C.fn); row(takes.map(([f, fd]) => [`pg-t-${f}`, `${f}(${fd.parameters.map(([p, t]) => p + ": " + tname(t)).join(", ")})`, C.fn, C.fnBg, { t: "fn", name: f }, { open: { t: "fn", name: f } }])); }
+    if (gives.length) { head(`ƒ →`, C.fn); row(gives.map(([f, fd]) => [`pg-g-${f}`, `${f} → ${tname(fd.result)}`, C.fn, C.fnBg, { t: "fn", name: f }, { open: { t: "fn", name: f } }])); }
+  }
+  function drawFnPage(name, head, row, para, typeChip) {
+    const f = world().functions[name];
+    head(`ƒ ${name}(${f.parameters.map(([p, t]) => p + ": " + tname(t)).join(", ")}) → ${tname(f.result)}`, C.fn);
+    para(f.asks, C.mute);
+    row([...f.parameters.map(([, t]) => typeChip(tname(t), "pg-p")), typeChip(tname(f.result), "pg-r")]);
+    const uses = allTerms(S.base).filter((x) => x.t.function === name);
+    if (uses.length) row(uses.map(({ t }) => [`pg-u-${t.id}`, `#${t.id}`, C.fn, C.card, { t: "op", t }, { open: { t: "op", t } }]));
+  }
+}
+function drawDecisions(ds, els, gy, sy, para) {
+  let y = gy();
+  for (const dc of ds.slice(0, 4)) {
+    els.push(txt(PX, y + 12, `d1 · ${dc.by}${dc.rule ? " · " + dc.rule : ""}`, F.head, C.ink)); y += 20;
+    for (const [qk, a] of Object.entries(dc.answers || {})) {
+      const pr = Object.entries(a.probabilities || {}).sort((x, z) => z[1] - x[1]).slice(0, 6);
+      for (const [opt, pv] of pr) { const bw = Math.max(2, (PW - 170) * pv); els.push(txt(PX, y + 12, (String(a.value) === opt ? "● " : "  ") + opt.slice(0, 18), F.mono, C.ink)); els.push(h("rect", { transform: translate(PX + 140, y + 4), width: bw, height: 8, rx: 2, fill: C.fn, opacity: 0.6 })); els.push(txt(PX + 144 + bw, y + 12, pv.toFixed(2), F.small, C.mute)); y += 17; }
+    }
+    if (dc.offered && dc.offered.length) { els.push(txt(PX, y + 12, `offered ${dc.offered.length} · cut ${(dc.cut || []).length}`, F.mono, C.mute)); y += 18; }
+    y += 6;
+  }
+  sy(y);
+}
+function drawWorld(els, chipEl, head, gy, sy, drawn, foc, d, draggedId) {
+  // the world as a graph: types (brands under what they wrap, sums over their alternatives), constructors, functions with edges
+  // from the type of each parameter
+  const wd = world(), names = Object.keys(wd.types), parent = {};
+  for (const n of names) { const t = wd.types[n]; if (t.brand && t.of) parent[n] = tname(t.of); }
+  for (const n of names) for (const a of wd.types[n].alternatives || []) if (!a.member && names.includes(tname(a)) && !parent[tname(a)]) parent[tname(a)] = n;
+  let y = gy();
+  head("world " + wd.identity.slice(0, 8));
+  sy(y = gy());
+  const pos = {}, x0 = PX, colW = Math.min(190, PW * 0.42);
+  const put = (n, depth) => {
+    const t = wd.types[n], ms = members(t).length, label = n + (ms ? ` ·${ms}` : "") + (t.brand ? " ⊂" : t.sum && !ms ? " |" : "");
+    sy(y);
+    const cw = chipEl("wd-t-" + n, x0 + depth * 14, label, colorOf(n), C.typeBg, { t: "type", name: n }, { open: { t: "type", name: n } });
+    pos[n] = { x: x0 + depth * 14 + cw, y: y + 11 };
+    y += 25;
+    for (const c of names.filter((m) => parent[m] === n)) put(c, depth + 1);
+  };
+  for (const n of names.filter((m) => !parent[m])) put(n, 0);
+  const yTypes = y;
+  let fy = TOP + 30 - S.pscroll;
+  const fx = x0 + colW + 40, edges = [];
+  sy(fy);
+  for (const [f, fd] of Object.entries(wd.functions)) {
+    sy(fy);
+    const cw = chipEl("wd-f-" + f, fx, `${f} → ${tname(fd.result)}`, C.fn, C.fnBg, { t: "fn", name: f }, { open: { t: "fn", name: f } });
+    for (const [, t] of fd.parameters) { const tn = inner(tname(t)), p = pos[tn]; if (p) edges.push(h("path", { d: `M${p.x + 2},${p.y} C${(p.x + fx) / 2},${p.y} ${(p.x + fx) / 2},${fy + 11} ${fx - 2},${fy + 11}`, fill: "none", stroke: C.fn, strokeOpacity: 0.35, strokeWidth: 1, strokeDasharray: parseT(tname(t)) ? "3 2" : "" })); }
+    fy += 26;
+  }
+  els.unshift(...edges);
+  y = Math.max(yTypes, fy) + 8;
+  sy(y);
+  let cx = x0;
+  for (const [c, cd] of Object.entries(wd.constructors)) { cx += chipEl("wd-c-" + c, cx, `${c} : ${cd.kind}`, C.con, C.conBg, { t: "con", con: c }, { dash: true, open: { t: "type", name: `${c}[*]` } }) + 6; }
+  y += 30; sy(y);
+  els.push(h("g", { id: "wd-edit", transform: translate(x0, y), "aria-label": "world edit ⊘" }, h("rect", { width: 70, height: 22, rx: 4, fill: "none", stroke: C.faint, strokeDasharray: "2 3" }), txt(8, 15, "＋ ⊘", F.mono, C.faint)));
+}
+function wrap(s, f, w) {
+  const out = []; let line = "";
+  for (const word of String(s).split(/\s+/)) { const t = line ? line + " " + word : word; if (tw(t, f) > w && line) { out.push(line); line = word; } else line = t; }
+  if (line) out.push(line);
+  return out.slice(0, 30);
+}
+
+// ---------- the dock: the change under the pointer, before → after, and its confirm ----------
+function strip(st) {
+  const out = [];
+  if (st.refused) { out.push(["no", "✕ " + st.refused.codes.join("  ")]); return out; }
+  if (!st.change) return out;
+  const b = st.change;
+  if (b.path === "kind") {
+    const bp = S.base.pieces || [], dp = (st.r.pieces || []);
+    const gone = bp.filter((p) => p.end > b.at[0] && p.start < b.at[1] && !dp.some((q) => q.start === p.start && q.end === p.end && q.kind === p.kind));
+    const added = dp.filter((p) => !bp.some((q) => q.start === p.start && q.end === p.end && q.kind === p.kind));
+    for (const p of gone) out.push(["was", `${p.kind}|${clip(S.base.text.slice(p.start, p.end))}`]);
+    out.push(["sep", "→"]);
+    for (const p of added) out.push(["now", `${p.kind}|${clip(S.base.text.slice(p.start, p.end))}`]);
+    if (st.wait) out.push(["sep", "…"]);
+  } else {
+    const t = allTerms(S.base).find((x) => String(x.t.id) === String(b.number));
+    const pl = t && placesOf(t.t).find((p) => p.path === b.path);
+    if (b.number == null) out.push(["now", `+ ${b.path.split(".")[0]}(${b.path.split(".")[1]}=${valLabel(b.value)})`]);
+    else { out.push(["was", `${t ? t.t.function : b.number}.${b.path}=${pl ? slotOf(pl, S.base).g : "?"}`]); out.push(["sep", "→"]); out.push(["now", `${t ? t.t.function : b.number}.${b.path}=${valLabel(b.value)}`]); }
+    if (st.wait) out.push(["sep", "…"]);
+  }
+  return out;
+}
+const clip = (s) => { s = s.replace(/\s+/g, " "); return s.length > 36 ? s.slice(0, 34) + "…" : s; };
+const valLabel = (v) => (v == null ? "∅" : v.ref != null ? "↩" + v.ref : v.hole ? "▢ " + v.reason : v.constant != null ? (v.at && v.at[0] >= 0 ? "“" + clip(v.constant) + "”" : v.constant) : "?");
+function paintDock(st) {
+  const dock = $("dock"), parts = [];
+  const sp = (cls, s) => `<span class="${cls}">${esc(s)}</span>`;
+  const show = st || LIVE || cur();
+  for (const [c, s] of strip(show)) parts.push(sp(c, s));
+  if (S.note && !DRAGGING && !S.staged && !S.hold) for (const [c, s] of strip(S.note)) parts.push(sp(c, s));
+  let btn = "";
+  if (S.staged && !DRAGGING) {
+    const v = verdict(S.staged.e);
+    btn = `<button id="accept" class="go" ${v === "ok" ? "" : "disabled"}>✓ a</button><button id="cancel">✕ esc</button>`;
+  }
+  const undo = S.undo.length && !S.staged && !DRAGGING ? `<button id="undo">↶ z</button>` : "";
+  dock.innerHTML = parts.join(" ") + `<span class="grow"></span>${btn}${undo}`;
+  if ($("accept")) $("accept").onclick = accept;
+  if ($("cancel")) $("cancel").onclick = cancel;
+  if ($("undo")) $("undo").onclick = undo1;
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+// ---------- stage, accept, cancel, undo: all through the engine ----------
+function stageBody(body) {
+  if (!body) return;
+  const e = ask(body, true);
+  S.staged = { body, e }; S.hold = null; S.note = null;
+  paint();
+}
+function dropped(next) {
+  DRAGGING = false; HELD = null; LIVE = null; RAIL_IDS = new Set();
+  if (next && next.scroll != null && next.scroll !== S.scroll && !next.change) S.scroll = next.scroll;
+  if (next && next.refused) { S.note = { refused: next.refused }; S.staged = null; }
+  else if (next && next.change) stageBody(next.change);
+  paint();
+}
+async function accept() {
+  if (!S.staged || verdict(S.staged.e) !== "ok") return;
+  const body = S.staged.body, was = S.base.snapshot;
+  const r = await post("/accept", { reading: S.id, ...body });
+  if (!r.saved) { S.note = { refused: { codes: codes({ diag: r.diagnostics, error: r.error }) } }; S.staged = null; return paint(); }
+  S.undo.push({ snapshot: was, idx: IDX.get(was) });
+  await reload();
+}
+function cancel() { S.staged = null; S.hold = null; S.note = null; paint(); }
+async function undo1() {
+  const u = S.undo.pop();
+  if (!u) return;
+  const r = await post("/restore", { snapshot: u.idx });
+  if (!r.saved) { S.note = { refused: { codes: codes({ diag: r.diagnostics, error: r.error }) } }; return paint(); }
+  await reload();
+}
+async function reload() {
+  await loadAll();
+  S.base = LATEST.get(S.id); S.staged = null; S.hold = null; DRAFTS.clear(); Q = [];
+  if (S.open && S.open.t === "piece") { const p = (S.base.pieces || []).find((q) => q.start <= S.open.p.start && S.open.p.start < q.end); S.open = p ? { t: "piece", p } : null; }
+  else if (S.open && (S.open.t === "op" || S.open.t === "place")) S.open = null;
+  pick(); paint();
+}
+function openThing(th) {
+  if (DRAGGING) return;
+  S.open = th && th.t !== "none" ? th : null; S.pscroll = 0;
+  const f = th && FOC.find((x) => x.th === th);
+  if (f) S.focus = f.id;
+  if (th && th.t === "piece") { // the verdicts for its words, before it is picked up
+    const { places } = options(th); void places;
+  }
+  paint();
+}
+
+// ---------- the keyboard: the same options as the pointer, the same /edit bodies ----------
+function holdOf(th) {
+  const { out, places } = options(th);
+  th.places = places;
+  const opts = [...out.filter((o) => !o.self), ...places.slice().sort((a, b) => b.open - a.open)];
+  const fb = far(th);
+  if (fb) opts.push({ target: null, body: fb, pull: true });
+  if (!opts.length) return null;
+  return { th, opts, i: 0 };
+}
+function holdState() {
+  const o = S.hold.opts[S.hold.i];
+  if (o.states) return withDraft(o.states[o.k]);
+  if (!o.body) return base();
+  ask(o.body, true);
+  return withDraft(stateFor(o.body, { target: o.target, pull: o.pull }));
+}
+function stepHandle(side, dir) { // ] widen end, [ narrow end, { widen start, } narrow start
+  const f = FOC.find((x) => x.id === S.focus), p = f && f.th.t === "piece" ? f.th.p : S.open && S.open.t === "piece" ? S.open.p : null;
+  if (!p) return;
+  S.open = { t: "piece", p };
+  const st = handleStates(p, side);
+  if (!S.hold || !S.hold.handle || S.hold.side !== side) {
+    const k0 = st.findIndex((s) => !s.change);
+    S.hold = { handle: true, side, th: { t: "handle", p }, opts: [{ states: st, k: k0 }], i: 0 };
+  }
+  const o = S.hold.opts[0];
+  o.k = Math.max(0, Math.min(st.length - 1, o.k + dir));
+  if (o.states[o.k].change) ask(o.states[o.k].change, true);
+  paint();
+}
+function moveFocus(dir, vertical) {
+  const zone = FOC.filter((f) => f.zone === S.zone);
+  if (!zone.length) return;
+  let i = zone.findIndex((f) => f.id === S.focus);
+  if (i < 0) i = dir > 0 ? -1 : zone.length;
+  if (vertical && S.zone === "text") {
+    const c = zone[i] || zone[0], li = c.li + dir;
+    const cand = zone.filter((f) => f.li === li);
+    if (cand.length) { S.focus = cand.reduce((a, b) => (Math.abs(b.x - c.x) < Math.abs(a.x - c.x) ? b : a)).id; return; }
+    if (dir > 0 && S.scroll < layout(S.base).lines.length - visLines()) { S.scroll += 1; return; }
+    if (dir < 0 && S.scroll > 0) { S.scroll -= 1; return; }
+  }
+  const j = i + dir;
+  if (j >= 0 && j < zone.length) S.focus = zone[j].id;
+  else if (S.zone === "text") { // the next link beyond the view: scroll one line
+    const L = layout(S.base);
+    S.scroll = Math.max(0, Math.min(L.lines.length - visLines(), S.scroll + dir));
+    S.focus = null; S.pendingFocus = dir;
+  }
+}
+document.addEventListener("keydown", (k) => {
+  if (!S.base || k.target.tagName === "SELECT" || k.metaKey || k.ctrlKey) return;
+  const key = k.key;
+  if (S.hold) {
+    const n = S.hold.opts.length;
+    if (S.hold.handle && (key === "]" || key === "[" || key === "{" || key === "}")) { stepHandle(key === "]" || key === "[" ? "e" : "s", key === "]" || key === "{" ? (key === "{" ? -1 : 1) : key === "[" ? -1 : 1); return k.preventDefault(); }
+    if (["ArrowRight", "ArrowDown", "Tab"].includes(key) && !k.shiftKey) S.hold.i = (S.hold.i + 1) % n;
+    else if (["ArrowLeft", "ArrowUp"].includes(key) || (key === "Tab" && k.shiftKey)) S.hold.i = (S.hold.i - 1 + n) % n;
+    else if (key === "Enter" || key === " ") { const st = holdState(); S.hold = null; if (st.refused) S.note = { refused: st.refused }; else if (st.change) stageBody(st.change); paint(); return k.preventDefault(); }
+    else if (key === "Escape") { S.hold = null; paint(); return k.preventDefault(); }
+    else return;
+    const o = S.hold.opts[S.hold.i];
+    if (o.target && o.target.startsWith("pc-")) { const b = DRAWN.get(o.target); void b; }
+    paint(); return k.preventDefault();
+  }
+  if (key === "Escape") { if (S.staged) cancel(); else { S.note = null; openThing(null); } return k.preventDefault(); }
+  if (key === "a" && S.staged) { accept(); return k.preventDefault(); }
+  if (key === "z" && S.undo.length && !S.staged) { undo1(); return k.preventDefault(); }
+  if (key === "]" || key === "[") { stepHandle("e", key === "]" ? 1 : -1); return k.preventDefault(); }
+  if (key === "}" || key === "{") { stepHandle("s", key === "{" ? -1 : 1); return k.preventDefault(); }
+  if (key === "Tab") { S.zone = S.zone === "text" ? "page" : "text"; S.focus = null; moveFocus(1); paint(); return k.preventDefault(); }
+  if (key === "ArrowRight" || key === "ArrowLeft") { moveFocus(key === "ArrowRight" ? 1 : -1); paint(); return k.preventDefault(); }
+  if (key === "ArrowDown" || key === "ArrowUp") { moveFocus(key === "ArrowDown" ? 1 : -1, true); paint(); return k.preventDefault(); }
+  if (key === "PageDown" || key === "PageUp") { const L = layout(S.base); S.scroll = Math.max(0, Math.min(L.lines.length - visLines(), S.scroll + (key === "PageDown" ? 1 : -1) * (visLines() - 2))); S.focus = null; paint(); return k.preventDefault(); }
+  const f = FOC.find((x) => x.id === S.focus);
+  if (!f) return;
+  if (key === "Enter") { if (f.act) f.act(); else openThing(f.th); return k.preventDefault(); }
+  if (key === " ") { const th = f.drag || f.th; if (th.t === "place" || th.t === "un") return k.preventDefault(); S.hold = holdOf(th); paint(); return k.preventDefault(); }
 });
+$("board").addEventListener("wheel", (w) => { // scrolling the view, not moving a thing
+  if (DRAGGING || !S.base) return;
+  w.preventDefault();
+  if (w.clientX > $("board").getBoundingClientRect().left + PX - 20) { S.pscroll = Math.max(0, S.pscroll + w.deltaY); }
+  else { const L = layout(S.base); S.scroll = Math.max(0, Math.min(Math.max(0, L.lines.length - visLines()), S.scroll + w.deltaY / LH)); }
+  paint();
+}, { passive: false });
 
-// a place and its words are one thing: hovering or focusing the place lights the words it holds, and a ref lights the operation it points at
-const linkFor = (n, on) => {
-  const pl = n.closest && n.closest("[data-place]"); if (!pl) return;
-  const op = termById(view(), pl.dataset.op), p = op && places(op).find(x => x.path === pl.dataset.path); if (!p) return;
-  if (p.value.constant !== undefined && p.value.at[0] >= 0) linkSpan(p.value.at[0], p.value.at[1], on);
-  if (p.value.ref !== undefined) { const b = document.querySelector(`.brick[data-brick="${CSS.escape(String(p.value.ref))}"]`); b && b.classList.toggle("link", on); }
-};
-document.addEventListener("mouseover", e => linkFor(e.target, true)); document.addEventListener("mouseout", e => linkFor(e.target, false));
-document.addEventListener("focusin", e => linkFor(e.target, true)); document.addEventListener("focusout", e => linkFor(e.target, false));
-$("#rerun").addEventListener("click", rerun);
-$("#older").addEventListener("click", () => { S.pending = null; S.sel = { kind: "history" }; render(); $("#insp .x").focus(); });
-$("#pick").addEventListener("change", async e => { S.id = e.target.value; S.sel = S.pending = null; S.span = null; S.cursor = 0; cache.clear(); await load(); render(); });
-
-load().then(() => { render(); paintDock(); });
+// ---------- the page ----------
+let root = null;
+function display() {
+  if (S.hold) return holdState();
+  return cur();
+}
+function paint() {
+  if (!S.base) return;
+  sizes();
+  const st = display();
+  root ??= createRoot($("board"));
+  root.render(h(DraggableRenderer, { draggable, state: st, width: BW, height: BH, dragThreshold: 4, onDropState: dropped, onDragState: () => {} }));
+  if (S.pendingFocus) { requestAnimationFrame(() => { const zone = FOC.filter((f) => f.zone === "text"); if (zone.length && S.pendingFocus) { S.focus = (S.pendingFocus > 0 ? zone[zone.length - 1] : zone[0]).id; S.pendingFocus = 0; paint(); } }); }
+  paintDock(DRAGGING ? LIVE : st);
+}
+function pick() {
+  const sel = $("pick");
+  const ids = [...LATEST.values()].sort((a, b) => !!b.pieces - !!a.pieces || b.text.length - a.text.length);
+  if (sel.options.length !== ids.length) sel.innerHTML = ids.map((l) => `<option value="${l.id}">${l.id.slice(0, 8)} · ${l.text.length}${l.pieces ? "" : " · ⊘"}</option>`).join("");
+  sel.value = S.id;
+  $("snap").textContent = `${S.base.snapshot.slice(0, 8)} · #${IDX.get(S.base.snapshot)} · ${(S.base.pieces || []).length} · ${allTerms(S.base).length}ƒ · ${S.base.corrections.length}✎`;
+}
+async function choose(id) {
+  S.id = id; S.base = LATEST.get(id); S.staged = null; S.hold = null; S.open = null; S.scroll = 0; S.focus = null; S.undo = []; S.note = null;
+  DRAFTS.clear(); Q = [];
+  const u = new URL(location); u.searchParams.set("r", id.slice(0, 8)); history.replaceState(null, "", u);
+  pick(); paint();
+}
+window.board = { choose, reload, accept, cancel, undo1, paint, options, layout, DRAFTS: () => DRAFTS, peek, verdict };
+(async function main() {
+  await loadAll();
+  const want = new URL(location).searchParams.get("r");
+  const ids = [...LATEST.values()].sort((a, b) => !!b.pieces - !!a.pieces || b.text.length - a.text.length);
+  const first = (want && ids.find((l) => l.id.startsWith(want))) || ids[0];
+  $("pick").onchange = (e) => choose(e.target.value);
+  addEventListener("resize", () => paint());
+  await choose(first.id);
+})();
