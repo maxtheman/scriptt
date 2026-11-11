@@ -1,0 +1,51 @@
+# Board 5: what is built, how to check it
+
+Page: `web/site/index.html` + `web/site/board.js` (one Dragology `DraggableRenderer`, SVG). Acceptance: `notes/ACCEPTANCE.md`.
+Audit: `web/site/audit.js`, driven by `web/audit-run.mjs` (headless Chrome over CDP: every pointer and key event is a trusted
+browser input event). Runs: `web/site/audits/board5/run*.json`, screenshots in `web/site/audits/board5/shots/`.
+
+```
+node web/audit-run.mjs --accept --shots web/site/audits/board5/shots 8c7eae08 ffe36f28 2086c1e0 adf412fe a32bfced
+```
+
+`--accept` accepts one retag on the first reading through `/accept`, reloads `/readings` to check the store, then undoes it with
+`/restore` (by keyboard, `z`). Without it nothing is saved; every other change is an `/edit` preview, cancelled.
+
+## Shape
+
+- The message once, in reading order. Words are the engine's words (`scriptt16.places`, mirrored for layout only), each piece of
+  `pieces` is a link: underline coloured by what its kind is (type, constructed type, function, `(none)`, null), dashed for
+  constructed types and null, thin when `sure` is false; its kind written above the words when there is room, a dot when not.
+- Each operation: a bracket under its phrase and, after the phrase, `fn(place: slot, …) → Result`. Slots: `⇠` (the words in
+  the text), member words (a world member), `↩ fn` (a reference to an earlier operation's result), `▢ T · reason` (a hole),
+  `∅ T` (empty). `ƒ ▢ reason` = an unresolved request. A red dot = not complete; `⧗` pending; `⏲` deferred.
+- The right column is the page of what is open (a link, a type, a function, an operation, a place), or the world graph when
+  nothing is: types (brands under what they wrap, sums over their alternatives, `·n` members), functions with an edge from each
+  parameter's type, constructors, and `＋ ⊘` where world editing would go (not built in the engine).
+- Pasted text (`<pasted_content>` blocks, `>` lines, written replies) is italic on a tint; code fences are monospace.
+
+## Every drag is a Dragology spec
+
+- Words (grab a link; its kind floats as a chip): `d.closest` over `d.dropTarget`s (each line of every link in view, each place
+  in view, each place in the rail) `.whenFar(unlink)`, `.withFloating({ghost})`. Dropped on words = those words get this kind
+  (adjacent words in the same phrase = the link widens over both); on a place = `/edit {constant, type, at}`; far = `(none)`.
+- Handles of the open link: `d.closest` over the word boundaries ±12 words; widen = retag the wider span, narrow = the words
+  let go become `(none)`.
+- Types, constructed types (`Many/Maybe/Later[T]` on a type page), d1's options, functions: onto words (retag).
+  Constructors (`Later : * -> *`) onto words wrap the words' kind. Functions onto `ƒ ▢` = a new operation (`number: null`).
+- Members onto places (`at: [-1,-1]`), results (an operation's name) onto places (`{ref}`), a filled place's value onto another
+  place, or far = cleared (`{hole, reason: "cleared"}`).
+- The scroll bar is `d.vary` on the scroll position.
+- A custom modifier, `drafted`, draws the engine's `/edit` draft for whatever state the spec chose, and redraws when the answer
+  arrives; a refused state drops as no change and shows the engine's codes. While a thing is held the rail (bottom of the view)
+  lists the places of the whole reading, frozen for the hold, each with the engine's verdict: `✓`, `✕`, `…`.
+- Keyboard: arrows move between links; Enter opens; Space picks up; arrows cycle the same options (each previewed); Enter drops;
+  Escape cancels; `]` `[` `{` `}` widen/narrow; Tab switches to the right column; `a` accepts, `z` undoes.
+
+## Known limits
+
+- `/edit` takes 0.22 s (short readings) to 0.85 s (13,727 characters) because the server rescans the store per request and is
+  single-threaded, so the rail's verdicts trickle in on long prompts. Asked the lead for a batch endpoint (`POST /edits`).
+- Type docstrings come from d1's kind options (the same docstrings), so a reading with no kind decision shows none.
+- Nesting of two function spans inside one phrase and world editing: not in the engine; not drawn, not faked.
+- A press during a state change can land on the fading previous drawing; page changes remount the renderer to avoid it.
