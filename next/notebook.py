@@ -37,7 +37,7 @@ def _():
     import marimo as mo
 
     here: pathlib.Path = pathlib.Path(__file__).resolve().parent
-    sys.path[:0] = [str(here), str(here.parent / ".scriptt")]
+    sys.path[:0] = [str(here), str(here.parent / "scriptt")]
     import agree
     import expected
     import scriptt16
@@ -47,12 +47,11 @@ def _():
 
 @app.cell
 def _():
-    """THE WORLD. agree.loads builds every type of world.py. A fault refuses a declaration; advice only points a person at a design question."""
+    """THE WORLD. agree.loads builds every type of world.py. A fault refuses a declaration."""
     world_text: str = (here / "world.py").read_text()
     world: agree.World = agree.loads(world_text, here.parent)
     {
         "faults": world.faults,
-        "advice": agree.duplicates(world.types, world.functions, "world.py") + agree.single_use(world.types, world.functions, "world.py"),
         "types": {name: {"is": type(one).__name__, "kind": agree.show(agree.kind_of(one)), "definition": agree.tree(one)} for name, one in world.types.items()},
         "functions": {f.name: f"({', '.join(f'{p}: {agree.show(t)}' for p, t in f.parameters)}) -> {agree.show(f.result)}   {f.asks}" for f in world.functions.values()},
         "constructors": {c.name: c.describes for c in agree.CONSTRUCTORS.values()},
@@ -74,10 +73,11 @@ def _():
     MOD, SEARCH = expected.MOD, expected.SEARCH
     answers: dict = expected.script(
         {"Redesign the mod.": "redesign", "Then show it.": "show", "Test the search too.": "test"},
-        {("Redesign the mod.", "redesign", "surface"): MOD, ("Then show it.", "show", "subject"): expected.Ref(0), ("Test the search too.", "test", "subject"): SEARCH})
-    d1 = Standin(answers)
+        {("Redesign the mod.", "redesign", "surface"): MOD, ("Then show it.", "show", "subject"): expected.Ref(0), ("Test the search too.", "test", "subject"): SEARCH},
+        refers={0: ("redesign", ("the mod",))})
+    d1 = Standin(answers, expected.World("next"))
     reading: scriptt16.Reading = scriptt16.read(text, world, [], d1, join=False, watch=d1.watch)
-    mo.plain_text(scriptt16.block(reading))
+    json.loads(json.dumps(scriptt16.record(reading)))["phrases"]
     return
 
 
@@ -101,11 +101,11 @@ def _():
 
 @app.cell
 def _():
-    """THE DECISIONS, as recorded: what d1 read, what it was asked, what it was offered, what the bound cut, what it answered."""
-    [{"operation": one["operation"], "path": one["path"], "state": one["state"],
+    """THE DECISIONS, as recorded: by d1 or by a declared rule; what d1 read, what it was asked, what it was offered, what the bound cut, what it answered and what was chosen."""
+    [{"by": one["by"], "rule": one["rule"], "operation": one["operation"], "path": one["path"], "state": one["state"], "chosen": one["chosen"] if not hasattr(one["chosen"], "__dataclass_fields__") else scriptt16.say(one["chosen"]),
       "questions": [(q["instructions"], [o["description"] for o in q.get("options", [])]) for q in one["asked"].values()],
       "offered": [scriptt16.say(term) for term in one["offered"]], "cut": [scriptt16.say(term) for term in one["cut"]], "answers": one["answers"]}
-     for one in reading.requests]
+     for one in reading.decisions]
     return
 
 

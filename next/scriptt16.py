@@ -27,7 +27,7 @@ sentences are one request. Rules decide: grounding of spans, the candidate
 lists and their order, the bound ``Limits.offered`` (the excess is recorded as
 cut), a record built from its fields when no whole value is in scope, a hole
 with reason "no candidate" when nothing fits (no question), and every
-judgment above. Every request to d1 is kept in ``Reading.requests`` with its
+judgment above. Every decision is kept in ``Reading.decisions`` with its
 state, questions, options, answers, phrase, operation, path, offered and cut
 candidates.
 
@@ -53,9 +53,10 @@ The API is plain functions over ``Reading``; a reading is never changed in place
   mismatch when the world differs. Restoring is loading an earlier snapshot.
 * ``rerun(line, world, model)`` reads the saved source again and re-applies
   each correction, or marks it invalidated with the reason.
-* ``gate(source, folder, lines, model, active)`` proposes a world: faults or an
-  empty corpus or a changed accepted obligation keep the active world and
-  return the draft source with the reason.
+* ``gate(source, folder, lines, model, active, active_source)`` proposes a
+  world: faults, an empty corpus, or an accepted obligation changed, lost or
+  added keep the active world and its corpus; the caller keeps its draft.
+  An activated world returns the corpus read again under it.
 * ``check(reading, reply, artifacts, criteria, model)`` -> one outcome per
   obligation and criterion, from evidence only, and a verdict.
 
@@ -74,7 +75,7 @@ import unicodedata
 import uuid
 
 import harness as shipped
-from agree import CONSTRUCTORS, LATER, MANY, MAYBE, MAXIMUM_OPTIONS, Applied, Base, Function, Member, Product, Star, Sum, Type, World, identity, is_subtype, kind_of, loads, show
+from agree import CONSTRUCTORS, LATER, MANY, MAYBE, Applied, Base, Function, Member, Product, Star, Sum, Type, World, identity, is_subtype, kind_of, loads, show
 
 type Model = typing.Callable[[str, dict[str, dict]], dict[str, dict]]
 """The decision model d1: takes a state and questions, returns one answer for each question."""
@@ -162,34 +163,36 @@ def answer(question: YesNo | OneOf, received: object) -> Choice | float | None:
     return share if type(share) in (int, float) and 0 <= share <= 1 else None
 
 
-def ask(search: "Search", state: str, questions: dict[str, YesNo | OneOf], about: dict) -> dict[str, Choice | float | None]:
-    """Sends several questions about one state to d1 in one request, and records the request.
+def decided(search: "Search", about: dict) -> dict:
+    """Records one decision of the search and returns it, for the caller to complete with its choice.
 
-    Args:
-        search: Holds the model and the list of requests of the reading.
-        state: The text that d1 reads.
-        questions: The questions, each under a key.
-        about: What the request decides: the phrase, the function and the path
-            of the hole, the operation once it exists, and the candidates.
+    A decision is a dict: by ("model" or "rule"), rule (the declared rule of a
+    decision by rule), state, asked (each question as sent), answers (d1's raw
+    answers), function and path of the hole, operation (its number once it
+    exists), offered and cut (the candidates), and chosen: a candidate, a list
+    of candidates for a Many, a function name, "absent", "none", the two ids
+    of ``ELSE``, or None for an invalid answer.
+    """
+    decision = {"by": "model", "rule": "", "state": "", "asked": {}, "answers": None, "function": None, "operation": None, "path": None, "offered": [], "cut": [], "chosen": None} | about
+    search.decisions.append(decision)
+    return decision
+
+
+def ask(search: "Search", state: str, questions: dict[str, YesNo | OneOf], about: dict) -> tuple[dict[str, Choice | float | None], dict]:
+    """Sends several questions about one state to d1 in one request, and records it as a decision.
 
     Returns:
-        The validated answer under each key.
+        The validated answer under each key, and the decision, whose ``chosen`` the caller sets.
     """
     sent: dict[str, dict] = {}
     for key, question in questions.items():
         if isinstance(question, OneOf):
-            if len(question.options) > MAXIMUM_OPTIONS:
-                raise ValueError(f"{len(question.options)} options, and d1 takes at most {MAXIMUM_OPTIONS}")
             sent[key] = {"type": "choice", "instructions": question.instructions, "options": [{"id": one, "description": text} for one, text in question.options.items()]}
         else:
             sent[key] = {"type": "boolean", "instructions": question.instructions}
-    request = {"state": state, "asked": sent, "answers": None, "function": None, "operation": None, "path": None, "offered": [], "cut": []} | about
-    search.requests.append(request)
-    if search.watch is not None:
-        search.watch.append(request)
-    received = search.model(state, sent)
-    request["answers"] = received
-    return {key: answer(question, received.get(key) if isinstance(received, dict) else None) for key, question in questions.items()}
+    decision = decided(search, about | {"state": state, "asked": sent})
+    decision["answers"] = received = search.model(state, sent)
+    return {key: answer(question, received.get(key) if isinstance(received, dict) else None) for key, question in questions.items()}, decision
 
 
 
@@ -328,8 +331,10 @@ def pending(term: Term) -> bool:
 
 
 def complete(term: Term) -> bool:
-    """Decides whether a term has no hole at any depth, through the operations it refers to."""
-    return not isinstance(term, Hole) and all(complete(part) for part in inside(term))
+    """Decides whether a term has no hole and no missing argument or field at any depth, through the operations it refers to."""
+    places = dict(term.function.parameters) if isinstance(term, Application) else dict(term.product.fields) if isinstance(term, Record) else {}
+    given = term.arguments if isinstance(term, Application) else term.fields if isinstance(term, Record) else {}
+    return not isinstance(term, Hole) and places.keys() <= given.keys() and all(complete(part) for part in inside(term))
 
 
 def ready(reading: "Reading", term: Application) -> bool:
@@ -666,21 +671,19 @@ class Search:
         world: The world.
         model: The decision model.
         limits: The numbers that the search uses.
-        requests: Every request to d1, in order.
+        decisions: Every decision of the search, d1's and the rules', in order.
         numbers: The numbers of the obligations, in the order they are made.
-        watch: A list that a caller gives to see each request as it is sent, or None.
     """
 
     text: str
     world: World
     model: Model
     limits: Limits
-    requests: list[dict]
+    decisions: list[dict]
     numbers: typing.Iterator[int]
-    watch: list | None = None
 
 
-def say(term: Term | None, text: str = "") -> str:
+def say(term: Term | None) -> str:
     """Returns a term as a call that a person can read. Display only: never used to compare terms."""
     match term:
         case Constant(value=Member(words=words)):
@@ -690,12 +693,12 @@ def say(term: Term | None, text: str = "") -> str:
         case Constant(value=value):
             return repr(str(value))
         case Application(function, arguments):
-            shown = ", ".join(f"{name}={say(argument, text)}" for name, argument in arguments.items() if not isinstance(argument, Empty))
+            shown = ", ".join(f"{name}={say(argument)}" for name, argument in arguments.items() if not isinstance(argument, Empty))
             return f"{function.name}({shown})"
         case Record(product, fields):
-            return f"{product.name}({', '.join(f'{name}={say(field, text)}' for name, field in fields.items())})"
+            return f"{product.name}({', '.join(f'{name}={say(field)}' for name, field in fields.items())})"
         case Several(terms=terms):
-            return f"[{', '.join(say(one, text) for one in terms)}]"
+            return f"[{', '.join(say(one) for one in terms)}]"
     return "..."
 
 
@@ -706,28 +709,33 @@ def candidates(goal: Type, environment: Environment, world: World, depth: int, a
       earlier ones, the nearest first. An earlier result and the original value
       it was made from are both listed: compatibility proves no replacement.
     * A new application of every other function whose result fits and whose
-      required parameters each have a term in scope. It is only a candidate:
+      required parameters each have a value in scope. It is only a candidate:
       d1's choice of it is what licenses the work.
     * For a product type, or a product alternative of a sum, a record to build
       from its fields.
 
     The order is the order of this list; the bound ``Limits.offered`` cuts its end.
     """
-    found: list[Term] = [term for term in (*environment.local, *environment.context) if fills(term, goal)]
+    found: list[Term] = []
+    for term in (*environment.local, *environment.context):
+        # A constant is a value: the same member, number or path at two places in the text is one candidate.
+        same = isinstance(term, Constant) and any(isinstance(one, Constant) and (one.type, one.value) == (term.type, term.value) for one in found)
+        if fills(term, goal) and not same:
+            found.append(term)
+    in_scope = lambda wanted: any(fills(term, wanted) for term in (*environment.local, *environment.context))
     if depth > 0:
         for function in world.functions.values():
             required = [parameter for _, parameter in function.parameters if not (isinstance(parameter, Applied) and parameter.constructor == MAYBE)]
             template = Application(function, {name: Hole(parameter) for name, parameter in function.parameters})
-            if function != applying and required and fills(template, goal) and all(candidates(parameter, environment, world, 0) for parameter in required):
+            if function != applying and required and fills(template, goal) and all(in_scope(parameter) for parameter in required):
                 found.append(template)
     products = [goal] if isinstance(goal, Product) else [one for one in getattr(goal, "alternatives", ()) if isinstance(one, Product)]
     return found + [Record(product, {name: Hole(field) for name, field in product.fields}) for product in products]
 
 
 def members(goal: Type) -> list[Constant]:
-    """Returns each member of a sum (or of its sum alternatives) as a constant with no span, for d1 to choose."""
-    alternatives = getattr(goal, "alternatives", ())
-    return [Constant(goal, one, -1, -1) for one in alternatives if isinstance(one, Member)] + [found for one in alternatives if isinstance(one, Sum) for found in members(one)]
+    """Returns each member of a sum as a constant with no span, for d1 to choose."""
+    return [Constant(goal, one, -1, -1) for one in getattr(goal, "alternatives", ()) if isinstance(one, Member)]
 
 
 def solve(goal: Type, environment: Environment, search: Search, state: str, path: str, applying: Function, depth: int) -> Term:
@@ -749,22 +757,28 @@ def solve(goal: Type, environment: Environment, search: Search, state: str, path
     optional = isinstance(goal, Applied) and goal.constructor == MAYBE
     inner = goal.argument if many or optional else goal
     found = candidates(inner, environment, search.world, depth, applying)
+    about = {"function": applying.name, "path": path, "state": state}
     if not many and not optional and len(found) == 1 and isinstance(found[0], Record):
+        decided(search, about | {"by": "rule", "rule": "a record with no whole value in scope is built from its fields", "offered": found, "chosen": found[0]})
         return made(found[0], environment, search, state, path, applying, depth)
     found = found or ([] if many or optional else members(inner))
     if not found and not optional:
+        decided(search, about | {"by": "rule", "rule": "nothing in scope fits the hole, so nobody is asked", "chosen": "none"})
         return Hole(goal, "no candidate")
     offered, cut = found[:limits.offered], found[limits.offered:]
-    about = {"function": applying.name, "path": path, "offered": offered, "cut": cut}
+    about |= {"offered": offered, "cut": cut}
     rejected = "bounded" if cut else "rejected" if found else "no candidate"
     if many:
-        shares = ask(search, state, {str(index): YesNo(rendered(shipped.IS(say(term)[:200], role, applying.asks))) for index, term in enumerate(offered)}, about)
+        shares, decision = ask(search, state, {str(index): YesNo(rendered(shipped.IS(say(term)[:200], role, applying.asks))) for index, term in enumerate(offered)}, about)
         if None in shares.values():
             return Hole(goal, "invalid answer")
-        chosen = tuple(made(term, environment, search, state, path, applying, depth) for index, term in enumerate(offered) if shares[str(index)] >= limits.yes)
+        decision["chosen"] = [term for index, term in enumerate(offered) if shares[str(index)] >= limits.yes]
+        chosen = tuple(made(term, environment, search, state, path, applying, depth) for term in decision["chosen"])
         return Several(inner, chosen) if chosen else Hole(goal, rejected)
     options = {str(index): say(term)[:200] for index, term in enumerate(offered)} | ({"absent": ABSENT} if optional else {}) | {"none": NONE_OF_THESE}
-    best = ask(search, state, {"which": OneOf(rendered(shipped.NAMES(role, applying.asks)), options)}, about)["which"].best
+    answers, decision = ask(search, state, {"which": OneOf(rendered(shipped.NAMES(role, applying.asks)), options)}, about)
+    best = answers["which"].best
+    decision["chosen"] = offered[int(best)] if best and best.isdigit() else best
     if best is None:
         return Hole(goal, "invalid answer")
     if best in ("absent", "none"):
@@ -783,12 +797,12 @@ def made(term: Term, environment: Environment, search: Search, state: str, path:
 
 def applied(function: Function, environment: Environment, search: Search, state: str, depth: int) -> Application:
     """Applies a function: synthesizes one term for each parameter, then numbers the operation and its decisions."""
-    first = len(search.requests)
+    first = len(search.decisions)
     arguments = {name: solve(parameter, environment, search, state, name, function, depth) for name, parameter in function.parameters}
     application = Application(function, arguments, next(search.numbers))
-    for request in search.requests[first:]:
-        if request["operation"] is None:
-            request["operation"] = application.number
+    for decision in search.decisions[first:]:
+        if decision["operation"] is None:
+            decision["operation"] = application.number
     return application
 
 
@@ -797,29 +811,34 @@ def choose(phrase: Phrase, environment: Environment, search: Search) -> Phrase:
 
     The first question offers every function, "none" (something that no
     function fits) and "nothing" (a remark, a reason, a rule or a greeting).
-    After a function, d1 is asked whether the phrase also asks for something
-    else, up to ``Limits.operations``. "none" or an invalid answer gives an
-    unresolved operation; a later operation can use the results of an earlier one.
+    After each operation, function or not, d1 is asked whether the phrase also
+    asks for something else. "none" gives an unresolved operation, and the
+    asking goes on; an invalid answer gives one and ends it. Past
+    ``Limits.operations``, one more answer that is not "nothing" is kept as an
+    unresolved operation with reason "bounded". A later operation can use the
+    results of an earlier one.
     """
     state = search.text[phrase.start:phrase.end].strip()
     functions = {name: function.asks for name, function in search.world.functions.items()}
     terms: list[Application | Unresolved] = []
     results: list[Application] = []
-    while len(terms) < search.limits.operations:
-        done = [term.function.asks for term in terms if isinstance(term, Application)]
-        question = OneOf(ALSO.format(done="; ".join(done)), functions | ELSE) if done else OneOf(shipped.WHAT, functions | ELSE)
-        first = len(search.requests)
-        best = ask(search, state, {"also" if done else "what": question}, {})["also" if done else "what"].best
+    while True:
+        done = [term.function.asks if isinstance(term, Application) else ELSE[NONE] for term in terms]
+        key = "also" if terms else "what"
+        answers, decision = ask(search, state, {key: OneOf(ALSO.format(done="; ".join(done)) if done else shipped.WHAT, functions | ELSE)}, {})
+        decision["chosen"] = best = answers[key].best
         if best == NOTHING:
             break
-        if best in search.world.functions:
+        if len(terms) == search.limits.operations:
+            term = Unresolved(next(search.numbers), "bounded")
+        elif best in search.world.functions:
             term = applied(search.world.functions[best], Environment((*reversed(results), *environment.local), environment.context), search, state, search.limits.depth)
         else:
             term = Unresolved(next(search.numbers), "invalid answer" if best is None else "rejected")
-        search.requests[first]["operation"] = term.number
+        decision["operation"] = term.number
         terms.append(term)
         results += [one for one in operations(term, {id(one) for one in results}) if isinstance(one, Application)]
-        if isinstance(term, Unresolved):
+        if best is None or len(terms) > search.limits.operations:
             break
     return dataclasses.replace(phrase, terms=tuple(terms))
 
@@ -844,7 +863,7 @@ class Reading:
         text: The message.
         message: The message as one phrase, with its phrases and their operations inside it.
         constants: Every constant that the message gives, bound or not.
-        requests: Each request that the search sent to d1 (see ``ask``).
+        decisions: Each decision of the search, d1's and the rules' (see ``decided``).
         world: The identity of the world it was read against (``agree.identity``).
         corrections: Each accepted manual binding: operation, function, path,
             value (as a term record), status ("retained" or "invalidated") and reason.
@@ -854,13 +873,13 @@ class Reading:
     text: str
     message: Phrase
     constants: list[Constant]
-    requests: list[dict]
+    decisions: list[dict]
     world: str
     corrections: list[dict] = dataclasses.field(default_factory=list)
 
 
 def read(text: str, world: World, replies: list[str], model: Model, join: bool = True, limits: Limits = Limits(),
-         message: Phrase | None = None, watch: list | None = None) -> Reading:
+         message: Phrase | None = None) -> Reading:
     """Runs the search on one message.
 
     Args:
@@ -872,18 +891,18 @@ def read(text: str, world: World, replies: list[str], model: Model, join: bool =
         limits: The numbers that the search uses.
         message: The phrases of the message, if a record already has them.
             The search then makes no new cut and asks d1 no join question.
-        watch: A list that receives each request as it is sent (for a caller
-            that answers by the candidates, such as the test stand-in).
 
     Raises:
         ValueError: If the world has a fault.
     """
     if world.faults:
         raise ValueError("the search does not run on a world with faults: " + "; ".join(text for _, _, text in world.faults))
-    search = Search(text, world, model, limits, [], itertools.count(), watch)
+    search = Search(text, world, model, limits, [], itertools.count())
 
     def same_request(first: str, second: str) -> float:
-        return ask(search, "\n".join([first.strip(), second.strip()]), {"join": YesNo(JOIN)}, {})["join"] or 0.0
+        answers, decision = ask(search, "\n".join([first.strip(), second.strip()]), {"join": YesNo(JOIN)}, {})
+        decision["chosen"] = answers["join"]
+        return answers["join"] or 0.0
 
     message = message or phrases(text, replies, world, same_request if join else None, limits)
     constants = grounded(text, world)
@@ -899,7 +918,7 @@ def read(text: str, world: World, replies: list[str], model: Model, join: bool =
         results = [one for term in done.terms for one in operations(term, seen) if isinstance(one, Application)]
         context = [*reversed(results), *reversed(local), *([words] if words.value else []), *context]
     with_terms = fold(lambda phrase: phrase if phrase.inside else finished[phrase.start], message)
-    return Reading(uuid.uuid4().hex, text, with_terms, constants, search.requests, identity(world))
+    return Reading(uuid.uuid4().hex, text, with_terms, constants, search.decisions, identity(world))
 
 
 # ---- Part 4: judgments over a reading ----------------------------------------
@@ -970,19 +989,11 @@ def checked(values: dict[str, Term], places: dict[str, Type], prefix: str = "") 
 def validate(reading: Reading) -> list[tuple[int, str, str]]:
     """The one validation judgment of a reading: (operation number, path, rule) for each fault.
 
-    Checks each operation's arguments (missing, extra, type and kind, at every
-    depth of records and collections) and each reference: an application inside
-    an argument must be an operation of the reading made before it.
+    Checks each operation's arguments: missing, extra, type and kind, at every
+    depth of records and collections. References are checked where a term can
+    get one: by ``edit``, and by ``load`` for a reference to no operation.
     """
-    found: list[tuple[int, str, str]] = []
-    earlier: set[int] = set()
-    for _, term in obligations(reading):
-        if isinstance(term, Application):
-            references = [(path, part) for path, part in bindings(term).items() for part in ([*part.terms] if isinstance(part, Several) else [part])]
-            found += [(term.number, path, "reference") for path, part in references if isinstance(part, Application) and id(part) not in earlier]
-            found += [(term.number, path, rule) for path, rule in checked(term.arguments, dict(term.function.parameters))]
-        earlier.add(id(term))
-    return found
+    return [(term.number, path, rule) for _, term in obligations(reading) if isinstance(term, Application) for path, rule in checked(term.arguments, dict(term.function.parameters))]
 
 
 def diagnostics(reading: Reading) -> list[tuple[int | None, str | None, str]]:
@@ -1000,13 +1011,13 @@ def inspect(reading: Reading, number: int, path: str) -> dict:
     """Returns what stands at a place, its type, the definition of its function, and the decision about it. Changes nothing."""
     term = next(one for _, one in obligations(reading) if one.number == number)
     return {"term": bindings(term).get(path), "type": show(place_type(term, path)), "definition": term.function.asks,
-            "decision": next((one for one in reading.requests if (one["operation"], one["path"]) == (number, path)), None)}
+            "decision": next((one for one in reading.decisions if (one["operation"], one["path"]) == (number, path)), None)}
 
 
 # ---- Part 5: edits, records and the store -------------------------------------
 
 
-def edit(reading: Reading, number: int, path: str, value: Term | None) -> tuple[Reading, list[tuple[int, str, str]]]:
+def edit(reading: Reading, number: int, path: str, value: Term | None, correction: bool = False) -> tuple[Reading, list[tuple[int, str, str]]]:
     """Proposes one change at one place of an operation, and validates the whole proposed reading.
 
     The base reading is not changed: the draft is a copy that keeps every shared
@@ -1018,6 +1029,8 @@ def edit(reading: Reading, number: int, path: str, value: Term | None) -> tuple[
         number: The operation.
         path: The argument, or a field at a dotted path.
         value: The new term (from the base reading or new), or None to remove the binding.
+        correction: True to keep the edit as an accepted manual correction. A
+            valid edit at a place that has a correction replaces it either way.
 
     Returns:
         The draft and its diagnostics. With diagnostics the edit is rejected and
@@ -1034,27 +1047,49 @@ def edit(reading: Reading, number: int, path: str, value: Term | None) -> tuple[
     referred = [one for one in ([value] if value is not None else []) for one in operations(one, set()) if isinstance(one, Application)]
     if any(id(one) not in earlier for one in referred):
         return draft, [(number, path, "reference")]
-    *outer, last = path.split(".")
-    holder = target.arguments
     try:
-        for name in outer:
-            holder = holder[name].fields
+        holder, last = place(target, path)
     except (KeyError, AttributeError):
         return draft, [(number, path, "missing")]
     if value is None:
         holder.pop(last, None)
     else:
         holder[last] = value
-    return draft, [one for one in validate(draft) if one[2] != "model_answer"]
-
-
-def correct(reading: Reading, number: int, path: str, value: Term) -> tuple[Reading, list[tuple[int, str, str]]]:
-    """Edits a binding as an accepted manual correction, which a rerun re-applies or invalidates with a reason."""
-    draft, found = edit(reading, number, path, value)
-    function = next(term.function.name for _, term in obligations(draft) if term.number == number)
-    numbers = {term.number for _, term in obligations(draft)}
-    draft.corrections.append({"operation": number, "function": function, "path": path, "value": term_record(value, numbers), "status": "retained", "reason": ""})
+    found = validate(draft)
+    if not found and (correction or any((one["operation"], one["path"]) == (number, path) for one in draft.corrections)):
+        corrected(draft, number, path, value)  # a later edit at a corrected place is the correction now
     return draft, found
+
+
+def place(application: Application, path: str) -> tuple[dict, str]:
+    """Returns the dict that holds the place at a path of an application, and its key there (KeyError if a record on the way is missing)."""
+    *outer, last = path.split(".")
+    holder = application.arguments
+    for name in outer:
+        holder = holder[name].fields
+    return holder, last
+
+
+def corrected(draft: Reading, number: int, path: str, value: Term | None) -> None:
+    """Keeps the correction at a place of a draft, replacing one already there; None removes it.
+
+    It records the value as a term record and, for each operation that the
+    value refers to, what that operation meant, so that a rerun can tell
+    whether the reference still names the same result.
+    """
+    entries = [term for _, term in obligations(draft)]
+    meanings = meaning(draft)
+    draft.corrections[:] = [one for one in draft.corrections if (one["operation"], one["path"]) != (number, path)]
+    if value is not None:
+        refers = [[term.number, term.function.name, meanings[entries.index(term)]] for term in operations(value, set()) if term in entries]
+        function = next(term.function.name for term in entries if term.number == number)
+        draft.corrections.append(plain({"operation": number, "function": function, "path": path, "value": term_record(value, {term.number for term in entries}),
+                                        "refers": refers, "status": "retained", "reason": ""}))
+
+
+def plain(data: object) -> object:
+    """Returns data as JSON gives it back, so that a saved meaning and a computed one compare equal."""
+    return json.loads(json.dumps(data))
 
 
 def term_record(term: Term, written: set[int]) -> dict:
@@ -1090,8 +1125,8 @@ def record(reading: Reading) -> dict:
     Keys: form, id, text, world (``agree.identity``), phrases (each innermost
     phrase in order: start, end, brand, starts_by, quotes, terms: its
     applications, and unresolved: its unresolved operation or None), constants
-    (every grounded span), decisions (every request to d1, with its path and
-    its candidates as term records) and corrections.
+    (every grounded span), decisions (every decision, d1's and the rules',
+    with its path, its candidates and its choice as term records) and corrections.
     """
     written: set[int] = set()
     phrases_line = []
@@ -1100,7 +1135,9 @@ def record(reading: Reading) -> dict:
         phrases_line.append({"start": phrase.start, "end": phrase.end, "brand": phrase.brand.name, "starts_by": phrase.starts_by, "quotes": phrase.quotes,
                              "terms": [term_record(term, written) for term in phrase.terms if isinstance(term, Application)],
                              "unresolved": {"id": str(unresolved[0].number), "reason": unresolved[0].reason} if unresolved else None})
-    decisions = [request | {"offered": [term_record(one, written) for one in request["offered"]], "cut": [term_record(one, written) for one in request["cut"]]} for request in reading.requests]
+    chosen = lambda value: [term_record(one, written) for one in value] if isinstance(value, list) else term_record(value, written) if isinstance(value, Constant | Application | Record | Several | Empty | Hole) else value
+    decisions = [one | {"offered": [term_record(term, written) for term in one["offered"]], "cut": [term_record(term, written) for term in one["cut"]], "chosen": chosen(one["chosen"])}
+                 for one in reading.decisions]
     return {"form": 5, "id": reading.id, "text": reading.text, "world": reading.world, "phrases": phrases_line,
             "constants": [term_record(one, written) for one in reading.constants], "decisions": decisions, "corrections": reading.corrections}
 
@@ -1117,17 +1154,29 @@ def type_named(name: str, world: World) -> Type:
     raise LookupError(f"{name} is no type of this world")
 
 
-def term_from(line: dict, world: World, made_by: dict[int, Application]) -> Term:
+def term_from(line: dict, world: World, made_by: dict[int, Application], dangling: list | None = None) -> Term:
     """Rebuilds a term from its record. A reference becomes the same object as the operation it names.
 
+    A reference to no operation made before it is a hole with reason "dangling
+    reference", noted in ``dangling`` as (operation, path, "reference").
+
     Raises:
-        LookupError: If the world has no such type, member or function.
+        LookupError: If the world has no such type, member or function, or a reference dangles and no list takes it.
     """
     if "ref" in line:
         return made_by[int(line["ref"])]
     if "function" in line:
         number = None if line["id"] is None else int(line["id"])
-        application = Application(world.functions[line["function"]], {name: term_from(one, world, made_by) for name, one in line["arguments"].items()}, number)
+        function = world.functions[line["function"]]
+        arguments = {}
+        for name, one in line["arguments"].items():
+            missing = "ref" in one and not (str(one["ref"]).isdigit() and int(one["ref"]) in made_by)
+            if missing and dangling is not None:
+                dangling.append((number, name, "reference"))
+                arguments[name] = Hole(dict(function.parameters).get(name, Applied(MAYBE, Base("NoneType", type(None)))), "dangling reference")
+            else:
+                arguments[name] = term_from(one, world, made_by, dangling)
+        application = Application(function, arguments, number)
         if number is not None:
             made_by[number] = application
         return application
@@ -1140,7 +1189,7 @@ def term_from(line: dict, world: World, made_by: dict[int, Application]) -> Term
                 raise LookupError(f"{line['constant']} is no member of {kind.name}")
         elif kind.name == "Path":
             value = pathlib.Path(value)
-        return Constant(kind, value, *line["at"])
+        return Constant(kind, value, *line.get("at", (-1, -1)))
     if "fields" in line:
         return Record(kind, {name: term_from(one, world, made_by) for name, one in line["fields"].items()})
     if "several" in line:
@@ -1148,11 +1197,11 @@ def term_from(line: dict, world: World, made_by: dict[int, Application]) -> Term
     return Empty(kind) if "empty" in line else Hole(kind, line["reason"])
 
 
-def recorded_phrases(line: dict, world: World, made_by: dict[int, Application] | None = None) -> Phrase:
+def recorded_phrases(line: dict, world: World, made_by: dict[int, Application] | None = None, dangling: list | None = None) -> Phrase:
     """Rebuilds the phrases of a record; with ``made_by``, their operations too, else none."""
     found = []
     for phrase in line["phrases"]:
-        terms = () if made_by is None else tuple(term_from(one, world, made_by) for one in phrase["terms"])
+        terms = () if made_by is None else tuple(term_from(one, world, made_by, dangling) for one in phrase["terms"])
         if made_by is not None and phrase["unresolved"]:
             terms += (Unresolved(int(phrase["unresolved"]["id"]), phrase["unresolved"]["reason"]),)
         found.append(Phrase(phrase["start"], phrase["end"], world.types[phrase["brand"]], (), phrase["starts_by"], phrase["quotes"], terms))
@@ -1163,16 +1212,29 @@ def load(line: dict, world: World) -> tuple[Reading | None, list[tuple[None, Non
     """Rebuilds a saved reading with the same identities, bindings, unresolved state and decisions. Asks d1 nothing.
 
     Returns:
-        The reading and no diagnostic; or None and an "identity" diagnostic if
-        the record was read against another world.
+        The reading and the diagnostics of ``validate``; or None and an
+        "identity" diagnostic if the record was read against another world, or
+        a "reference" diagnostic if it refers to no operation.
     """
     if line["world"] != identity(world):
         return None, [(None, None, "identity")]
     made_by: dict[int, Application] = {}
-    message = recorded_phrases(line, world, made_by)
-    requests = [one | {"offered": [term_from(term, world, made_by) for term in one["offered"]], "cut": [term_from(term, world, made_by) for term in one["cut"]]} for one in line["decisions"]]
-    constants = [term_from(one, world, made_by) for one in line["constants"]]
-    return Reading(line["id"], line["text"], message, constants, requests, line["world"], [dict(one) for one in line["corrections"]]), []
+    dangling: list[tuple[int, str, str]] = []
+    rebuilt = lambda value: [term_from(one, world, made_by, dangling) for one in value] if isinstance(value, list) else term_from(value, world, made_by, dangling) if isinstance(value, dict) else value
+    message = recorded_phrases(line, world, made_by, dangling)
+    decisions = [one | {"offered": rebuilt(one["offered"]), "cut": rebuilt(one["cut"]), "chosen": rebuilt(one["chosen"])} for one in line["decisions"]]
+    reading = Reading(line["id"], line["text"], message, rebuilt(line["constants"]), decisions, line["world"], [dict(one) for one in line["corrections"]])
+    found = validate(reading)
+    for number, path, rule in found:
+        if rule in ("type", "kind"):  # a saved value of the wrong type is not trusted: its place becomes a hole
+            holder, last = place(by_number(reading, number), path)
+            holder[last] = Hole(place_type(by_number(reading, number), path), "invalid saved value")
+    return reading, found + dangling
+
+
+def by_number(reading: Reading, number: int) -> Application | None:
+    """Returns the operation of a reading with this number."""
+    return next((term for _, term in obligations(reading) if term.number == number), None)
 
 
 def save(reading: Reading, store: pathlib.Path) -> None:
@@ -1186,23 +1248,34 @@ def saved(store: pathlib.Path) -> list[dict]:
     return [json.loads(line) for line in store.read_text().splitlines()] if store.exists() else []
 
 
-def rerun(line: dict, world: World, model: Model, limits: Limits = Limits(), watch: list | None = None) -> Reading:
+def rerun(line: dict, world: World, model: Model, limits: Limits = Limits()) -> Reading:
     """Reads the source of a saved reading again with its phrases, and re-applies its corrections.
 
-    A correction whose operation, value or place no longer holds is kept with
-    status "invalidated" and the reason; it never yields silently to d1.
+    A correction whose operation, value, place, or referred result no longer
+    holds is kept with status "invalidated" and the reason; it never yields
+    silently to d1.
     """
-    reading = read(line["text"], world, [], model, False, limits, recorded_phrases(line, world), watch)
+    reading = read(line["text"], world, [], model, False, limits, recorded_phrases(line, world))
     for correction in line["corrections"]:
         status, reason = "retained", ""
         try:
-            made_by = {term.number: term for _, term in obligations(reading) if isinstance(term, Application)}
+            entries = [term for _, term in obligations(reading)]
+            made_by = {term.number: term for term in entries if isinstance(term, Application)}
             target = made_by.get(correction["operation"])
             if target is None or target.function.name != correction["function"]:
-                raise LookupError(f"operation {correction['operation']} is no longer {correction['function']}")
-            draft, found = edit(reading, correction["operation"], correction["path"], term_from(correction["value"], world, made_by))
+                now = target.function.name if target else "no operation"
+                raise LookupError(f"{correction['function']} became {now}, so the correction of {correction['path']} no longer applies")
+            for number, function, before in correction["refers"]:
+                now = plain(meaning(reading)[entries.index(made_by[number])]) if number in made_by else None
+                if now != before:
+                    raise LookupError(f"{correction['path']} referred to {function}, whose meaning changed from {before} to {now}")
+            try:
+                value = term_from(correction["value"], world, made_by)
+            except LookupError as error:
+                raise LookupError(f"{correction['path']}: {str(error).strip(chr(39))}")
+            draft, found = edit(reading, correction["operation"], correction["path"], value)
             if found:
-                raise LookupError(f"the corrected value no longer fits: {found}")
+                raise LookupError(f"{correction['path']}: the corrected value no longer fits ({found})")
             reading = draft
         except LookupError as error:
             status, reason = "invalidated", str(error).strip("'\"")
@@ -1211,24 +1284,27 @@ def rerun(line: dict, world: World, model: Model, limits: Limits = Limits(), wat
 
 
 def value_of(term: Term, index: dict[int, int]) -> object:
-    """Returns a bound value as comparable data: a constant by its type and value (not its span or display), a result by its obligation index."""
+    """Returns a bound value as comparable data: a constant by its type and value (not its span or display),
+    a result by its obligation index, a record by its fields, a hole by its type and reason."""
     match term:
         case Constant(type=kind, value=Member(words=words)) | Constant(type=kind, value=words):
             return (show(kind), str(words))
         case Application():
             return ("ref", index.get(id(term)))
+        case Record(product=product, fields=fields):
+            return ("record", product.name, tuple(sorted((name, repr(value_of(one, index))) for name, one in fields.items())))
         case Several(terms=terms):
             return ("several", tuple(sorted(repr(value_of(one, index)) for one in terms)))
         case Empty():
             return ("empty",)
-    return ("hole", show(term.type))
+    return ("hole", show(term.type), term.reason)
 
 
 def meaning(reading: Reading) -> list[tuple]:
-    """Returns each obligation as comparable data: its function and the value at each path."""
+    """Returns each obligation as comparable data: its function and the value at each path, or its unresolved reason."""
     entries = [term for _, term in obligations(reading)]
     index = {id(term): number for number, term in enumerate(entries)}
-    return [("unresolved",) if isinstance(term, Unresolved) else (term.function.name, {path: value_of(one, index) for path, one in bindings(term).items()}) for term in entries]
+    return [("unresolved", term.reason) if isinstance(term, Unresolved) else (term.function.name, {path: value_of(one, index) for path, one in bindings(term).items()}) for term in entries]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1237,25 +1313,26 @@ class Gate:
 
     Attributes:
         activated: True only if the proposed world has no fault, the corpus is
-            not empty, and every accepted obligation keeps its operation and bindings.
+            not empty, and every accepted obligation keeps its operation and
+            bindings, and no obligation is added.
         verdict: PASS, FAIL (a fault or a regression) or UNVERIFIED (no corpus).
-        regressions: (line, obligation) of each accepted obligation that changed or disappeared.
+        regressions: (line, obligation) of each accepted obligation that changed, disappeared or was added.
         faults: The faults of the proposed world.
-        draft: The proposed source, returned as it was given.
         world: The active world after the decision.
         source: The source of the active world after the decision.
+        lines: The corpus for the active world: the lines read again under it if it was activated, else the lines given.
     """
 
     activated: bool
     verdict: str
     regressions: list[tuple[int, int]]
     faults: list[tuple[str, str, str]]
-    draft: str
     world: World
     source: str
+    lines: list[dict]
 
 
-def gate(source: str, folder: pathlib.Path, lines: list[dict], model: Model, active: World, active_source: str, limits: Limits = Limits(), watch: list | None = None) -> Gate:
+def gate(source: str, folder: pathlib.Path, lines: list[dict], model: Model, active: World, active_source: str, limits: Limits = Limits()) -> Gate:
     """Decides whether a proposed world.py becomes active: it must keep every accepted meaning of the corpus.
 
     Each saved reading is read again under the proposed world with its own
@@ -1264,12 +1341,16 @@ def gate(source: str, folder: pathlib.Path, lines: list[dict], model: Model, act
     """
     proposed = loads(source, folder)
     if proposed.faults or not lines:
-        return Gate(False, FAIL if proposed.faults else UNVERIFIED, [], proposed.faults, source, active, active_source)
-    regressions = []
+        return Gate(False, FAIL if proposed.faults else UNVERIFIED, [], proposed.faults, active, active_source, lines)
+    regressions, reread = [], []
     for number, line in enumerate(lines):
-        before, after = meaning(load(line, active)[0]), meaning(rerun(line, proposed, model, limits, watch))
-        regressions += [(number, index) for index, one in enumerate(before) if index >= len(after) or after[index] != one]
-    return Gate(not regressions, FAIL if regressions else PASS, regressions, [], source, *((active, active_source) if regressions else (proposed, source)))
+        again = rerun(line, proposed, model, limits)
+        before, after = meaning(load(line, active)[0]), meaning(again)
+        regressions += [(number, index) for index in range(max(len(before), len(after))) if index >= len(before) or index >= len(after) or after[index] != before[index]]
+        reread.append(plain(record(again)))
+    if regressions:
+        return Gate(False, FAIL, regressions, [], active, active_source, lines)
+    return Gate(True, PASS, [], [], proposed, source, reread)
 
 
 # ---- Part 6: fulfillment -------------------------------------------------------
@@ -1279,17 +1360,15 @@ def gate(source: str, folder: pathlib.Path, lines: list[dict], model: Model, act
 class Artifact:
     """Supplied evidence about one exact operation.
 
+    The criteria judge what it shows; the engine only decides which operation it is about.
+
     Attributes:
         function: The function of the operation.
         arguments: The term at each argument path, as ``bindings`` gives them.
-        value: The value it produced.
-        probe: The behaviour check that was run on it, for the criteria to judge; None if none ran.
     """
 
     function: str
     arguments: dict[str, Term]
-    value: object
-    probe: object = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1335,7 +1414,7 @@ def check(reading: Reading, reply: str, artifacts: list[Artifact], criteria: lis
     index = {id(term): number for number, term in enumerate(entries)}
     search = Search(reading.text, None, model, limits, [], itertools.count())
     asked = {f"did {term.number}": YesNo(rendered(shipped.DID(f"{term.function.asks}: {say(term)}"))) for term in entries if isinstance(term, Application)}
-    claims = ask(search, f"MESSAGE:\n{reading.text}\n\nREPLY:\n{reply}", asked, {}) if asked else {}
+    claims, judgment = ask(search, f"MESSAGE:\n{reading.text}\n\nREPLY:\n{reply}", asked, {}) if asked else ({}, None)
     found: list[Checked] = []
     for term in entries:
         mine = [place for place, artifact in enumerate(artifacts) if isinstance(term, Application) and complete(term) and about(term, artifact, index)]
@@ -1345,18 +1424,5 @@ def check(reading: Reading, reply: str, artifacts: list[Artifact], criteria: lis
             found.append(Checked(term.number, name, outcome, evidence, claims.get(f"did {term.number}")))
     outcomes = {one.outcome for one in found}
     verdict = FAIL if FAIL in outcomes else PASS if outcomes == {PASS} else UNVERIFIED
-    return found, verdict, (search.requests or [None])[0]
+    return found, verdict, judgment
 
-
-def block(reading: Reading) -> str:
-    """Returns the lines that Claude receives with a message: each obligation with its state, then the other phrases."""
-    lines = []
-    for number, (phrase, term) in enumerate(obligations(reading)):
-        words = " ".join(reading.text[phrase.start:phrase.end].split())[:90]
-        if isinstance(term, Unresolved):
-            lines.append(f'{number}. ?  no function of the world fits ({term.reason})   "{words}"')
-        else:
-            state = "pending" if pending(term) else "has holes" if not complete(term) else "ready"
-            lines.append(f'{number}. {say(term)} -> {show(type_of(term))}  [{state}]   "{words}"')
-    lines += [f'{relation}: "{" ".join(reading.text[phrase.start:phrase.end].split())[:90]}"' for phrase, relation in passages(reading)]
-    return "\n".join(lines)
