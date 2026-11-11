@@ -39,7 +39,10 @@ A step is a dict. A step has only the keys that its action produces:
     "corrections": [Correction, ...]
     "checks":      [Check, ...]
     "verdict":     PASS | FAIL | UNVERIFIED
-    "world_change": {"activated": bool, "verdict": ..., "regressions": [(message, obligation), ...]}
+    "world_change": {"activated": bool, "verdict": ..., "regressions": [(message, obligation), ...],
+                     "faults": [(declaration name, rule), ...],   # of the proposed world
+                     "proposed": text, "draft": text,             # the source proposed, and the draft returned
+                     "active_functions": [function name, ...]}    # sorted, of the active world after the step
     "model_calls": int                 # requests sent to d1 during this step
     "writes":      int                 # successful writes to the store during this step
     "error":       None | exception class name
@@ -129,6 +132,13 @@ class Hole:
 
 
 @dataclasses.dataclass(frozen=True)
+class Inside:
+    """In EXPECTED: a span that may be the whole phrase or any part of it."""
+
+    phrase: str
+
+
+@dataclasses.dataclass(frozen=True)
 class New:
     """A candidate that is a new application of an operation. Used in scripts and in offered candidates."""
 
@@ -147,6 +157,11 @@ class Obligation:
             adapter: PENDING if its result is Later or any input, at any depth
             of Record, Many or Maybe, is the result of a PENDING obligation;
             else AVAILABLE. A hole is incompleteness, not pending. None for UNRESOLVED.
+        complete: The engine's own completeness judgment, separate from status:
+            False if a binding, at any depth, is a hole, or it refers to an
+            incomplete obligation; else True. None for UNRESOLVED.
+
+    In EXPECTED, ``span`` may be ``Inside(phrase)``: any non-empty part of that phrase.
         reason: Why the operation is UNRESOLVED; None otherwise.
         brand: The brand of the phrase.
     """
@@ -157,6 +172,7 @@ class Obligation:
     status: str | None = AVAILABLE
     reason: str | tuple | None = None
     brand: str = "Asked"
+    complete: bool | None = True
 
 
 @dataclasses.dataclass(frozen=True)
@@ -341,7 +357,11 @@ def observe(case: Case, run: Run) -> dict:
       offered option whose neutral projection equals the value or ``New``,
       ``REJECT`` (the none-of-these option), ``ABSENT`` (the absence option),
       or for a yes/no-per-candidate Many question, yes exactly for the members
-      of the tuple. Phrases are looked up by their exact text, stripped.
+      of the tuple. An absence question (an absence option, or a yes/no
+      "deliberately absent?") gets the absence answer exactly when the script
+      says ABSENT. A phrase is looked up by its exact text, stripped; else by
+      the longest scripted phrase inside it; else by the shortest scripted
+      phrase that holds it.
       Unscripted, or when no offered option equals the scripted value: an
       operation question gets NO_REQUEST, a binding question REJECT, a yes/no
       question about a reply ``script.get("judge", 0.1)``. The chosen option
@@ -424,7 +444,7 @@ PROCESS = {
     "P2": ("Smallest code is an acceptance requirement", "Consolidate the notebook's copied algorithms so demonstrations exercise the repaired implementation."),
     "P3": ("Smallest code is an acceptance requirement", "Report production, tests, notebook duplication and documentation separately, before and after."),
     "P4": ("The state machine to implement", "Validity, completeness, availability and fulfillment are separate judgments, derived where possible rather than maintained as redundant flags."),
-    "P5": ("The state machine to implement", "A world with invalid types cannot activate. A changed world that contradicts an accepted meaning cannot activate silently."),
+    "P5": ("The state machine to implement", "A world with invalid types cannot activate. A changed world that contradicts an accepted meaning cannot activate silently. Preserve the draft on rejection.", "C02"),
     "P6": ("Use the system itself without making the check circular", "Keep live-d1 evaluation separate from deterministic conformance."),
     "P7": ("Deliver and stop only when the repair is concrete", "Report each invariant and acceptance case as pass, fail or unverified with a direct evidence reference."),
 }
@@ -433,7 +453,7 @@ PROCESS = {
 # Each change to this oracle after its first review. Version 1 is commit 5b524a0.
 # Every observed result must be judged again against the version that holds it;
 # no result had been produced against version 1.
-ORACLE_VERSION = 2
+ORACLE_VERSION = 3
 CORRECTIONS = (
     ("E1", 2, "status could be recomputed by the adapter from the projected bindings, making C10 circular, and was not transitive through a pending operation's non-Later result",
      "observe() now takes status from the engine's own dependency judgment and defines it transitively; run C10 through_result", ("C10", "C15", "C18", "C19")),
@@ -462,6 +482,13 @@ CORRECTIONS = (
     ("E18", 2, "C02 never changed a binding or proposed an invalid world, so a gate comparing operation names only, or one activating an invalid world, passed",
      "runs weakened and invalid_world", ("C02",)),
     ("E19", 2, "L4 compared only the files listed as delivered, so a missing file passed", "it compares every snapshot file", ()),
+    ("E20", 3, "C16 required the whole phrase as both spans and an exact phrase lookup, so an engine that splits the phrase at 'and' failed though it keeps both obligations",
+     "each span may be the phrase or any part of it (Inside); the stand-in looks a sub-phrase up by containment; both obligations, and every word, must still be kept", ("C16",)),
+    ("E21", 3, "E7 left open an optional with nothing in scope", "d1 is asked about absence: its recorded absence answer gives Empty; without one the result is Hole(no candidate); runs nothing_in_scope and nothing_in_scope_unanswered", ("C05",)),
+    ("E22", 3, "completeness had no place in the neutral form, so a term with a hole input could be treated as complete", "Obligation.complete, the engine's own judgment, transitive through references; a complete term with a hole is rejected in every step", tuple(f"C{n:02}" for n in range(1, 23))),
+    ("E23", 3, "the C17 note did not say that 'again' is not tested", "a line in the interpretation", ("C17",)),
+    ("E24", 3, "nothing showed that a brand cannot create evidence", "run relabelled: redesign returns Observed and the artifacts are the reply relabelled Observed; the evidence criterion takes no brand on words as evidence", ("C20",)),
+    ("E25", 3, "a rejected world change could lose its draft or switch the active world", "world_change reports the draft, the proposed source, its faults and the active functions; P5 is now checked by C02", ("C02",)),
 )
 
 
@@ -472,9 +499,17 @@ NOTES, THREE = Lit("Path", "notes.md"), Lit("int", 3)
 TEST_FUNCTIONS = ["approve", "compare", "explain", "follow", "open_cell", "redesign", "review", "show"]
 
 
-def ob(span, operation, bindings=None, status=AVAILABLE, reason=None):
-    """Returns an expected obligation."""
-    return Obligation(span, operation, bindings or {}, None if operation == UNRESOLVED else status, reason)
+def values_of(bindings: dict) -> list:
+    """Returns every value of the bindings, with the members of each Many."""
+    return [value for binding in bindings.values() for value in (binding if isinstance(binding, tuple) else (binding,))]
+
+
+def ob(span, operation, bindings=None, status=AVAILABLE, reason=None, complete=None):
+    """Returns an expected obligation: complete unless a binding is a hole, or as given."""
+    bindings = bindings or {}
+    complete = (not any(isinstance(value, Hole) for value in values_of(bindings))) if complete is None else complete
+    unresolved = operation == UNRESOLVED
+    return Obligation(span, operation, bindings, None if unresolved else status, reason, complete=None if unresolved else complete)
 
 
 def script(ops, binds=None, judge=None):
@@ -516,15 +551,16 @@ def right_double(number: int) -> int:
 
 
 def exact_artifact(obligation, artifact):
-    """Criterion "evidence": the artifact is about exactly this operation and these bindings."""
-    return artifact.operation == obligation.operation and artifact.bindings == obligation.bindings
+    """Criterion "evidence": the artifact is about exactly this operation and these bindings, and is not branded words."""
+    branded = isinstance(artifact.value, Lit) and artifact.value.type in ("Words", "Asked", "Written", "Observed")
+    return artifact.operation == obligation.operation and artifact.bindings == obligation.bindings and not branded
 
 
 DOUBLED = ob("Double 3.", "double", {"number": THREE})
 DOUBLE_WORLD = World(extra='\ndef double(number: int) -> int:\n    "double a number"\n')
 DOUBLE_CRITERIA = (("type", "the result is an int", lambda obligation, artifact: isinstance(artifact.value, int)),
                    ("behavior", "the result is twice the number", lambda obligation, artifact: artifact.value == 2 * obligation.bindings["number"].value))
-EVIDENCE_CRITERIA = (("evidence", "an artifact for exactly this operation and these bindings", exact_artifact),)
+EVIDENCE_CRITERIA = (("evidence", "an artifact for exactly this operation and these bindings; a brand on words is no evidence", exact_artifact),)
 
 REDESIGN_SHOW = [ob("Redesign the mod.", "redesign", {"surface": MOD}, PENDING), ob("Then show it.", "show", {"subject": Ref(0)}, PENDING)]
 REBOUND = [REDESIGN_SHOW[0], ob("Then show it.", "show", {"subject": MOD})]
@@ -576,7 +612,9 @@ CASES = (
          "The confidence gate accepts a world that loses a request at equal bits, and accepts an empty corpus (probes gate_accepts_disappeared_request_when_confidence_is_equal, confidently_wrong_nothing_gate, empty_corpus_gate).",
          tuple(Run(label, label == "harmless", World(), () if label == "empty_corpus" else TWO, TWO_SCRIPT,
                    (() if label == "empty_corpus" else (("read", READ, {}),))
-                   + (("proposed", ("propose_world", world, answers), {"world_change": {"activated": label == "harmless", "verdict": verdict, "regressions": lost}}),))
+                   + (("proposed", ("propose_world", world, answers), {"world_change": {
+                       "activated": label == "harmless", "verdict": verdict, "regressions": lost, "faults": [("Broken", "kind")] if label == "invalid_world" else [],
+                       "active_functions": sorted(TEST_FUNCTIONS + (["paint"] if label == "harmless" else []))}}),))
                for label, world, answers, verdict, lost in (
                    ("deleted", World(replace=(("def redesign(", "def destroy("),)), script({"Redesign the mod.": NO_REQUEST, "Show the page.": "show"}, {("Show the page.", "show", "subject"): PAGE}), FAIL, [(0, 0)]),
                    ("confident_nothing", PAINT_WORLD, script({"Redesign the mod.": NO_REQUEST, "Show the page.": NO_REQUEST}), FAIL, [(0, 0), (1, 0)]),
@@ -584,7 +622,7 @@ CASES = (
                    ("invalid_world", BROKEN_WORLD, TWO_SCRIPT, FAIL, []),
                    ("empty_corpus", PAINT_WORLD, script({}), UNVERIFIED, []),
                    ("harmless", PAINT_WORLD, TWO_SCRIPT, PASS, []))),
-         interpretation="A regression is a (message, obligation) of the accepted corpus whose operation or bindings change or disappear; run weakened removes the page member, so show's binding weakens to a hole. A world with an invalid kind cannot activate (the brief's state machine). An unverified world change does not activate."),
+         interpretation="A regression is a (message, obligation) of the accepted corpus whose operation or bindings change or disappear; run weakened removes the page member, so show's binding weakens to a hole. A world with an invalid kind cannot activate (the brief's state machine). An unverified world change does not activate. A rejected change returns its draft intact (draft equals proposed source) with its regressions or faults, and the active world keeps its functions."),
     Case("C03", "“Compare the mod, not the page”",
          "With controlled semantic selection, include mod and exclude page. Assert the binding, not merely rendered text. d1 must be given the relevant choice.",
          "solve(Many) takes every local term without asking d1 (probe many_negated_literal_is_included).",
@@ -620,8 +658,10 @@ CASES = (
                for label, text, answer, offered, value in (
                    ("absent", "Explain in general, not the mod.", ABSENT, (MOD,), EMPTY),
                    ("unresolved", "Explain the mod and the page.", REJECT, (MOD, PAGE), Hole(("Surface", "Maybe[Surface]"), REJECTED)),
+                   ("nothing_in_scope", "Explain.", ABSENT, (), EMPTY),
+                   ("nothing_in_scope_unanswered", "Explain.", REJECT, (), Hole(("Surface", "Maybe[Surface]"), NO_CANDIDATE)),
                    ("given", "Explain the mod.", MOD, (MOD,), MOD))),
-         interpretation="Absence and rejection are answers of d1 to the same kind of question, with a candidate in scope: Empty only from its absence option, a hole from its none-of-these option. The hole of a rejected optional may be typed Surface or Maybe[Surface]. Whether an optional with no candidate in scope must ask d1 about absence is left open (see CORRECTIONS E7)."),
+         interpretation="Absence and rejection are answers of d1 to the same kind of question, with a candidate in scope: Empty only from its absence option, a hole from its none-of-these option. The hole of a rejected optional may be typed Surface or Maybe[Surface]. With nothing in scope d1 is still asked about absence: its absence answer gives Empty; without a recorded absence answer the result is Hole(no candidate) (E21)."),
     Case("C06", "Empty Many versus unknown Many",
          "Empty collection and typed hole remain distinguishable; selection can exclude local terms and include relevant earlier ones.",
          "An unknown Many becomes an empty collection, or local terms are always taken (scriptt16.solve, Many branch).",
@@ -742,16 +782,17 @@ CASES = (
          "Preserve both obligations using the smallest valid grouping/term representation; do not silently choose only one or require the user to rewrite punctuation.",
          "choose() selects one function per phrase.",
          (Run("conjunction", False, World(), ("Redesign the mod and show it.",),
-              script({"Redesign the mod and show it.": ("redesign", "show")},
-                     {("Redesign the mod and show it.", "redesign", "surface"): MOD, ("Redesign the mod and show it.", "show", "subject"): Ref(0)}),
-              (("read", READ, {"obligations": [ob("Redesign the mod and show it.", "redesign", {"surface": MOD}, PENDING),
-                                               ob("Redesign the mod and show it.", "show", {"subject": Ref(0)}, PENDING)]}),)),
+              script({"Redesign the mod and show it.": ("redesign", "show"), "Redesign the mod": "redesign", "show it.": "show"},
+                     {(span, operation, path): value for span in ("Redesign the mod and show it.", "Redesign the mod", "show it.")
+                      for operation, path, value in (("redesign", "surface", MOD), ("show", "subject", Ref(0)))}),
+              (("read", READ, {"obligations": [ob(Inside("Redesign the mod and show it."), "redesign", {"surface": MOD}, PENDING),
+                                               ob(Inside("Redesign the mod and show it."), "show", {"subject": Ref(0)}, PENDING)]}),)),
           Run("nested", True, World(), ("Show me the mod, redesigned.",),
               script({"Show me the mod, redesigned.": "show"},
                      {("Show me the mod, redesigned.", "show", "subject"): New("redesign"), ("Show me the mod, redesigned.", "redesign", "surface"): MOD}),
-              (("read", READ, {"obligations": [ob("Show me the mod, redesigned.", "redesign", {"surface": MOD}, PENDING),
-                                               ob("Show me the mod, redesigned.", "show", {"subject": Ref(0)}, PENDING)]}),))),
-         interpretation="Both obligations keep the whole phrase as their span. The stand-in names both operations of the phrase; how the engine asks for a second operation is the implementer's choice. Open for Max: an engine that splits the phrase at 'and' also keeps both obligations, but fails here on the span and on the stand-in's exact phrase lookup.",
+              (("read", READ, {"obligations": [ob(Inside("Show me the mod, redesigned."), "redesign", {"surface": MOD}, PENDING),
+                                               ob(Inside("Show me the mod, redesigned."), "show", {"subject": Ref(0)}, PENDING)]}),))),
+         interpretation="Both obligations must exist; each span is the phrase or a part of it, so the two may share the phrase or split it (E20). A split must still cover every word, the conjunction included, in some span or passage (I1). The stand-in names both operations of the phrase and each operation of its parts; how the engine asks for a second operation is the implementer's choice.",
          real_d1="Whether real d1 finds both operations in one sentence is effectiveness, unverified here."),
     Case("C17", "Two identical-looking requested operations versus two references to one result",
          "Preserve the distinction across serialization. Display equality must not merge them.",
@@ -764,7 +805,7 @@ CASES = (
                    ("shared_result", "Redesign the mod. Show it. Compare it with the page.",
                     [ob("Redesign the mod.", "redesign", {"surface": MOD}, PENDING), ob("Show it.", "show", {"subject": Ref(0)}, PENDING),
                      ob("Compare it with the page.", "compare", {"surfaces": (Ref(0), PAGE)}, PENDING)]))),
-         interpretation="In the neutral form, two operation instances are two obligations and one result is one Ref index; the distinction is structural, so the predicate compares counts and Ref targets after reload."),
+         interpretation="In the neutral form, two operation instances are two obligations and one result is one Ref index; the distinction is structural, so the predicate compares counts and Ref targets after reload. The stand-in scripts the choice of the original mod for 'again', so the case tests identity, not the reading of 'again'."),
     Case("C18", "Preview invalid edit, cancel valid preview, stage/save/reload, failed save, restore previous snapshot",
          "Exact expected identities/bindings are preserved at each transition; previews perform no work. Use a tiny local persistence boundary and failure injection.",
          "No preview/cancel/stage/save boundary exists in next; a failed save loses the draft; cancel keeps the preview.",
@@ -797,7 +838,7 @@ CASES = (
                ("saved", SAVE, {}),
                ("changed", ("change_world", World(replace=(('    MOD: Asked = "the mod"\n', ""),))),
                 {"obligations": [ob("Redesign the mod.", "redesign", {"surface": Hole("Surface", (REJECTED, NO_CANDIDATE))}, PENDING),
-                                 ob("Then show it.", "show", {"subject": frozenset({Ref(0), Hole("Subject", (REJECTED, NO_CANDIDATE, CLEARED))})}, (PENDING, AVAILABLE))],
+                                 ob("Then show it.", "show", {"subject": frozenset({Ref(0), Hole("Subject", (REJECTED, NO_CANDIDATE, CLEARED))})}, (PENDING, AVAILABLE), complete=False)],
                  "corrections": [Correction(1, "subject", MOD, INVALIDATED, "the mod is no member of Surface")]}))),
           Run("unrelated_change", True, World(), ("Redesign the mod. Then show it.",), told(REDESIGN_SHOW),
               (("read", READ, {"obligations": REDESIGN_SHOW}),
@@ -820,9 +861,12 @@ CASES = (
                     [Check(0, None, "evidence", (FAIL, UNVERIFIED)), Check(1, None, "evidence", (FAIL, UNVERIFIED))], (FAIL, UNVERIFIED)),
                    ("later_removed", World(replace=(("-> Later[Surface]:", "-> Surface:"),)), "I redesigned the mod and the page.", 0.99, (),
                     [Check(0, None, "evidence", (UNVERIFIED, FAIL)), Check(1, None, "evidence", (UNVERIFIED, FAIL))], (UNVERIFIED, FAIL)),
+                   ("relabelled", World(replace=(("-> Later[Surface]:", "-> Observed:"),)), "I redesigned the mod and the page.", 0.99,
+                    tuple(Artifact("redesign", {"surface": surface}, Lit("Observed", "I redesigned the mod and the page.")) for surface in (MOD, PAGE)),
+                    [Check(0, None, "evidence", (UNVERIFIED, FAIL)), Check(1, None, "evidence", (UNVERIFIED, FAIL))], (UNVERIFIED, FAIL)),
                    ("both", World(), "I redesigned the mod and the page.", 0.99, (Artifact("redesign", {"surface": MOD}), Artifact("redesign", {"surface": PAGE})),
                     [Check(0, None, "evidence", PASS, 0), Check(1, None, "evidence", PASS, 1)], PASS))),
-         interpretation="A reply's claim and d1's yes share are not evidence, so a reply alone never passes; an obligation with no evidence may be UNVERIFIED or FAIL. A refusal may be FAIL or UNVERIFIED; the outcome vocabulary has no PROMISED. Run later_removed makes redesign return Surface: its obligations become available, and still nothing passes without evidence (I6).",
+         interpretation="A reply's claim and d1's yes share are not evidence, so a reply alone never passes; an obligation with no evidence may be UNVERIFIED or FAIL. A refusal may be FAIL or UNVERIFIED; the outcome vocabulary has no PROMISED. Run later_removed makes redesign return Surface: its obligations become available, and still nothing passes without evidence (I6). Run relabelled makes redesign return Observed and supplies the reply relabelled Observed as artifacts: a brand is a classification, not evidence (E24).",
          real_d1="Judging refusal prose with real d1 is unverified; the stand-in answers 0.99 and 0.01."),
     Case("C21", "Type-correct but wrong computation",
          "A tiny test-only pure function returns the right type but the wrong known result. Its independent behavioral criterion fails while its type check still passes. Keep this fixture out of the production world; do not invent a verify operation.",
@@ -885,9 +929,10 @@ def obligations_diagnostics(where: str, expected: list, observed: list) -> list[
     if len(expected) != len(observed):
         found.append(f"{where}: expected {len(expected)} obligations {[one.operation for one in expected]}, observed {len(observed)} {[one.operation for one in observed]}")
     for index, (want, got) in enumerate(zip(expected, observed)):
-        if plain(want.span) != plain(got.span):
+        inside = isinstance(want.span, Inside) and plain(got.span) and plain(got.span) in plain(want.span.phrase)
+        if not inside and plain(want.span) != plain(got.span):
             found.append(f"{where}: obligation {index} span: expected {want.span!r}, observed {got.span!r}")
-        for field in ("operation", "brand", "status", "reason"):
+        for field in ("operation", "brand", "status", "reason", "complete"):
             if getattr(got, field) not in acceptable(getattr(want, field)):
                 found.append(f"{where}: obligation {index} {field}: expected {getattr(want, field)!r}, observed {getattr(got, field)!r}")
         if set(want.bindings) != set(got.bindings):
@@ -912,7 +957,13 @@ def forbidden_diagnostics(where: str, step: dict, message: str | None) -> list[s
             found.append(f"{where}: obligation {index} has the terminal answer {one.operation!r}; it must be UNRESOLVED")
         if one.operation == UNRESOLVED and one.bindings:
             found.append(f"{where}: unresolved obligation {index} has a guessed goal: {one.bindings}")
-        for value in (value for binding in one.bindings.values() for value in (binding if isinstance(binding, tuple) else (binding,))):
+        incomplete = [value for value in values_of(one.bindings) if isinstance(value, Hole)
+                      or (isinstance(value, Ref) and 0 <= value.obligation < index and obligations[value.obligation].complete is False)]
+        if one.operation == UNRESOLVED and one.complete is not None:
+            found.append(f"{where}: unresolved obligation {index} reported complete={one.complete}; completeness is undefined for it")
+        elif one.complete and incomplete:
+            found.append(f"{where}: obligation {index} reported complete with an incomplete input {incomplete}")
+        for value in values_of(one.bindings):
             if isinstance(value, Hole) and value.type in ("Any", "Unknown", "", None):
                 found.append(f"{where}: obligation {index} has an untyped hole {value!r}")
             if isinstance(value, Ref) and not 0 <= value.obligation < index:
@@ -996,6 +1047,13 @@ def step_diagnostics(case: Case, observed_runs: dict, labels: tuple = ()) -> lis
                 elif key == "world_change":
                     if got is None or (got["activated"], sorted(got["regressions"])) != (want["activated"], sorted(want["regressions"])) or got["verdict"] not in acceptable(want["verdict"]):
                         found.append(f"{where}: world change expected {want}, observed {got}")
+                        continue
+                    if not want["activated"] and not (got.get("draft") and got.get("draft") == got.get("proposed")):
+                        found.append(f"{where}: the rejected draft is not returned intact")
+                    if "active_functions" in want and got.get("active_functions") != want["active_functions"]:
+                        found.append(f"{where}: the active world changed: functions {got.get('active_functions')}, expected {want['active_functions']}")
+                    if [one for one in want.get("faults", []) if one not in got.get("faults", [])]:
+                        found.append(f"{where}: the rejection does not report the faults {want['faults']}, observed {got.get('faults')}")
                 elif key in ("decisions", "corrections"):
                     continue  # compared by the case's own predicate
                 elif got != want:
@@ -1246,7 +1304,7 @@ REQUIREMENTS = (
     + [{"id": key, "kind": "wrong implementation", "source": f"{BRIEF} § Acceptance cases and wrong implementations the tests must catch",
         "words": words, "case": case_id} for key, (words, case_id) in WRONG_IMPLEMENTATIONS.items()]
     + [{"id": key, "kind": "location", "source": LOCATION_MESSAGE, "words": words, "required": required} for key, (words, required) in LOCATION.items()]
-    + [{"id": key, "kind": "process", "source": f"{BRIEF} § {section}", "words": words, "checked_by": "the final report"} for key, (section, words) in PROCESS.items()]
+    + [{"id": key, "kind": "process", "source": f"{BRIEF} § {section}", "words": words, "checked_by": checked[0] if checked else "the final report"} for key, (section, words, *checked) in PROCESS.items()]
 )
 
 INVARIANT_TABLE = [
@@ -1278,6 +1336,8 @@ def expected_observation(case: Case, run: Run) -> dict:
         step = dict(expected) | ({"obligations": latest} if "obligations" in expected else {})
         if "verdict" in expected:
             step["verdict"] = acceptable(expected["verdict"])[0]
+        if "world_change" in expected:
+            step["world_change"] = expected["world_change"] | {"verdict": acceptable(expected["world_change"]["verdict"])[0], "proposed": "the proposed source", "draft": "the proposed source"}
         if "checks" in expected:
             step["checks"] = [dataclasses.replace(one, outcome=acceptable(one.outcome)[0]) for one in expected["checks"]]
         if "decisions" in expected:
@@ -1308,6 +1368,7 @@ def concrete(obligation: Obligation) -> Obligation:
             return Hole(acceptable(value.type)[0], acceptable(value.reason)[0])
         return value
     return dataclasses.replace(obligation, bindings={path: one(value) for path, value in obligation.bindings.items()},
+                               span=obligation.span.phrase if isinstance(obligation.span, Inside) else obligation.span,
                                reason=acceptable(obligation.reason)[0] if obligation.reason else None,
                                status=acceptable(obligation.status)[0] if obligation.status else None)
 
@@ -1330,6 +1391,29 @@ def expected_runs(case_id: str) -> dict:
     """Returns the expected observation of every run of a case."""
     case = CASE[case_id]
     return {run.label: expected_observation(case, run) for run in case.runs}
+
+
+def changed_change(observation: dict, run: str, **keys) -> dict:
+    """Returns the observation with keys of the world change of a run's proposed step replaced."""
+    return changed(observation, run, "proposed", world_change=observation[run]["steps"]["proposed"]["world_change"] | keys)
+
+
+def split(observation: dict, first: str, second: str) -> list:
+    """Returns the conjunction's obligations with the phrase split into two spans."""
+    obligations = observation["conjunction"]["steps"]["read"]["obligations"]
+    return [dataclasses.replace(obligations[0], span=first), dataclasses.replace(obligations[1], span=second)]
+
+
+# Right projections that differ from EXPECTED in a way the brief allows: each must pass.
+RIGHT_ALTERNATIVES = (
+    ("C16r", "the phrase split at 'and', every word kept", "C16", lambda e: changed(e, "conjunction", "read", obligations=split(e, "Redesign the mod and", "show it."))),
+    ("C16s", "the phrase split after 'and'", "C16", lambda e: changed(e, "conjunction", "read", obligations=split(e, "Redesign the mod", "and show it."))),
+    ("C13r", "the quote without its quote marks", "C13", lambda e: changed(e, "quote_and_request", "read", passages=[Passage(QUOTE, "Written", "reply 0", "quote")])),
+    ("C20r", "the page with no evidence reported FAIL", "C20",
+     lambda e: changed(e, "mod_only", "checked", checks=[Check(0, None, "evidence", PASS, 0), Check(1, None, "evidence", FAIL)], verdict=FAIL)),
+    ("C19r", "the invalidated show left as a cleared hole", "C19",
+     lambda e: changed_ob(e, "world_change", "changed", 1, bindings={"subject": Hole("Subject", CLEARED)}, status=AVAILABLE)),
+)
 
 
 def no_context(observation, run, step):
@@ -1470,6 +1554,25 @@ NEGATIVE_CONTROLS = (
      lambda e: {**e, "saved_reading": {**e["saved_reading"], "steps": {label: step | ({"decisions": [dataclasses.replace(one, chosen=PAGE) if one.path == "surface" else one for one in step["decisions"]]} if "decisions" in step else {})
                                                                         for label, step in e["saved_reading"]["steps"].items()}}}, "d1's own choice"),
     ("C22e", "a saved reading loads under another world as compatible history", "C22", lambda e: changed(e, "saved_reading", "other_world", diagnostics=[]), "diagnostics expected exactly"),
+    # Version 3 (CORRECTIONS E20 to E25).
+    ("C16b", "a split whose span lies outside the phrase", "C16",
+     lambda e: changed_ob(e, "conjunction", "read", 0, span="Redesign the page"), "span"),
+    ("C16c", "a split that drops the conjunction from every span", "C16",
+     lambda e: changed(e, "conjunction", "read", obligations=split(e, "Redesign the mod", "show it.")), "in no obligation or passage"),
+    ("C05f", "Empty with nothing in scope and no recorded absence decision", "C05", lambda e: changed(e, "nothing_in_scope", "read", decisions=[]), "no recorded decision"),
+    ("C05g", "Empty when d1 gave no absence answer", "C05",
+     lambda e: changed_ob(e, "nothing_in_scope_unanswered", "read", 0, bindings={"subject": EMPTY}, complete=True), "binding subject"),
+    ("C18h", "a cleared show reported complete", "C18", lambda e: changed_ob(e, "transitions", "cleared", 1, complete=True), "reported complete"),
+    ("C06e", "an unknown Many reported complete", "C06", lambda e: changed_ob(e, "unknown", "read", 0, complete=True), "reported complete"),
+    ("C19d", "a show of an incomplete redesign reported complete", "C19", lambda e: changed_ob(e, "world_change", "changed", 1, bindings={"subject": Ref(0)}, complete=True), "reported complete"),
+    ("C01d", "an unresolved request reported complete", "C01", lambda e: changed_ob(e, "unsupported", "read", 0, complete=True), "unresolved obligation 0 reported complete"),
+    ("C20d", "a relabelled reply counted as evidence", "C20",
+     lambda e: changed(e, "relabelled", "checked", checks=[Check(0, None, "evidence", PASS, 0), Check(1, None, "evidence", PASS, 1)], verdict=PASS), "verdict expected"),
+    ("C02e", "a rejected world change loses its draft", "C02", lambda e: changed_change(e, "deleted", draft=None), "draft is not returned intact"),
+    ("C02f", "a rejected world change returns an altered draft", "C02", lambda e: changed_change(e, "weakened", draft="another source"), "draft is not returned intact"),
+    ("C02g", "a rejected world change still becomes the active world", "C02",
+     lambda e: changed_change(e, "confident_nothing", active_functions=sorted(TEST_FUNCTIONS + ["paint"])), "the active world changed"),
+    ("C02h", "an invalid world rejected without its faults", "C02", lambda e: changed_change(e, "invalid_world", faults=[]), "does not report the faults"),
     ("C22f", "an unresolved request saved with a guessed goal type", "C22",
      lambda e: changed_ob(e, "saved_reading", "reloaded", 2, bindings={"": Hole("Later[Observed]", NO_CANDIDATE)}), "guessed goal"),
 )
@@ -1521,6 +1624,10 @@ def self_test() -> None:
     for key, words, found in ((key, words, check()) for key, words, check in rights):
         failures += [f"{key} rejects its own EXPECTED: {line}" for line in found]
         print(f"{key} EXPECTED ({words}): {'pass' if not found else found}")
+    for key, words, case_id, right in RIGHT_ALTERNATIVES:
+        found = PREDICATES[case_id](right(expected[case_id]))
+        failures += [f"{key} ({words}) rejected: {line}" for line in found]
+        print(f"{key:<5} {case_id} {'accepted' if not found else 'REJECTED'}: {words}")
     wrongs = [(key, f"{case_id} {words}", lambda wrong=wrong, case_id=case_id: PREDICATES[case_id](wrong(expected[case_id])), diagnostic) for key, words, case_id, wrong, diagnostic in NEGATIVE_CONTROLS]
     wrongs += static_controls(provenance, delivered)
     for key, words, wrong, diagnostic in wrongs:
@@ -1529,7 +1636,7 @@ def self_test() -> None:
         failures += [] if caught else [f"{key} ({words}) not caught: {found}"]
         print(f"{key:<5} {'caught' if caught else 'MISSED'}: {words} -> {(caught[0] if caught else str(found))[:160]}")
     assert not failures, "\n".join(failures)
-    print(f"self-test passed: 22 cases pass on EXPECTED; {len(NEGATIVE_CONTROLS)} wrong projections and {len(wrongs) - len(NEGATIVE_CONTROLS)} wrong locations or worlds rejected")
+    print(f"self-test passed: 22 cases pass on EXPECTED; {len(RIGHT_ALTERNATIVES)} right alternatives accepted; {len(NEGATIVE_CONTROLS)} wrong projections and {len(wrongs) - len(NEGATIVE_CONTROLS)} wrong locations or worlds rejected")
 
 
 if __name__ == "__main__":
