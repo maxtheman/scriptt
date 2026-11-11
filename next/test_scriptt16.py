@@ -494,7 +494,82 @@ def test_record_shape():
         assert case.id == "C16"
 
 
-UNIT_TESTS = [test_kinds, test_types, test_advice, test_grounding, test_synthesis, test_record_shape]
+def test_specimen():
+    """The specimen end to end through the public API: read, validate, edit, save, reload, validate again; no d1 call after the read."""
+    with tempfile.TemporaryDirectory() as name:
+        folder = pathlib.Path(name)
+        world, _ = world_from(X.World("next"), folder)
+        run = X.CASE["C15"].runs[0]
+        model = Standin(run.script)
+        reading = scriptt16.read(X.SPECIMEN, world, [], model, join=False, watch=model.watch)
+        assert scriptt16.diagnostics(reading) == [] and [term.function.name for _, term in scriptt16.obligations(reading)] == ["redesign", "show", "test"]
+        redesign, show, _ = [term for _, term in scriptt16.obligations(reading)]
+        assert show.arguments["subject"] is redesign
+        mod = next(one for one in reading.constants if lit(one) == X.MOD)
+        draft, found = scriptt16.edit(reading, show.number, "subject", mod)
+        assert found == [] and show.arguments["subject"] is redesign  # the base is untouched
+        scriptt16.save(draft, folder / "store.jsonl")
+        calls = model.calls
+        loaded, found = scriptt16.load(scriptt16.saved(folder / "store.jsonl")[-1], world)
+        assert found == [] and scriptt16.diagnostics(loaded) == [] and scriptt16.meaning(loaded) == scriptt16.meaning(draft) and model.calls == calls
+        assert [term.function.name for _, term in scriptt16.obligations(loaded)] == ["redesign", "show", "test"]
+
+
+UNIT_TESTS = [test_kinds, test_types, test_advice, test_grounding, test_synthesis, test_record_shape, test_specimen]
+
+
+# ---- The requirement inventory, read and checked by the repaired machinery ---------------
+
+INVENTORY_WORLD = '''
+import typing
+Words = typing.NewType("Words", str)
+Asked = typing.NewType("Asked", Words)
+Written = typing.NewType("Written", Words)
+Observed = typing.NewType("Observed", Words)
+
+def meet(requirement: Asked) -> Observed:
+    "meet this requirement of the brief"
+'''
+
+
+def meeting(state: str, asked: dict) -> dict:
+    """A stand-in d1 for the inventory: every sentence asks to meet a requirement, with its own words; nothing more."""
+    answers = {}
+    for key, question in asked.items():
+        ids = [one["id"] for one in question.get("options", [])]
+        pick = {"what": "meet", "also": scriptt16.NOTHING}.get(key, "0" if "0" in ids else ids[-1] if ids else None)
+        answers[key] = Standin.shares(ids, pick) if ids else {"p_true": 0.1}
+    return answers
+
+
+def inventory(results: dict[str, list[str]]) -> list[tuple[str, str, str, int]]:
+    """Reads each requirement of expected.REQUIREMENTS as a message and checks its obligations against the run's evidence.
+
+    The evidence of a requirement is a behaviour check: the diagnostics of the predicates
+    that test it, expected to be empty. A process requirement has no evidence here.
+
+    Returns:
+        (id, kind, verdict, number of obligations) for each requirement.
+    """
+    world = world_of(INVENTORY_WORLD)
+    rows = {row["invariant"]: row["checks"] for row in X.INVARIANT_TABLE}
+    found = []
+    for one in X.REQUIREMENTS:
+        reading = scriptt16.read(one["words"], world, [], meeting, join=False)
+        if one["kind"] == "invariant":
+            keys = rows[one["id"]]
+        elif one["kind"] == "record":
+            keys = one["checked_by"].split(", ")
+        elif one["kind"] == "process":
+            keys = [one["checked_by"]] if one["checked_by"] in results else []
+        else:
+            keys = [one["id"]]
+        observed = [line for key in keys for line in results.get(key, [f"{key}: no result in this run"])]
+        artifacts = [scriptt16.Artifact("meet", scriptt16.bindings(term), one["id"], X.Probe("predicates", tuple(keys), [], observed))
+                     for _, term in scriptt16.obligations(reading)] if keys else []
+        _, verdict, _ = scriptt16.check(reading, "", artifacts, [("evidence", lambda term, artifact: artifact.probe.observed == artifact.probe.expected)], meeting)
+        found.append((one["id"], one["kind"], verdict, len(scriptt16.obligations(reading))))
+    return found
 
 
 # ---- The six wrong implementations, as scoped monkeypatches of the engine -------------
@@ -560,10 +635,10 @@ def main() -> int:
             failures.append(f"{test.__name__}: {type(error).__name__}: {error}")
             print("FAILED", test.__name__, error)
 
-    observed = {}
+    observed, results = {}, {}
     for case in X.CASES:
         observed[case.id] = observed_case(case)
-        found = X.PREDICATES[case.id](observed[case.id])
+        found = results[case.id] = X.PREDICATES[case.id](observed[case.id])
         failures += found
         print(f"{case.id} {'pass' if not found else 'FAIL'}: {case.words}" + "".join(f"\n    {line}" for line in found))
 
@@ -587,13 +662,24 @@ def main() -> int:
         with patched(name, value):
             found = X.PREDICATES[case_id](observed_case(X.CASE[case_id]))
         caught = [line for line in found if diagnostic in line]
+        results[key] = [] if caught else [f"{key} not caught"]
         print(f"  engine {key} {'caught' if caught else 'MISSED'}: {words} (scriptt16.{name} patched) -> {(caught or found or [''])[0][:160]}")
         failures += [] if caught else [f"engine control {key} ({words}) not caught: {found[:3]}"]
 
     for key, check in X.LOCATION_PREDICATES.items():
-        found = X.l4(provenance, X.snapshot()["files"]) if key == "L4" else check(provenance)
+        found = results[key] = X.l4(provenance, X.snapshot()["files"]) if key == "L4" else check(provenance)
         failures += found
         print(f"{key} {'pass' if not found else found}")
+
+    judged = inventory(results)
+    print(f"requirement inventory read by the reader and checked against this run's evidence ({len(judged)} items):")
+    for verdict in (X.PASS, X.FAIL, X.UNVERIFIED):
+        print(f"  {verdict}: {[f'{key} ({obligations})' for key, _, one, obligations in judged if one == verdict]}")
+    table = [row | {"observed": "pass: " + ", ".join(row["checks"]) if not any(results.get(key) for key in row["checks"]) else
+                    {key: results[key][:2] for key in row["checks"] if results.get(key)}} for row in X.INVARIANT_TABLE]
+    for row in table:
+        print(f"  {row['invariant']}: {row['observed']}")
+    print("INVARIANT_TABLE " + json.dumps(table))
 
     print(f"{len(X.CASES)} cases, {len(X.NEGATIVE_CONTROLS)} projection controls, {len(ENGINE_CONTROLS)} engine controls, {len(UNIT_TESTS)} unit tests: "
           + ("all passed" if not failures else f"{len(failures)} FAILURES"))
