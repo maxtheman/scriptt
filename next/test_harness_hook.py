@@ -198,6 +198,14 @@ def test_hooks() -> None:
             assert len(get("readings")) == len(readings), "an edit saved something"
             bad = post("edit", clear | {"value": {"constant": "the search", "type": "Code", "at": [33, 43]}})
             assert bad["draft"] and bad["diagnostics"], bad
+            # A value that does not inhabit its stated type: the engine's diagnostic in the body, not an HTTP error; nothing saved.
+            wrong = post("edit", clear | {"value": {"constant": "the ui", "type": "Code", "at": [20, 26]}})
+            assert wrong["draft"] is None and [0, "surface", "type"] in wrong["diagnostics"], wrong
+            # An existing member with no span, dragged from the world into the place: d1's choice replaced in the draft, its decision kept.
+            member = post("edit", clear | {"value": {"constant": "the page", "type": "Surface", "at": [-1, -1]}})
+            assert member["diagnostics"] == [] and member["draft"]["phrases"][0]["terms"][0]["arguments"]["surface"] == {"constant": "the page", "type": "Surface", "at": [-1, -1]}, member
+            assert any(one["operation"] == 0 and one["path"] == "surface" and one["chosen"]["constant"] == "the mod" for one in member["draft"]["decisions"]), "d1's decision is lost"
+            assert len(get("readings")) == len(readings), "a preview saved something"
             accepted = post("accept", clear)
             assert accepted["diagnostics"] == [] and accepted["saved"]["corrections"] and len(get("readings")) == len(readings) + 1
             # Rerun with d1 that still prefers the original (the mod): the accepted correction is retained, not given back to d1.
@@ -210,7 +218,7 @@ def test_hooks() -> None:
             assert restored["diagnostics"] == [] and restored["saved"]["corrections"] == [] and restored["saved"]["id"] == line["id"]
             cli = subprocess.run([PYTHON, str(home / "harness.py"), "post", "/edit"], input=json.dumps(clear), capture_output=True, text=True)
             assert json.loads(cli.stdout) == post("edit", clear) | {"draft": json.loads(cli.stdout)["draft"]} and json.loads(cli.stdout)["diagnostics"] == [], cli.stderr  # the mod's way in: the same answer
-            print(f"serve: {len(readings)} readings, {len(worlds)} world(s); edit gave a draft, a wrong-typed edit gave {bad['diagnostics']}, accept saved a correction, rerun kept it {rerun['corrections'][0]['status']}, restore saved snapshot {first}")
+            print(f"serve: {len(readings)} readings, {len(worlds)} world(s); edit gave a draft, a wrong-typed edit gave {bad['diagnostics']}, a non-member {wrong['diagnostics']}, a member with no span replaced d1's choice, accept saved a correction, rerun kept it {rerun['corrections'][0]['status']}, restore saved snapshot {first}")
         finally:
             served.terminate()
     server.shutdown()

@@ -379,7 +379,10 @@ def edited(body: dict, correction: bool) -> tuple:
     if reading is None:
         return None, found
     made_by = {term.number: term for _, term in scriptt16.obligations(reading) if isinstance(term, scriptt16.Application)}
-    value = None if body.get("value") is None else scriptt16.term_from(body["value"], here, made_by)
+    try:
+        value = None if body.get("value") is None else scriptt16.term_from(body["value"], here, made_by)
+    except LookupError:  # a value that no type, member or operation of the world holds: the engine's own rule, the base kept
+        return None, [(body.get("number"), body["path"], "reference" if "ref" in body["value"] else "type")]
     return scriptt16.edit(reading, body.get("number"), body["path"], value, correction, here, tuple(body["phrase"]) if body.get("phrase") else None)
 
 
