@@ -171,7 +171,7 @@
 // Every word drawn below comes from the record (events.jsonl), from the world (world.py) or from the message. Nothing names a type or a function of a world.
 const { React, createRoot, DraggableRenderer, translate } = window.Dragology, h = React.createElement;
 let WORLD = { types: {}, functions: {} }, EVENTS = [], MSGS = [], FNS = [], TYPES = [], LOCAL = false, LEGACY = 0;
-let at = 0, OPEN = true, HELD = null, DRAGGING = false, LINE = "", UID = 0, W = 0, FONT = {}, C = {}, root = null, SEL = null, NAV = [], MORE = false, HOVER = null;  // SEL: the ref of the selected thing; HOVER: the action that the pointer is on
+let at = 0, OPEN = true, HELD = null, DRAGGING = false, LINE = "", UID = 0, W = 0, FONT = {}, C = {}, root = null, SEL = null, NAV = [], MORE = false, HOVER = null, HOLDING = null;  // SEL: the ref of the selected thing; HOVER: the action that the pointer is on
 const store = {}, saved = {}, undos = {}, redos = {};  // by message: your reading, the reading of each part that the log already has, and each state before an edit
 const $ = (id) => document.getElementById(id);
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -193,10 +193,10 @@ const color = (type) => css(`--class-${typeIndex(type) % 12 + 1}`);
 const SHAPES = [["square", "M1,1H9V9H1Z"], ["circle", "M5,.8A4.2,4.2 0 1 1 4.99,.8Z"], ["triangle", "M5,.8L9.2,9H.8Z"], ["diamond", "M5,.5L9.5,5L5,9.5L.5,5Z"], ["hexagon", "M2.5,1H7.5L9.6,5L7.5,9H2.5L.4,5Z"], ["house", "M1,1H6.5L9.5,5L6.5,9H1Z"]];
 // Everything on the board is a block of one chain: the plug of a block fits the socket of the next. 36 px tall, a plug is 8 by 14.
 const BH = 36, ROWGAP = 12, CHAINGAP = 24, PADX = 12, GW = 18, PLUG = { w: 8, h: 14, tag: "8x14" };
-const shapePath = (w, { socket = false, plug = false, round = false } = {}) => {
-  const a = BH / 2 - PLUG.h / 2, b = BH / 2 + PLUG.h / 2, r = BH / 2;
+const shapePath = (w, { socket = false, plug = false, round = false, h: H = BH } = {}) => {
+  const a = H / 2 - PLUG.h / 2, b = H / 2 + PLUG.h / 2, r = H / 2;
   const right = plug ? `V${a}h${PLUG.w}v${PLUG.h}h${-PLUG.w}` : "";
-  const left = round ? `V${BH}H${r}A${r},${r} 0 0 1 ${r},0Z` : socket ? `V${BH}H0V${b}h${PLUG.w}v${-PLUG.h}h${-PLUG.w}Z` : `V${BH}H0Z`;
+  const left = round ? `V${H}H${r}A${r},${r} 0 0 1 ${r},0Z` : socket ? `V${H}H0V${b}h${PLUG.w}v${-PLUG.h}h${-PLUG.w}Z` : `V${H}H0Z`;
   return `M${round ? r : 0},0H${w}${right}${left}`;
 };
 const appId = (ev, f) => (f.id[0] === "d" ? ev.demands[+f.id.slice(1)]?.id : undefined) ?? f.id;  // the id of an operation: the line's own, else its place in the demands
@@ -319,7 +319,10 @@ const piecesAt = (ev, st) => {
 const trimSpan = (text, s0, e0) => { while (e0 > s0 && /[.,;:!?)"”'’\]]/.test(text[e0 - 1])) e0--; while (s0 < e0 && /["“'‘(\[]/.test(text[s0])) s0++; return [s0, e0]; };  // a span of words leaves out the marks at its ends
 const spanRef = (text, s0, e0) => { const [a, b] = trimSpan(text, s0, e0); return b > a ? `s:${a}-${b}` : null; };
 const partAt = (ev, pos) => Math.max(0, partsOf(ev).findIndex((q) => q.start <= pos && pos < q.end));
-const litType = (e, words) => takes(e.type).find((t) => ((t === "str" || t === "Path") || (t === "int" && /^-?\d+$/.test(words)) || (WORLD.types[t]?.sum ?? []).some((m) => m.toLowerCase() === words.toLowerCase())));  // the type that these words can be a value of in a place
+const litTypeFor = (t, words) => (t === "str" || t === "Path") || (t === "int" && /^-?\d+$/.test(words)) || (WORLD.types[t]?.sum ?? []).some((m) => m.toLowerCase() === words.toLowerCase());  // can these words be a value of this type?
+const litType = (e, words) => takes(e.type).find((t) => litTypeFor(t, words));  // the type that these words can be a value of in a place
+const tagState = (st, id, s0, e0, part, type, value) => edit(st, (x) => { x.lits = [...(x.lits ?? []).filter((l) => l.id !== id), { id, start: s0, end: e0, part, type, value }]; });  // the words are tagged with a type: they stay where they are
+const replaceFn = (ev, st, n, f, fn2) => addFn(ev, dropFn(st, n, f), n, fn2);
 const piecesIn = (p, key) => [p.by[key]].flat().filter((x) => x != null);  // the pieces in a hole: 1, or several for a Many hole
 
 // ---------- the states that a drop can produce ----------
@@ -390,9 +393,9 @@ function clauseItems(ev, st, n, P) {  // what d1 read in a phrase, as blocks: th
 // The number that a piece has while a hole takes it: the order of the pieces in holes, in the order of the message.
 const numOf = (st, P, pid) => { const used = new Set(st.parts.flatMap((p) => Object.values(p.by).flat())); return P.filter((p) => used.has(p.id)).findIndex((p) => p.id === pid) + 1; };
 // One chain of blocks flows over rows. A block joins the one before it on the same row (plug in socket); a row starts and ends flat.
-function flowChain(blocks, maxW, y0) {
+function flowChain(blocks, maxW, y0, o = {}) {
   let x = 0, row = 0;
-  const out = [], put = (b, need = b.w) => { if (x > 0 && x + need > maxW) { row++; x = 0; } b.x = x; b.y = y0 + row * (BH + ROWGAP); b.h = BH; b.row = row; x += b.w; out.push(b); };
+  const bh = o.h ?? BH, rg = o.gap ?? ROWGAP, out = [], put = (b, need = b.w) => { if (x > 0 && x + need > maxW) { row++; x = 0; } b.x = x; b.y = y0 + row * (bh + rg); b.h = bh; b.row = row; x += b.w; out.push(b); };
   blocks.forEach((b, i) => {
     if (b.kind !== "run") { put(b, b.keep ? b.w + (blocks[i + 1]?.w ?? 0) : b.w); return; }  // an operation keeps its first place on its row
     let cur = [];
@@ -404,7 +407,7 @@ function flowChain(blocks, maxW, y0) {
     flush();
   });
   out.forEach((b, i) => { b.socket = i > 0 && out[i - 1].row === b.row; b.plug = i < out.length - 1 && out[i + 1].row === b.row; });
-  return { blocks: out, h: (row + 1) * BH + row * ROWGAP };
+  return { blocks: out, h: (row + 1) * bh + row * rg };
 }
 function layoutBase(ev, st) {
   const parts = partsOf(ev), P = piecesAt(ev, st), L = { els: [], box: {} }, text = ev.text, add = (e) => { L.els.push(e); if (e.id) L.box[e.id] = e; return e; };
@@ -426,8 +429,26 @@ function layoutBase(ev, st) {
   let at0 = 0;
   for (const part of order) { if (text.slice(at0, part.start).trim()) chain(at0, part.start, null); chain(part.start, part.end, part.n); at0 = Math.max(at0, part.end); }
   if (text.slice(at0).trim()) chain(at0, text.length, null);
-  L.height = Math.max(y - CHAINGAP, BH);
+  L.chainEnd = Math.max(y - CHAINGAP, BH);
+  y = layoutWorld(ev, st, L.chainEnd + 24, add, L);
+  L.height = Math.max(y - 10, BH);
   return L;
+}
+// The world, on the same canvas and in the same blocks: each type with its members or fields, and each function with the types that it takes and gives. It is drawn from the same state as the message, so a drag changes both.
+const WH = 30;
+function layoutWorld(ev, st, y0, add, L) {
+  let y = y0;
+  const used = {}, held = new Set(), count = {};
+  for (const p of st.parts) { for (const f of p.fns) used[f.fn] = (used[f.fn] ?? 0) + 1; for (const v of Object.values(p.things).flat()) if (typeof v === "string") held.add(v); }
+  for (const e of L.els) if (e.kind === "hole" || e.kind === "link" || e.kind === "piece") for (const t of takes(e.type ?? e.p?.type ?? "")) count[t] = (count[t] ?? 0) + 1;
+  const wd = (b) => 2 * PADX + (b.type ? GW : 0) + tw(b.text, b.bold ? FONT.codeB : FONT.code);
+  const row = (blocks) => { const f = flowChain(blocks.map((b) => ({ ...b, w: wd(b), world: true })), W - 2, y, { h: WH, gap: 6 }); f.blocks.forEach(add); y += f.h + 8; };
+  for (const [T, def] of Object.entries(WORLD.types)) row([{ kind: "wtype", id: `wt-${T}`, ask: `t:${T}`, text: T, type: T, bold: true, count: count[T] }, ...(def.sum ?? []).map((m) => ({ kind: "wmem", id: `wm-${T}-${sid(m)}`, ask: `m:${T}:${m}`, text: short(m, 34), full: m, type: T, held: held.has(m) })), ...Object.entries(def.fields ?? {}).map(([f, t]) => ({ kind: "wfld", id: `wd-${T}-${f}`, ask: `t:${takes(t)[0] ?? t}`, text: f, type: t }))]);
+  const plain = ["str", "int", "Path", "bool"].filter((t) => TYPES.includes(t));
+  if (plain.length) row(plain.map((T) => ({ kind: "wtype", id: `wt-${T}`, ask: `t:${T}`, text: T, type: T, bold: true, count: count[T] })));
+  y += 8;
+  for (const fn of FNS) { const def = WORLD.functions[fn]; row([{ kind: "wfn", id: `wf-${fn}`, ask: `w:${fn}`, fn, text: fn, bold: true, keep: true, used: used[fn] }, ...Object.entries(def.holes ?? {}).map(([path, t]) => ({ kind: "wplace", id: `wh-${fn}-${path}`, ask: `w:${fn}`, fn, text: path, type: t })), ...(def.returns ? [{ kind: "wret", id: `wr-${fn}`, ask: `t:${takes(def.returns)[0] ?? def.returns}`, fn, text: "➔", type: def.returns }] : [])]); }
+  return y;
 }
 const layoutMemo = new WeakMap();
 function layoutOf(ev, st) {  // the paragraph for a state, kept: a state is never changed after it is made
@@ -440,7 +461,9 @@ function layoutOf(ev, st) {  // the paragraph for a state, kept: a state is neve
 function layout(ev, st) {  // the paragraph, and under it the panel of the selected thing
   const base = layoutOf(ev, st), pn = SEL ? panelOf(ev, st, SEL, base) : null;
   if (!pn) return base;
-  return { els: [...base.els, pn], box: { ...base.box, [pn.id]: pn }, height: pn.y + pn.h, sel: pn.sel };
+  const dy = pn.h + 40, els = base.els.map((e) => (e.world ? { ...e, y: e.y + dy } : e));  // the panel opens between the message and the world, and pushes the world down
+  if (pn.selWorld && pn.sel) pn.sel.y += dy;
+  return { els: [...els, pn], box: Object.fromEntries([...els, pn].filter((e) => e.id).map((e) => [e.id, e])), height: base.height + dy, sel: pn.sel, chainEnd: base.chainEnd };
 }
 
 // ---------- what a thing is (facts), and what can be done with it (transitions) ----------
@@ -491,9 +514,14 @@ function facts(ev, st, ref) {
     const take = layoutOf(ev, st).els.filter((e) => (e.kind === "hole" || e.kind === "link") && litType(e, words)).slice(0, 8).map((e) => ({ text: `${clause(e.n)} ${e.path}`, follow: e.ask }));
     return { role: "text", name: short(words, 30), type: null, rows: [row("source", [{ text: `${s0}–${e0}` }, quote(partAt(ev, s0))]), row("fits", take)], options: [] };
   }
+  if (k === "w") {
+    const def = WORLD.functions[a];
+    if (!def) return null;
+    return { role: "function", name: a, type: def.returns ?? null, rows: [...(def.returns ? [row("returns", [typeChip(def.returns)])] : []), row("takes", Object.entries(def.holes ?? {}).map(([path, t]) => ({ text: path, type: t, follow: "t:" + (takes(t)[0] ?? t) }))), ...(def.asks ? [row("asks", [{ text: def.asks }])] : []), row("in use", st.parts.flatMap((q, n) => q.fns.filter((f) => f.fn === a).map(() => ({ text: clause(n), follow: `v:${n}:${a}` }))))], options: [] };
+  }
   if (k === "t") {
     const def = WORLD.types[a], where = layoutOf(ev, st).els.filter((e) => (e.kind === "hole" || e.kind === "link") && takes(e.type).includes(a)).slice(0, 8).map((e) => ({ text: `${clause(e.n)} ${e.path}`, follow: e.ask }));
-    return { role: "type", name: a, type: a, rows: [...(def?.sum?.length ? [row("members", def.sum.map((m) => ({ text: short(m, 30), role: "member", follow: `m:${a}:${m}` })))] : []), ...(def?.fields ? [row("fields", Object.entries(def.fields).map(([f, t]) => ({ text: `${f} : ${t}`, type: t, role: "field", follow: "t:" + (takes(t)[0] ?? t) })))] : []), row("used by", where)], options: [] };
+    return { role: "type", name: a, type: a, rows: [...(def?.sum?.length ? [row("members", def.sum.map((m) => ({ text: short(m, 30), role: "member", follow: `m:${a}:${m}` })))] : []), ...(def?.fields ? [row("fields", Object.entries(def.fields).map(([f, t]) => ({ text: `${f} : ${t}`, type: t, role: "field", follow: "t:" + (takes(t)[0] ?? t) })))] : []), row("made by", FNS.filter((fn) => takes(WORLD.functions[fn].returns ?? "").includes(a)).map((fn) => ({ text: fn, follow: `w:${fn}` }))), row("taken by", FNS.flatMap((fn) => Object.entries(WORLD.functions[fn].holes ?? {}).filter(([, t]) => takes(t).includes(a)).map(([path]) => ({ text: `${fn}.${path}`, follow: `w:${fn}` })))), row("used by", where)], options: [] };
   }
   if (k === "m") {
     const mem = ref.split(":").slice(2).join(":");
@@ -535,16 +563,34 @@ function transitions(ev, st, ref) {
     if (!f) return [];
     for (let m = 0; m < st.parts.length; m++) if (m !== n && !st.parts[m].fns.some((g) => g.fn === b)) push({ label: `→ ${clause(m)}`, kind: "move", target: "p-" + m, state: moveFn(st, n, m, f) });
     push({ label: "remove", kind: "clear", state: dropFn(st, n, f) });
+    for (const fn2 of FNS) if (fn2 !== b && !st.parts[n].fns.some((g) => g.fn === fn2)) push({ label: `⇄ ${fn2}`, kind: "move", target: `wf-${fn2}`, state: replaceFn(ev, st, n, f, fn2) });
+  } else if (k === "w") {  // a function of the world: drop it on a phrase to add it
+    for (let m = 0; m < st.parts.length; m++) if (!st.parts[m].fns.some((g) => g.fn === a)) push({ label: `→ ${clause(m)}`, kind: "move", target: "p-" + m, state: addFn(ev, st, m, a) });
+  } else if (k === "t") {  // a type of the world: drop it on words to tag them with it
+    for (const e of L.els) if (e.kind === "run") for (const w of e.bw) { const [s0, e0] = trimSpan(ev.text, w.s, w.e), words = ev.text.slice(s0, e0); if (e0 > s0 && litTypeFor(a, words) && !(st.lits ?? []).some((l) => l.id === `s${s0}-${e0}`)) push({ label: `⇢ ${short(words, 16)}`, kind: "move", quiet: true, target: `w-${w.s}`, state: tagState(st, `s${s0}-${e0}`, s0, e0, partAt(ev, s0), a, words) }); }
   } else if (k === "s") {  // words become a value: the span turns into a value of the place that takes it
     const [s0, e0] = a.split("-").map(Number), words = ev.text.slice(s0, e0), id = `s${s0}-${e0}`;
     for (const e of places) { const t = litType(e, words); if (t) push({ label: `→ ${where(e)}`, kind: "move", target: e.id, state: edit(fill(st, e.n, e.key, words, id, e.many), (x) => { x.lits = [...(x.lits ?? []).filter((l) => l.id !== id), { id, start: s0, end: e0, part: partAt(ev, s0), type: t, value: words }]; }) }); }
+    for (const T of [...Object.keys(WORLD.types), ...["str", "int", "Path", "bool"].filter((t) => TYPES.includes(t))]) if (litTypeFor(T, words)) push({ label: `⇢ ${T}`, kind: "move", quiet: true, target: `wt-${T}`, state: tagState(st, id, s0, e0, partAt(ev, s0), T, words) });
+    for (const [T, def] of Object.entries(WORLD.types)) for (const m of def.sum ?? []) if (m.toLowerCase() === words.toLowerCase()) push({ label: `⇢ ${short(m, 18)}`, kind: "move", quiet: true, target: `wm-${T}-${sid(m)}`, state: tagState(st, id, s0, e0, partAt(ev, s0), T, m) });
   } else if (k === "m") {
     const mem = ref.split(":").slice(2).join(":");
     for (const e of places) if (fits(e, [a])) push({ label: `→ ${where(e)}`, kind: "move", target: e.id, state: fill(st, e.n, e.key, mem, null, e.many) });
   } else if (k === "c") {
-    for (const fn of FNS) if (!st.parts[+a]?.fns.some((g) => g.fn === fn)) push({ label: `+ ${fn}`, kind: "add", state: addFn(ev, st, +a, fn) });
+    for (const fn of FNS) if (!st.parts[+a]?.fns.some((g) => g.fn === fn)) { push({ label: `+ ${fn}`, kind: "add", state: addFn(ev, st, +a, fn) }); push({ label: `→ ${fn}`, kind: "move", quiet: true, target: `wf-${fn}`, state: addFn(ev, st, +a, fn) }); }
   }
   return out;
+}
+// the nodes of the world that a thing is tied to
+function relIds(ev, st, ref) {
+  const [k, a, b] = String(ref).split(":"), tn = (t) => `wt-${takes(t ?? "")[0]}`;
+  if (k === "w") { const d = WORLD.functions[a]; return d ? [...Object.values(d.holes ?? {}).map(tn), ...(d.returns ? [tn(d.returns)] : [])] : []; }
+  if (k === "t") return FNS.filter((fn) => takes(WORLD.functions[fn].returns ?? "").includes(a) || Object.values(WORLD.functions[fn].holes ?? {}).some((t) => takes(t).includes(a))).map((fn) => `wf-${fn}`);
+  if (k === "m") return [`wt-${a}`];
+  if (k === "v") { const d = WORLD.functions[b]; return d ? [`wf-${b}`, ...(d.returns ? [tn(d.returns)] : [])] : []; }
+  if (k === "h") { const e = placeAt(ev, st, ref); return e ? [tn(e.type), `wf-${e.f.fn}`] : []; }
+  if (k === "p") { const p = piecesAt(ev, st).find((x) => String(x.id) === a); return p ? [tn(p.type)] : []; }
+  return [];
 }
 const moves = (ev, st, ref) => transitions(ev, st, ref).filter((t) => t.kind === "move").map((t) => ({ target: t.target, state: t.state }));  // what a drag of this thing can land on
 const pulled = (ev, st, ref) => transitions(ev, st, ref).find((t) => t.kind === "clear")?.state ?? st;  // what pulling it far away does
@@ -554,7 +600,7 @@ const changedIds = (ev, a, b) => layoutOf(ev, b).els.filter((e) => (e.kind === "
 function panelOf(ev, st, ref, base) {  // the panel is chains too: the way here, what the thing is, d1's options, and what can be done
   const f = facts(ev, st, ref);
   if (!f) return null;
-  const acts = OPEN ? transitions(ev, st, ref) : [], shown = MORE ? acts : acts.slice(0, 8), inner = W - 24, items = [], way = NAV.slice(0, -1).filter((r) => facts(ev, st, r));
+  const acts = OPEN ? transitions(ev, st, ref).filter((t) => !t.quiet) : [], shown = MORE ? acts : acts.slice(0, 8), inner = W - 24, items = [], way = NAV.slice(0, -1).filter((r) => facts(ev, st, r));
   let y = 12, c = 0;
   const wd = (x) => 2 * PADX + (x.type ? GW : 0) + (x.p != null ? 30 : 0) + tw(x.text, x.head ? FONT.codeB : FONT.code);
   const chain = (list) => { if (!list.length) return; const fl = flowChain(list.map((x) => ({ ...x, kind: "chip", id: `pn-${c++}-${sid(x.text)}`, w: wd(x) })), inner, y); for (const b of fl.blocks) items.push({ ...b, x: 12 + b.x }); y += fl.h + 12; };
@@ -564,7 +610,7 @@ function panelOf(ev, st, ref, base) {  // the panel is chains too: the way here,
   chain(f.options.map((o) => ({ text: short(o.id, 22), p: o.p, tip: o.tip, role: "option", best: o.p === best })));
   chain([...shown.map((t) => ({ text: t.label, act: t.label })), ...(acts.length > shown.length ? [{ text: `+${acts.length - shown.length}`, more: true }] : [])]);
   const target = base.els.find((e) => e.ask === ref || (e.kind === "piece" && "p:" + e.p.id === ref));
-  return { kind: "panel", id: "pn", x: 0, y: base.height + 28, w: W, h: y, ref, items, sel: target ? { x: target.x, y: target.y, w: target.w, h: target.h ?? BH } : null };
+  return { kind: "panel", id: "pn", x: 0, y: base.chainEnd + 28, w: W, h: y, ref, items, selWorld: !!target?.world, sel: target ? { x: target.x, y: target.y, w: target.w, h: target.h ?? BH } : null };
 }
 
 // ---------- the board: a pure function from a state to SVG (Dragology 0.2.0). ----------
@@ -575,38 +621,49 @@ function draggable({ state: st, d, draggedId }) {
   const ev = EVENTS[MSGS[at]], L = layout(ev, st), P = piecesAt(ev, st);
   const txt = (x, y, s, props) => h("text", { transform: translate(x, y), fontFamily: C.text, fontSize: 16, fill: C.t1, ...props }, s);
   const code = (x, y, s, props) => txt(x, y, s, { fontFamily: C.code, fontSize: 14, ...props });
-  const edge = (w) => h("rect", { dragologyKey: "edge", className: "edge", x: -2, y: -2, width: w + 4, height: BH + 4, rx: 3, fill: "transparent", stroke: C.t1, strokeWidth: 2, strokeOpacity: 0 });
+  const edge = (w, hh = BH) => h("rect", { dragologyKey: "edge", className: "edge", x: -2, y: -2, width: w + 4, height: hh + 4, rx: 3, fill: "transparent", stroke: C.t1, strokeWidth: 2, strokeOpacity: 0 });
   const jig = (id, ...kids) => h("g", { dragologyKey: "jig", className: `jig${sid(id) % 2 ? " late" : ""}` }, ...kids);
   const badge = (id, x, y, k) => { const t = "#" + k, w = tw(t, FONT.codeB) + 8; return h("g", { id, dragologyKey: "badge", "data-badge": "", transform: translate(x - w / 2, y - 9) }, h("rect", { dragologyKey: "r", width: w, height: 18, rx: 9, fill: C.bg, stroke: C.t1, strokeWidth: 2 }), code(w / 2, 13, t, { dragologyKey: "t", fontSize: 11, fontWeight: 600, textAnchor: "middle" })); };
   const outline = (b, now) => h("rect", { transform: translate(b.x - 4, b.y - 4), width: b.w + 8, height: (b.h ?? BH) + 8, rx: 4, fill: C.accent, fillOpacity: now ? 0.14 : 0.05, stroke: C.accent, strokeWidth: now ? 3 : 2 });
   const tip = (label) => h("title", { dragologyKey: "tip" }, label);
   const glyph = (x, y, type) => { const k = typeIndex(type); return h("path", { dragologyKey: "glyph", d: SHAPES[k % 6][1], transform: translate(x, y), fill: color(type), stroke: C.t1, strokeWidth: 1.2, "data-glyph": `${SHAPES[k % 6][0]}-${k % 12}`, "data-type": takes(type)[0] }); };
   // A drag can end anywhere within 160 px of a place that takes the thing, and lands there; farther away it pulls the thing out (whenFar).
-  const grab = (id, label, options, far = st) => {
+  const grab = (id, label, options, far = st, ref = null) => {
     if (!OPEN) return {};
     const n = options().length + (far !== st ? 1 : 0);
     return {
       className: "grab", role: "button", tabIndex: 0, "aria-label": label, "data-targets": n, ...(n ? {} : { "aria-disabled": "true" }),
       dragologyOnDrag: () => {
         const o = options();
-        DRAGGING = true;
+        DRAGGING = true; HOLDING = ref;
         // the thing's own place is a target too: a press that does not move keeps the reading (without it, "far from every place" would pull the thing out on a click)
         return d.closest([{ target: id, state: st }, ...o].map((x) => d.dropTarget(x.target, x.state, { boundsState: st }))).whenFar(far, { gap: 160 }).withFloating({ ghost: true })
           .withOverlay(h("g", null, ...o.map((x) => L.box[x.target]).filter(Boolean).map((b) => outline(b))));
       },
       dragologyZIndex: draggedId === id ? "/1" : false,
-      onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); hold(id, [...options(), ...(far !== st ? [{ target: id, state: far }] : [])]); } },
+      onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); hold(id, [...options(), ...(far !== st ? [{ target: id, state: far }] : [])], ref); } },
     };
   };
-  const block = (e, { fill = C.bg, stroke = C.t1, round = false, dash } = {}) => h("path", { dragologyKey: "body", className: "mark", d: shapePath(e.w, { socket: e.socket, plug: e.plug, round }), fill, stroke, strokeWidth: 2, ...(dash ? { strokeDasharray: dash } : {}) });
+  const block = (e, { fill = C.bg, stroke = C.t1, round = false, dash } = {}) => h("path", { dragologyKey: "body", className: "mark", d: shapePath(e.w, { socket: e.socket, plug: e.plug, round, h: e.h ?? BH }), fill, stroke, strokeWidth: 2, ...(dash ? { strokeDasharray: dash } : {}) });
   const box = (e, props, ...kids) => h("g", { id: e.id, transform: translate(e.x, e.y), "data-block": "", "data-w": Math.round(e.w), ...(e.plug ? { "data-plug": PLUG.tag } : {}), ...(e.socket ? { "data-socket": PLUG.tag } : {}), ...props }, ...kids);
   // A place: solid when it holds something, dashed while it is a hole, dotted for an Empty. Both paths are always drawn so that the library can blend 2 states of it.
   const solid = (e) => e.state === "filled" || e.state === "none";
   const frame = (e) => { const dd = shapePath(e.w, { socket: e.socket, plug: e.plug }), dash = e.state === "empty" ? "1.5 3" : e.state === "optional" ? "2 4" : "5 3"; return [h("path", { dragologyKey: "solid", className: "mark", d: dd, fill: C.bg, stroke: C.t1, strokeWidth: 2, strokeOpacity: solid(e) ? 1 : 0 }), h("path", { dragologyKey: "dash", d: dd, fill: "none", stroke: C.t1, strokeWidth: 2, strokeDasharray: dash, strokeOpacity: solid(e) ? 0 : 1 })]; };
   const hit = (e) => h("rect", { dragologyKey: "hit", x: -8, y: -10, width: e.w + 16, height: BH + 20, fill: "transparent" });  // the zone of a place: its block and 8 to 10 px around it
   const placeLabel = (e) => `${e.ref ? "reference" : "place"} ${e.path} : ${e.type}`;
-  const placeProps = (e) => ({ "data-role": e.ref ? "reference" : "place", "data-state": e.state, "data-arg": e.path, "data-of": e.app, "data-ref": e.ask, "aria-label": `place ${e.path} : ${e.type}`, "data-label": placeLabel(e), ...(e.ref ? { "data-to": e.ref } : {}) });
+  const placeProps = (e) => ({ "data-type": takes(e.type)[0], "data-role": e.ref ? "reference" : "place", "data-state": e.state, "data-arg": e.path, "data-of": e.app, "data-ref": e.ask, "aria-label": `place ${e.path} : ${e.type}`, "data-label": placeLabel(e), ...(e.ref ? { "data-to": e.ref } : {}) });
 
+  // a node of the world: a block like the others, linked by its type to every block of that type, a source for the drags that make sense for it, a target for the others
+  const holdT = ((r) => { const [k, a] = String(r ?? "").split(":"); return k === "p" ? P.find((x) => String(x.id) === a)?.type : k === "v" || k === "w" ? returnsOf(ev, a === undefined ? "" : (k === "v" ? r.split(":")[2] : a)) : k === "m" || k === "t" ? a : k === "h" ? layoutOf(ev, st).els.find((x) => x.ask === r)?.type : null; })(HELD?.ref ?? HOLDING);
+  const wnode = (e, o) => {
+    const glow = holdT && e.type && takes(e.type).includes(takes(holdT)[0]), hh = e.h;
+    return box(e, { "data-role": "world", "data-world": e.kind, "data-ref": e.ask, "data-type": takes(e.type ?? "")[0], "data-label": o.label, "aria-label": o.label, ...(e.held ? { "data-held": "" } : {}), ...(o.src ? grab(e.id, o.label, o.src, st, e.ask) : {}) },
+      jig(e.id, h("rect", { dragologyKey: "hit", width: e.w, height: hh, fill: "transparent" }), tip(o.label), block(e, { fill: glow ? C.accent : o.fill ?? C.bg, stroke: glow ? C.accent : C.t1, round: o.round, dash: o.dash }), edge(e.w, hh),
+        e.held ? h("rect", { dragologyKey: "bar", x: 2, y: hh - 5, width: e.w - 4, height: 3, fill: C.accent }) : null,
+        o.glyph ? glyph(PADX, (hh - 10) / 2, o.glyph) : null,
+        code(PADX + (o.glyph ? GW : 0), hh / 2 + 5, e.text, { dragologyKey: "text", fill: glow ? C.bg : C.t1, fontWeight: e.bold ? 600 : 400 })),
+      e.used || e.count ? badge(`${e.id}-n`, e.w - 4, 2, e.used ?? e.count) : null);
+  };
   const draw = {
     socket: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, fill: "transparent" }),
     // the words of a block: each word is a thing to pick up. A click selects it, shift and a click on another word of the phrase makes the span longer; a drag takes the selected span if the word is in it.
@@ -616,21 +673,27 @@ function draggable({ state: st, d, draggedId }) {
         ...e.bw.map((w, j) => {
           const x0 = PADX + (j ? tw(e.bw.slice(0, j).map((q) => q.t).join(" ") + " ", FONT.body) : 0), inSel = sp && sp[0] <= w.s && w.e <= sp[1] + 3, tr = trimSpan(ev.text, w.s, w.e);
           const ref = inSel ? `s:${sp[0]}-${sp[1]}` : spanRef(ev.text, w.s, w.e), id = `w-${w.s}`, wd = tw(w.t, FONT.body);
-          return h("g", { id, dragologyKey: id, transform: translate(x0, 0), "data-part": "", "data-role": "word", "data-word": `${w.s}-${w.e}`, "data-ref": ref ?? undefined, "data-label": w.t, ...grab(id, w.t, () => (ref ? moves(ev, st, ref) : [])) },
+          return h("g", { id, dragologyKey: id, transform: translate(x0, 0), "data-part": "", "data-role": "word", "data-word": `${w.s}-${w.e}`, "data-ref": ref ?? undefined, "data-label": w.t, ...grab(id, w.t, () => (ref ? moves(ev, st, ref) : []), st, ref) },
             jig(id, h("rect", { dragologyKey: "edge", className: "edge", x: -3, y: 3, width: wd + 6, height: BH - 6, rx: 3, fill: inSel ? C.accent : "transparent", fillOpacity: inSel ? 0.18 : 0, stroke: C.t1, strokeWidth: 2, strokeOpacity: 0 }), txt(0, 24, w.t, { dragologyKey: "text", fill: e.brand === "Written" ? C.t2 : C.t1 })));
         }));
     },
-    tag: (e) => { const label = `${e.brand} · ${e.text}`; return box(e, { "data-role": "phrase", "data-brand": e.brand, "data-ref": e.ask, "data-label": label, "aria-label": label }, tip(label), block(e, { fill: C.surface, stroke: C.rule }), code(PADX, 23, e.text, { dragologyKey: "text", fill: C.t2 })); },
-    abstain: (e) => { const label = e.unresolved ? `${e.brand} · unresolved — ${e.reason}` : `${e.brand} · ${e.text}`; return box(e, { "data-role": e.unresolved ? "unresolved" : "phrase", "data-brand": e.brand, "data-ref": e.ask, "data-label": label, "aria-label": label }, tip(label), block(e, { dash: "5 3" }), code(PADX, 23, e.text, { dragologyKey: "text", fill: C.t2 })); },
+    tag: (e) => { const label = `${e.brand} · ${e.text}`; return box(e, { "data-role": "phrase", "data-brand": e.brand, "data-ref": e.ask, "data-label": label, "aria-label": label, ...grab(e.id, label, () => moves(ev, st, e.ask), st, e.ask) }, jig(e.id, tip(label), edge(e.w), block(e, { fill: C.surface, stroke: C.rule }), code(PADX, 23, e.text, { dragologyKey: "text", fill: C.t2 }))); },
+    abstain: (e) => { const label = e.unresolved ? `${e.brand} · unresolved — ${e.reason}` : `${e.brand} · ${e.text}`; return box(e, { "data-role": e.unresolved ? "unresolved" : "phrase", "data-brand": e.brand, "data-ref": e.ask, "data-label": label, "aria-label": label, ...grab(e.id, label, () => moves(ev, st, e.ask), st, e.ask) }, jig(e.id, tip(label), edge(e.w), block(e, { dash: "5 3" }), code(PADX, 23, e.text, { dragologyKey: "text", fill: C.t2 }))); },
+    wtype: (e) => wnode(e, { label: `type ${e.text}`, glyph: e.type, src: () => moves(ev, st, e.ask) }),
+    wmem: (e) => wnode(e, { label: `member ${e.full}`, bar: e.held, src: () => moves(ev, st, e.ask) }),
+    wfld: (e) => wnode(e, { label: `field ${e.text} : ${e.type}`, glyph: e.type }),
+    wfn: (e) => wnode(e, { label: `function ${e.fn}`, round: true, fill: C.surface, src: () => moves(ev, st, e.ask) }),
+    wplace: (e) => wnode(e, { label: `${e.fn}.${e.text} : ${e.type}`, glyph: e.type, dash: "5 3" }),
+    wret: (e) => wnode(e, { label: `returns ${e.type}`, glyph: e.type }),
     piece: (e) => {
       const p = e.p, k = numOf(st, P, p.id), label = `value ${p.words} : ${takes(p.type)[0]}`, options = () => moves(ev, st, "p:" + p.id);
-      return box(e, { "data-role": "value", "data-start": p.start, "data-ref": "p:" + p.id, "data-link": "p" + p.id, "data-label": label, "aria-label": label, ...grab(e.id, label, options, pulled(ev, st, "p:" + p.id)) },
+      return box(e, { "data-role": "value", "data-type": takes(p.type)[0], "data-start": p.start, "data-ref": "p:" + p.id, "data-link": "p" + p.id, "data-label": label, "aria-label": `value ${p.words}`, ...grab(e.id, `value ${p.words}`, options, pulled(ev, st, "p:" + p.id), "p:" + p.id) },
         jig(e.id, tip(label), block(e), edge(e.w), h("rect", { dragologyKey: "bar", x: 2, y: BH - 5, width: e.w - 4, height: 3, fill: color(p.type) }), glyph(PADX, 13, p.type), txt(PADX + GW, 24, p.words, { dragologyKey: "text" })),
         k ? badge(`${e.id}-k${k}`, e.w - 4, 2, k) : null);
     },
     verb: (e) => {
       const f = e.f, label = `operation ${f.fn} → ${e.returns}`, options = () => moves(ev, st, e.ask);
-      return box(e, { "data-role": "operation", "data-id": e.app, "data-fn": f.fn, "data-link": "a:" + e.app, "data-ref": e.ask, "data-label": label, "aria-label": label, ...grab(e.id, label, options, pulled(ev, st, e.ask)) },
+      return box(e, { "data-role": "operation", "data-id": e.app, "data-fn": f.fn, "data-link": "a:" + e.app, "data-ref": e.ask, "data-label": label, "aria-label": label, ...grab(e.id, label, options, pulled(ev, st, e.ask), e.ask) },
         jig(e.id, tip(label + (WORLD.functions[f.fn]?.asks ? " — " + WORLD.functions[f.fn].asks : "")), block(e, { fill: C.surface, round: true }), edge(e.w),
           h("text", { dragologyKey: "text", transform: translate(18, 23), fontFamily: C.code, fontSize: 14, fill: C.t1 }, e.pre, h("tspan", { fontWeight: 600 }, f.fn)), e.returns ? glyph(e.w - PADX - 10, 13, e.returns) : null));
     },
@@ -639,7 +702,7 @@ function draggable({ state: st, d, draggedId }) {
     link: (e) => {
       const id = `v-${e.f.id}-${e.key}-${sid(e.v)}`, pid = e.pids[0] ?? null, options = () => moves(ev, st, e.ask), link = e.ref ? "a:" + e.ref : pid != null ? "p" + pid : "none";
       return box(e, { "data-link": link, ...placeProps(e) }, tip(placeLabel(e)), hit(e), ...frame(e),
-        h("g", { id, dragologyKey: "grab", "data-part": "", "data-ref": e.ask, "data-link": link, ...grab(id, `place ${e.path} : ${e.type}`, options, pulled(ev, st, e.ask)) }, jig(id, tip(placeLabel(e)), edge(e.w), glyph(PADX, 13, e.type), code(PADX + GW, 23, e.text, { dragologyKey: "text", fontWeight: 600 }))));
+        h("g", { id, dragologyKey: "grab", "data-part": "", "data-ref": e.ask, "data-link": link, ...grab(id, `place ${e.path} : ${e.type}`, options, pulled(ev, st, e.ask), e.ask) }, jig(id, tip(placeLabel(e)), edge(e.w), glyph(PADX, 13, e.type), code(PADX + GW, 23, e.text, { dragologyKey: "text", fontWeight: 600 }))));
     },
     panel: (e) => {
       const nx = Math.max(20, Math.min(e.w - 20, e.sel ? e.sel.x + e.sel.w / 2 : 40));
@@ -666,7 +729,10 @@ function draggable({ state: st, d, draggedId }) {
   const held = HELD ? HELD.opts.map((o, k) => L.box[o.target] && outline(L.box[o.target], k === HELD.i)).filter(Boolean) : [];
   const here = L.sel && !HELD ? [outline(L.sel, true)] : [];
   const next = HOVER && !HELD ? changedIds(ev, st, HOVER.state).map((id) => L.box[id]).filter(Boolean).map((b) => outline(b)) : [];
-  return h("g", null, ...L.els.map((e) => draw[e.kind](e)), h("g", { id: "here" }, ...here), h("g", { id: "next" }, ...next), h("g", { id: "held" }, ...held));
+  // the relations of what is selected or picked up: a curve to each thing of the world that it is tied to
+  const focus = HELD?.ref ?? HOLDING ?? SEL, from = focus && L.els.find((e) => e.ask === focus || (e.kind === "piece" && "p:" + e.p.id === focus)), rel = [];
+  if (from) for (const id of relIds(ev, st, focus)) { const to = L.box[id]; if (to && to !== from) { const x1 = from.x + from.w / 2, y1 = from.y + (from.h ?? BH), x2 = to.x + to.w / 2, y2 = to.y, ym = (y1 + y2) / 2; rel.push(h("path", { id: `rel-${id}`, d: `M${x1},${y1}C${x1},${ym} ${x2},${ym} ${x2},${y2}`, fill: "none", stroke: C.accent, strokeWidth: 2, strokeOpacity: 0.55, strokeDasharray: "2 4", pointerEvents: "none" })); } }
+  return h("g", null, ...L.els.map((e) => draw[e.kind](e)), h("g", { id: "rel" }, ...rel), h("g", { id: "here" }, ...here), h("g", { id: "next" }, ...next), h("g", { id: "held" }, ...held));
 }
 
 // ---------- the page ----------
@@ -724,15 +790,15 @@ function previewed(next) {
 }
 function dropped(next) {
   const i = MSGS[at], ev = EVENTS[i], ch = differ(ev, reading(i), next);
-  DRAGGING = false;
+  DRAGGING = false; HOLDING = null;
   if (ch.length) { (undos[i] ??= []).push(reading(i)); redos[i] = []; store[i] = next; LINE = lineOf(ev, next, ch[0]); }
   draw(); say(LINE);
 }
-addEventListener("pointerup", () => setTimeout(() => { if (DRAGGING) { DRAGGING = false; $("board").style.minHeight = ""; say(LINE); } }, 50), true);
+addEventListener("pointerup", () => setTimeout(() => { if (DRAGGING) { DRAGGING = false; HOLDING = null; $("board").style.minHeight = ""; say(LINE); } }, 50), true);
 // The keyboard: Enter or Space picks a thing up, the arrow keys go from place to place (each shows its state), Enter drops it, Escape puts it back.
-function hold(src, opts) {
+function hold(src, opts, ref) {
   if (!opts.length) return;
-  HELD = { src, opts, i: 0 };
+  HELD = { src, opts, i: 0, ref };
   heldSay(); draw();
 }
 const heldSay = () => { const ev = EVENTS[MSGS[at]], next = HELD.opts[HELD.i].state, ch = differ(ev, reading(MSGS[at]), next); say(ch.length ? lineOf(ev, next, ch[0]) : ""); };
@@ -814,7 +880,9 @@ $("copy").addEventListener("click", async () => {
   setTimeout(() => { $("copy").textContent = "Copy the prompt"; }, 4000);
 });
 // a piece and the hole that takes it light up together
-const lit = (target, on) => { const k = target?.closest?.("[data-link]")?.getAttribute("data-link"); if (k && k !== "none") for (const el of $("board").querySelectorAll(`[data-link="${k}"]`)) el.classList.toggle("lit", on); };
+const lit = (target, on) => {  // a thing, the places that it fills, and every block of its type, in the message and in the world, light together
+  for (const [attr, v] of [["data-link", target?.closest?.("[data-link]")?.getAttribute("data-link")], ["data-type", target?.closest?.("[data-type]")?.getAttribute("data-type")]]) if (v && v !== "none") for (const el of $("board").querySelectorAll(`[${attr}="${CSS.escape(v)}"]`)) el.classList.toggle("lit", on);
+};
 for (const [name, on] of [["pointerover", true], ["pointerout", false], ["focusin", true], ["focusout", false]]) $("board").addEventListener(name, (e) => lit(e.target, on));
 document.addEventListener("keydown", (k) => { if (HELD || k.target.closest?.("#board")) return; if (k.key === "ArrowLeft") go(at - 1); if (k.key === "ArrowRight") go(at + 1); });
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => MSGS.length && draw());
