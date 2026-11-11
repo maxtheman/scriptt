@@ -11,20 +11,22 @@
   /* scriptt design tokens. A value that is not here is not part of the system. Colour has 2 jobs: --accent is what you can press or where you can drop, --class-N is the type of a thing. */
   :root {
     color-scheme: light dark;
-    --font-text: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --font-code: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --size-chip: 14px; --size-body: 16px; --size-title: 24px;
-    --leading-chip: 20px; --leading-body: 24px; --leading-title: 32px;
-    --weight-normal: 400; --weight-strong: 600;
-    --measure: 65ch;
-    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px;
-    --border: 2px; --radius-box: 2px; --radius-bubble: 20px;
-    --bg: #FFFFFF; --surface: #E9E9EB; --text-1: #1C1C1E; --text-2: #636366; --rule: #C7C7CC; --accent: #0019A8; --on-accent: #FFFFFF;
-    --class-1: #DC241F; --class-2: #007D32; --class-3: #FA7B05; --class-4: #9B0058; --class-5: #FFC80A; --class-6: #00AFAD;
-    --class-7: #B26300; --class-8: #F589A6; --class-9: #5FB526; --class-10: #60399E; --class-11: #838D93; --class-12: #76D0BD;
+    --font-text: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; /* cite: page 0.1.6; the platform face keeps ordinary text ordinary (Potluck) */
+    --font-code: ui-monospace, "SF Mono", Menlo, Consolas, monospace; /* cite: page 0.1.6; notation in code face, prose in text face (Embark mentions) */
+    --size-chip: 14px; --size-body: 16px; --size-title: 24px; /* cite: page 0.1.6 type scale */
+    --leading-chip: 20px; --leading-body: 24px; --leading-title: 32px; /* cite: page 0.1.6, a 4px baseline */
+    --weight-normal: 400; --weight-strong: 600; /* cite: page 0.1.6 */
+    --measure: 65ch; /* cite: page 0.1.6 reading width */
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px; /* cite: page 0.1.6, a 4px scale */
+    --border: 2px; --radius-box: 2px; --radius-bubble: 20px; /* cite: page 0.1.6 */
+    --bg: #FFFFFF; --surface: #E9E9EB; --text-1: #1C1C1E; --text-2: #636366; --rule: #C7C7CC; /* cite: page 0.1.6 neutrals; text-1 on bg is 17:1, text-2 is 5.9:1 */
+    --accent: #0019A8; --on-accent: #FFFFFF; /* cite: page 0.1.6; accent is what you can press or drop on (Dragology drop targets) */
+    --class-1: #DC241F; --class-2: #007D32; --class-3: #FA7B05; --class-4: #9B0058; --class-5: #FFC80A; --class-6: #00AFAD; /* cite: page 0.1.6 categorical colors; paired with a glyph, never alone */
+    --class-7: #B26300; --class-8: #F589A6; --class-9: #5FB526; --class-10: #60399E; --class-11: #838D93; --class-12: #76D0BD; /* cite: page 0.1.6 categorical colors; paired with a glyph, never alone */
   }
+
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #1C1C1E; --surface: #2C2C2E; --text-1: #F2F2F7; --text-2: #AEAEB2; --rule: #48484A; --accent: #5CB8FF; --on-accent: #000000; --class-10: #9A7BD6; }
+    :root { --bg: #1C1C1E; --surface: #2C2C2E; --text-1: #F2F2F7; --text-2: #AEAEB2; --rule: #48484A; --accent: #5CB8FF; --on-accent: #000000; --class-10: #9A7BD6; } /* cite: page 0.1.6 dark neutrals */
   }
 
   * { box-sizing: border-box; }
@@ -64,6 +66,9 @@
   #board { user-select: none; -webkit-user-select: none; outline: none; }
   #board svg { display: block; overflow: visible; }
   #board .grab { cursor: grab; touch-action: none; outline: none; }
+  #board .act { cursor: pointer; outline: none; }
+  #board .act:hover > rect, #board .act:focus-visible > rect { fill: var(--surface); }
+  #board .lit .mark { stroke-width: 4px; }  /* the thing and every mark of the same identity light together (Embark: coordinated focus) */
   #board .grab:hover > .jig > .edge, #board .grab:focus-visible > .jig > .edge, #board .lit > .jig > .edge { stroke-opacity: 1; }
   @keyframes jig { from { rotate: -1.2deg; } to { rotate: 1.2deg; } }
   @keyframes jig-wide { from { rotate: -0.4deg; } to { rotate: 0.4deg; } }
@@ -107,7 +112,7 @@
     <div id="nav"><button type="button" class="link" id="prev">Previous message</button><span id="where"></span><button type="button" class="link" id="next">Next message</button></div>
     <div id="board" tabindex="-1"></div>
     <div id="foot">
-      <button type="button" class="second" id="mode" aria-pressed="false">scriptt</button>
+      <button type="button" class="second" id="mode" aria-pressed="false">Edit</button>
       <button type="button" class="first" id="save" hidden>Save</button>
       <button type="button" class="second" id="undo" hidden>Undo</button>
     </div>
@@ -168,7 +173,7 @@
 // Every word drawn below comes from the record (events.jsonl), from the world (world.py) or from the message. Nothing names a type or a function of a world.
 const { React, createRoot, DraggableRenderer, translate } = window.Dragology, h = React.createElement;
 let WORLD = { types: {}, functions: {} }, EVENTS = [], MSGS = [], FNS = [], TYPES = [], LOCAL = false, LEGACY = 0;
-let at = 0, OPEN = false, HELD = null, DRAGGING = false, LINE = "", UID = 0, W = 0, FONT = {}, C = {}, root = null;
+let at = 0, OPEN = false, HELD = null, DRAGGING = false, LINE = "", UID = 0, W = 0, FONT = {}, C = {}, root = null, SEL = null, MORE = false, HOVER = null;  // SEL: the ref of the selected thing; HOVER: the action that the pointer is on
 const store = {}, saved = {}, undos = {};  // by message: your reading, the reading of each part that the log already has, and each state before an edit
 const $ = (id) => document.getElementById(id);
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -183,7 +188,20 @@ const ids = new Map(), sid = (s) => ids.get(s) ?? (ids.set(s, ids.size), ids.siz
 const pen = document.createElement("canvas").getContext("2d");
 const tw = (s, font) => { pen.font = font; return Math.ceil(pen.measureText(s).width); };
 const edit = (st, f) => { const next = structuredClone(st); f(next); return next; };
-const color = (type) => { const k = TYPES.indexOf(takes(type)[0]); return k >= 0 && k < 12 ? css(`--class-${k + 1}`) : C.t2; };
+const EXTRA = [], EMPTY = "∅";  // EXTRA: types that the board meets in a line but the world does not list; EMPTY: the value of an Empty (a deliberate absence)
+const typeIndex = (type) => { const t = takes(type)[0] ?? "?", k = TYPES.indexOf(t); if (k >= 0) return k; if (!EXTRA.includes(t)) EXTRA.push(t); return TYPES.length + EXTRA.indexOf(t); };
+const color = (type) => css(`--class-${typeIndex(type) % 12 + 1}`);
+// A type is a glyph and a color: 6 shapes and 12 colors, so no 2 types share both, and a glyph still tells the type without its color (Graspable Math: the term itself is the thing; here the type is the mark that it carries).
+const SHAPES = [["square", "M1,1H9V9H1Z"], ["circle", "M5,.8A4.2,4.2 0 1 1 4.99,.8Z"], ["triangle", "M5,.8L9.2,9H.8Z"], ["diamond", "M5,.5L9.5,5L5,9.5L.5,5Z"], ["hexagon", "M2.5,1H7.5L9.6,5L7.5,9H2.5L.4,5Z"], ["house", "M1,1H6.5L9.5,5L6.5,9H1Z"]];
+// Plug and socket (the joins of Scratch-like blocks, here 6 by 10): an operation ends in a plug, each argument place begins with the socket that the plug fits, and ends in the plug for the next place.
+const PLUG = { w: 6, h: 10, tag: "6x10" };
+const shapePath = (w, { socket = false, plug = false, round = false } = {}) => {
+  const a = 14 - PLUG.h / 2, b = 14 + PLUG.h / 2, left = round ? `V26H12A12,12 0 0 1 12,2Z` : socket ? `V26H0V${b}h${PLUG.w}v${-PLUG.h}h${-PLUG.w}Z` : `V26H0Z`;
+  return `M${round ? 12 : 0},2H${w}${plug ? `V${a}h${PLUG.w}v${PLUG.h}h${-PLUG.w}` : ""}${left}`;
+};
+const placeW = (s, font = FONT.code) => tw(s, font) + 34;
+const appId = (ev, f) => (f.id[0] === "d" ? ev.demands[+f.id.slice(1)]?.id : undefined) ?? f.id;  // the id of an operation: the line's own, else its place in the demands
+const appsOf = (ev, st) => st.parts.flatMap((p, n) => p.fns.map((f) => ({ n, f, id: appId(ev, f) })));
 
 // ---------- the record. A line of form 2 has no choice and no pieces: they are derived here as form 3 defines them. ----------
 const partsOf = (ev) => (ev.parts?.length ? ev.parts : [{ start: 0, end: ev.text.length, demands: ev.demands.map((d) => d.function), hole: null }]);
@@ -213,12 +231,12 @@ function piecesOf(ev) {  // form 2: a piece for each filled hole whose value is 
 function decided(ev) {
   const P = piecesOf(ev);
   return { parts: partsOf(ev).map((_, n) => {
-    const s = { fns: [], things: {}, by: {} };
+    const s = { fns: [], things: {}, by: {}, refs: {} };  // refs: {key: the id of the operation whose result fills it}
     ev.demands.forEach((d, k) => {
       if (partOf(ev, d) !== n || s.fns.some((f) => f.fn === d.function)) return;
       s.fns.push({ id: "d" + k, fn: d.function });
       for (const [path, x] of Object.entries(d.parameters)) {
-        if (x.empty) { s.things[`${d.function}.${path}`] = "∅"; continue; }  // a deliberate absence (Empty): not a hole, not a value
+        if (x.empty) { s.things[`${d.function}.${path}`] = EMPTY; continue; }  // a deliberate absence (Empty): not a hole, not a value
         if (x.value == null && optional(x.type)) continue;  // a hole that may stay empty is drawn faint, and is no key
         const key = `${d.function}.${path}`, mine = P.filter((p) => p.to?.demand === k && p.to.path === path);
         if (isMany(x.type)) {
@@ -228,6 +246,7 @@ function decided(ev) {
           continue;
         }
         s.things[key] = x.value == null ? null : x.by === "the result of" ? `${x.value}()` : String(x.value);
+        if (x.ref != null) s.refs[key] = x.ref;
         if (mine[0]) s.by[key] = mine[0].id;
       }
     });
@@ -276,7 +295,7 @@ function fromReading(line, k0) {
     for (const [path, t] of Object.entries(a.args ?? {})) give(path, t);
   };
   line.phrases.forEach((p, k) => {
-    ev.parts.push({ start: p.start, end: p.end, brand: p.brand, choice: p.choice?.pick, scores: p.choice?.scores, demands: [], hole: null, ...(p.unresolved ? { unresolved: { ...p.unresolved, brand: p.brand } } : {}) });
+    ev.parts.push({ start: p.start, end: p.end, brand: p.brand, choice: p.choice?.pick ?? (p.brand === "Written" ? "Written" : undefined), scores: p.choice?.scores, demands: [], hole: null, ...(p.unresolved ? { unresolved: { ...p.unresolved, brand: p.brand } } : {}) });
     if (p.term?.kind === "Application") app(p.term, k);
   });
   for (const d of ev.demands) ev.parts[d.part].demands.push(d.function);
@@ -284,7 +303,7 @@ function fromReading(line, k0) {
   return ev;
 }
 const readingOf = (st, n) => ({ demands: st.parts[n].fns.map((f) => f.fn), things: st.parts[n].things });
-const sig = (st, n) => JSON.stringify([st.parts[n].fns.map((f) => f.fn), Object.entries(st.parts[n].things).sort()]);
+const sig = (st, n) => JSON.stringify([st.parts[n].fns.map((f) => f.fn), Object.entries(st.parts[n].things).sort(), Object.entries(st.parts[n].refs ?? {}).sort()]);
 const differ = (ev, a, b) => partsOf(ev).map((_, n) => n).filter((n) => sig(a, n) !== sig(b, n));
 const quoted = (v) => (Array.isArray(v) ? `[${v.map((x) => `"${x}"`).join(", ")}]` : `"${v}"`);
 // The line that Claude receives with the next message, in the wording of harness.py.
@@ -295,9 +314,9 @@ const piecesIn = (p, key) => [p.by[key]].flat().filter((x) => x != null);  // th
 
 // ---------- the states that a drop can produce ----------
 const addFn = (ev, st, n, fn) => edit(st, (s) => { const p = s.parts[n]; p.fns.push({ id: "u" + ++UID, fn }); for (const [path, t] of holesOf(ev, fn)) if (!optional(t)) p.things[`${fn}.${path}`] = null; });
-const dropFn = (st, n, f) => edit(st, (s) => { const p = s.parts[n]; p.fns = p.fns.filter((g) => g.id !== f.id); for (const k of Object.keys(p.things)) if (k.startsWith(f.fn + ".")) { delete p.things[k]; delete p.by[k]; } });
-const moveFn = (st, a, b, f) => edit(dropFn(st, a, f), (s) => { const p = s.parts[b]; p.fns.push(f); for (const [k, v] of Object.entries(st.parts[a].things)) if (k.startsWith(f.fn + ".")) { p.things[k] = v; if (k in st.parts[a].by) p.by[k] = st.parts[a].by[k]; } });
-const empty = (st, n, key) => edit(st, (s) => { s.parts[n].things[key] = null; delete s.parts[n].by[key]; });
+const dropFn = (st, n, f) => edit(st, (s) => { const p = s.parts[n]; p.fns = p.fns.filter((g) => g.id !== f.id); for (const k of Object.keys(p.things)) if (k.startsWith(f.fn + ".")) { delete p.things[k]; delete p.by[k]; delete p.refs?.[k]; } });
+const moveFn = (st, a, b, f) => edit(dropFn(st, a, f), (s) => { const p = s.parts[b]; p.fns.push(f); for (const [k, v] of Object.entries(st.parts[a].things)) if (k.startsWith(f.fn + ".")) { p.things[k] = v; if (k in st.parts[a].by) p.by[k] = st.parts[a].by[k]; if (st.parts[a].refs?.[k] != null) (p.refs ??= {})[k] = st.parts[a].refs[k]; } });
+const empty = (st, n, key) => edit(st, (s) => { s.parts[n].things[key] = null; delete s.parts[n].by[key]; delete s.parts[n].refs?.[key]; });
 const unlink = (st, pid) => edit(st, (s) => {  // the piece leaves the hole that has it. A Many hole keeps its other values.
   for (const p of s.parts) for (const k in p.by) {
     if (!Array.isArray(p.by[k])) { if (p.by[k] === pid) { p.things[k] = null; delete p.by[k]; } continue; }
@@ -307,14 +326,15 @@ const unlink = (st, pid) => edit(st, (s) => {  // the piece leaves the hole that
   }
 });
 // A thing into a hole. A hole of 1 value takes its place; a Many hole appends it to its list.
-const fill = (st, n, key, v, pid, many = false) => edit(pid == null ? st : unlink(st, pid), (s) => {
-  const p = s.parts[n];
+const fill = (st, n, key, v, pid, many = false, ref = null) => edit(pid == null ? st : unlink(st, pid), (s) => {
+  const p = s.parts[n]; p.refs ??= {};
   if (many) {
     const values = Array.isArray(p.things[key]) ? p.things[key] : [], by = values.map((_, j) => (Array.isArray(p.by[key]) ? p.by[key][j] : null) ?? null);
     p.things[key] = [...values, v]; p.by[key] = [...by, pid ?? null];
     return;
   }
   p.things[key] = v; if (pid == null) delete p.by[key]; else p.by[key] = pid;
+  if (ref != null) p.refs[key] = ref; else delete p.refs[key];
 });
 
 // ---------- the layout: where each thing is drawn for 1 state, on a board W wide ----------
@@ -339,8 +359,8 @@ function textFlow(ev, a, b, P, maxW, tags) {  // the words from a to b as typed,
   let i = a;
   for (const m of marks) {
     words(ev.text.slice(i, m.at));
-    if (m.p) { place({ kind: "piece", p: m.p }, tw(m.p.words, FONT.body) + (OPEN ? 12 + (m.p.of ? 6 + tw(short(m.p.value, 20), FONT.code) : 0) : 0)); i = m.p.end; }
-    else { gap = m.first === false ? space : space * 2; place(m.item, m.item.w); i = Math.max(i, m.at); }
+    if (m.p) { place({ kind: "piece", p: m.p }, tw(m.p.words, FONT.body) + (OPEN ? 28 + (m.p.of ? 6 + tw(short(m.p.value, 20), FONT.code) : 0) : 0)); i = m.p.end; }
+    else { gap = m.join ? 0 : m.first === false ? space : space * 2; place(m.item, m.item.w); i = Math.max(i, m.at); }  // a place joins the operation or the place before it: the plug is in the socket
   }
   words(ev.text.slice(i, b));
   return { items, w, h: (line + 1) * LH };
@@ -356,38 +376,38 @@ const chipW = (s, font = FONT.code) => tw(s, font) + 16;
 // share, the type of what comes back), then only its holes that the part does not fill with a piece of its own words: an open hole,
 // a hole that a piece of another part fills (a link to that part), or a value that no piece gave.
 function clauseItems(ev, st, n, P) {
-  const part = partsOf(ev)[n], s = st.parts[n], out = [];
+  const part = partsOf(ev)[n], s = st.parts[n], out = [], brand = part.brand ?? ev.brand ?? "Asked", apps = appsOf(ev, st);
   if (!s.fns.length) {
-    const c = choiceOf(part), text = c + (part.scores?.[c] != null ? " " + two(part.scores[c]) : "");
-    return [{ kind: c === "none" || part.unresolved ? "abstain" : "tag", reason: part.unresolved?.reason, id: `c-${n}-${sid(text)}`, n, text, ask: `c:${n}`, w: tw(text, FONT.code) + (c === "none" || part.unresolved ? 16 : 0), h: 28 }];
+    const c = choiceOf(part), un = !!part.unresolved, abst = c === "none" || un, text = c + (part.scores?.[c] != null ? " " + two(part.scores[c]) : "");
+    return [{ kind: abst ? "abstain" : "tag", id: `c-${n}-${sid(text)}`, n, text, brand, ask: `c:${n}`, unresolved: un, reason: part.unresolved?.reason, w: tw(text, FONT.code) + (abst ? 16 : 0), h: 28 }];
   }
   for (const f of s.fns) {
-    const d = f.id[0] === "d" ? ev.demands[+f.id.slice(1)] : null, score = d ? two(d.p) : "", returns = WORLD.functions[f.fn]?.returns ?? d?.returns ?? "";
+    const d = f.id[0] === "d" ? ev.demands[+f.id.slice(1)] : null, score = d ? two(d.p) : "", returns = WORLD.functions[f.fn]?.returns ?? d?.returns ?? "", app = appId(ev, f), holes = holesOf(ev, f.fn);
     const pre = `${clause(n)} `, post = `${score ? " " + score : ""}${returns ? " ➔ " + returns : ""}`;
-    out.push({ kind: "verb", id: "f-" + f.id, f, n, pre, post, ask: `v:${n}:${f.fn}`, w: tw(pre, FONT.code) + tw(f.fn, FONT.codeB) + tw(post, FONT.code) + 16, h: 28 });
-    for (const [path, type] of holesOf(ev, f.fn)) {
+    out.push({ kind: "verb", id: "f-" + f.id, f, n, app, returns, plug: holes.length > 0, pre, post, ask: `v:${n}:${f.fn}`, w: tw(pre, FONT.code) + tw(f.fn, FONT.codeB) + tw(post, FONT.code) + 16, h: 28 });
+    holes.forEach(([path, type], j) => {
       const key = `${f.fn}.${path}`, v = s.things[key], pids = piecesIn(s, key), faint = !(key in s.things), many = isMany(type);
-      const base = { f, n, key, path, type, v, pids, faint, many, reason: d?.parameters?.[path]?.reason, id: `h-${f.id}-${key}`, ask: `h:${n}:${f.fn}:${path}`, h: 28 };
+      const base = { f, n, key, path, type, v, pids, faint, many, app, plug: j < holes.length - 1, join: true, reason: v == null ? d?.parameters?.[path]?.reason : undefined, id: `h-${f.id}-${key}`, ask: `h:${n}:${f.fn}:${path}`, h: 28 };
       if (many) {
         const refs = (Array.isArray(v) ? v : []).map((x, j) => { const pid = Array.isArray(s.by[key]) ? s.by[key][j] : null, k = pid != null ? P.findIndex((p) => p.id === pid) : -1; return k >= 0 ? `#${numOf(st, P, pid)}` : `"${short(x, 16)}"`; });
         const text = `${v == null ? "◻ " : ""}${path}: ${v == null ? "" : "[" + refs.join(", ") + "] + "}${names(type).join(" | ")}`;
-        out.push({ ...base, kind: "hole", text, w: chipW(text) });
-        continue;
+        out.push({ ...base, kind: "hole", state: v == null ? "hole" : refs.length ? "filled" : "none", text, w: placeW(text) });
+        return;
       }
-      if (v == null) { const text = `◻ ${path}: ${names(type).join(" | ")}`; out.push({ ...base, kind: "hole", text, w: chipW(text) }); continue; }
+      if (v == null) { const text = `${faint ? "◌" : "◻"} ${path}: ${names(type).join(" | ")}`; out.push({ ...base, kind: "hole", state: faint ? "optional" : "hole", text, w: placeW(text) }); return; }
+      if (v === EMPTY) { const text = `${path}: ${EMPTY}`; out.push({ ...base, kind: "link", state: "empty", text, w: placeW(text, FONT.codeB) }); return; }
       const piece = pids.length ? P.find((p) => p.id === pids[0]) : null;
-      if (piece && piece.part === n) continue;  // the piece in the words of this part shows it, with its number
-      const maker = !piece && /\(\)$/.test(v) ? partsOf(ev).findIndex((_, m) => st.parts[m].fns.some((g) => `${g.fn}()` === v)) : -1;
-      const to = piece ? piece.part : maker;
-      const text = to != null && to >= 0 ? `${path} ↩ ${clause(to)}${piece ? ` #${numOf(st, P, piece.id)}` : ""}` : `${path}: ${short(v, 24)}`;
-      out.push({ ...base, kind: "link", text, w: chipW(text, FONT.codeB) });
-    }
+      const ref = s.refs?.[key] ?? (!piece && /\(\)$/.test(v) ? apps.find((a) => `${a.f.fn}()` === v)?.id : null) ?? null, from = ref != null ? apps.find((a) => a.id === ref) : null;
+      const to = piece ? piece.part : from ? from.n : -1;
+      const text = piece && piece.part === n ? `${path} #${numOf(st, P, piece.id)}` : to >= 0 ? `${path} ↩ ${clause(to)}${piece ? ` #${numOf(st, P, piece.id)}` : ""}` : `${path}: ${short(v, 24)}`;
+      out.push({ ...base, kind: "link", state: "filled", ref: from ? from.id : null, text, w: placeW(text, FONT.codeB) });
+    });
   }
   return out;
 }
 // The number that a piece has while a hole takes it: the order of the pieces in holes, in the order of the message.
 const numOf = (st, P, pid) => { const used = new Set(st.parts.flatMap((p) => Object.values(p.by).flat())); return P.filter((p) => used.has(p.id)).findIndex((p) => p.id === pid) + 1; };
-function layout(ev, st) {
+function layoutBase(ev, st) {
   const parts = partsOf(ev), P = piecesOf(ev), L = { els: [], box: {} };
   const add = (e) => { L.els.push(e); if (e.id) L.box[e.id] = e; return e; };
   let tags;
@@ -395,10 +415,10 @@ function layout(ev, st) {
     tags = parts.map((part, n) => {
       const fns = st.parts[n].fns.map((f) => f.fn), c = choiceOf(part), tag = fns.length ? fns.join(" + ") : FNS.includes(c) ? "nothing" : c;
       const text = tag + (tag === c && part.scores?.[c] != null ? " " + two(part.scores[c]) : "");
-      return { at: part.end, item: { kind: "tag", text, n, w: tw(text, FONT.code) } };
+      return { at: part.end, item: { kind: "tag", text, n, brand: part.brand ?? ev.brand ?? "Asked", ask: `c:${n}`, w: tw(text, FONT.code) } };
     });
   } else {  // the same paragraph, with each tag opened in place: the pills of its functions and the holes that the words do not fill
-    tags = parts.flatMap((part, n) => clauseItems(ev, st, n, P).map((item, k) => ({ at: part.end, first: k === 0, item })));
+    tags = parts.flatMap((part, n) => clauseItems(ev, st, n, P).map((item, k) => ({ at: part.end, first: k === 0, join: item.join, item })));
   }
   const maxW = OPEN || W < 720 ? W : Math.round(W * 0.7), f = textFlow(ev, 0, ev.text.trimEnd().length, P, maxW - 24, tags);
   add({ kind: "bubble", id: "b-all", x: 0, y: 0, w: f.w + 24, h: f.h + 8 });
@@ -410,22 +430,125 @@ function layout(ev, st) {
     add({ kind: "socket", id: "p-" + n, x: x0 - 4, y: y0, w: x1 - x0 + 8, h: y1 - y0 });
   });
   items.forEach(add);
-  let y = f.h + 8;
-  if (OPEN) {  // the world: its functions, then each type with the mark that it has everywhere, and the members of a sum type
-    y += 16;
-    const ty = y, tray = FNS.map((fn) => ({ kind: "tfn", id: "tf-" + fn, fn, w: tw(fn, FONT.codeB) + 16, h: 28 }));
-    TYPES.forEach((type, ti) => {
-      tray.push({ kind: "type", id: "ty-" + ti, type, br: true, top: ti ? 8 : 16, w: 30 + tw(type, FONT.code) + 8, h: 28 });
-      (WORLD.types[type]?.sum ?? []).forEach((m, vi) => tray.push({ kind: "member", id: `m-${ti}-${vi}`, type, m, w: tw(short(m, 30), FONT.strong) + 16, h: 28 }));
-    });
-    const r = flowRow(tray, W - 24);
-    add({ kind: "tray", id: "tray", x: 0, y: ty, w: W, h: r.h + 24 });
-    for (const t of tray) add({ ...t, x: 12 + t.x, y: ty + 12 + t.y });
-    y = ty + r.h + 24;
-  }
+  let y = f.h + 8;  // nothing under the paragraph until something is selected
   L.height = Math.max(y, LH);
   return L;
 }
+const layoutMemo = new WeakMap();
+function layoutOf(ev, st) {  // the paragraph for a state, kept: a state is never changed after it is made
+  const key = `${W}|${OPEN}`, got = layoutMemo.get(st);
+  if (got?.key === key) return got.L;
+  const L = layoutBase(ev, st);
+  layoutMemo.set(st, { key, L });
+  return L;
+}
+function layout(ev, st) {  // the paragraph, and under it the panel of the selected thing
+  const base = layoutOf(ev, st), pn = SEL ? panelOf(ev, st, SEL, base) : null;
+  if (!pn) return base;
+  return { els: [...base.els, pn], box: { ...base.box, [pn.id]: pn }, height: pn.y + pn.h, sel: pn.sel };
+}
+
+// ---------- what a thing is (facts), and what can be done with it (transitions) ----------
+// A ref names a thing: "p:ID" a value, "c:N" a phrase, "v:N:fn" an operation, "h:N:fn:path" a place, "t:Type" a type, "m:Type:member" a member.
+const returnsOf = (ev, fn) => WORLD.functions[fn]?.returns ?? ev.demands.find((d) => d.function === fn)?.returns ?? "";
+const typeChip = (t) => ({ text: names(t).join(" | ") || String(t), type: t });
+const placeAt = (ev, st, ref) => layoutOf(ev, st).els.find((e) => (e.kind === "hole" || e.kind === "link") && e.ask === ref);
+function facts(ev, st, ref) {
+  const [k, a, b] = ref.split(":"), P = piecesOf(ev), quote = (n) => ({ text: `“${short(wordsOf(ev, n).trim(), 44)}”` });
+  if (k === "p") {
+    const p = P.find((x) => x.id === +a);
+    if (!p) return null;
+    const into = st.parts.flatMap((s, n) => Object.keys(s.by).filter((key) => piecesIn(s, key).includes(p.id)).map((key) => ({ text: `${clause(n)} ${key.slice(key.indexOf(".") + 1)}` })));
+    return { role: "value", name: p.words, type: p.type, rows: [["type", [typeChip(p.type)]], ["source", [{ text: `${p.start}–${p.end}` }, quote(p.part)]], ["in", into.length ? into : [{ text: "—" }]]] };
+  }
+  if (k === "h") {
+    const e = placeAt(ev, st, ref);
+    if (!e) return null;
+    const holds = e.state === "hole" ? "◻" : e.state === "optional" ? "◌" : e.state === "empty" ? EMPTY : e.state === "none" ? "[ ]" : Array.isArray(e.v) ? e.v.map((x) => `“${short(x, 16)}”`).join(" ") : e.ref ? `${e.v}  ↩ ${clause(appsOf(ev, st).find((x) => x.id === e.ref)?.n ?? 0)}` : `“${short(e.v, 30)}”`;
+    return { role: e.ref ? "reference" : "place", name: e.path, type: e.type, rows: [["type", names(e.type).map(typeChip)], ["holds", [{ text: holds }]], ["of", [{ text: `${clause(e.n)} ${e.f.fn}` }]], ...(e.reason ? [["why", [{ text: e.reason }]]] : [])] };
+  }
+  if (k === "v") {
+    const f = st.parts[+a]?.fns.find((g) => g.fn === b);
+    if (!f) return null;
+    const d = f.id[0] === "d" ? ev.demands[+f.id.slice(1)] : null, ret = returnsOf(ev, b), asks = WORLD.functions[b]?.asks;
+    return { role: "operation", name: b, type: ret || null, rows: [...(ret ? [["returns", [typeChip(ret)]]] : []), ...(asks ? [["asks", [{ text: asks }]]] : []), ["phrase", [quote(+a)]], ...(d ? [["d1", [{ text: two(d.p) }]]] : []), ["places", holesOf(ev, b).map(([path]) => ({ text: path }))]] };
+  }
+  if (k === "c") {
+    const part = partsOf(ev)[+a];
+    if (!part) return null;
+    const c = choiceOf(part), brand = part.brand ?? ev.brand ?? "Asked";
+    return { role: part.unresolved ? "unresolved" : "phrase", name: clause(+a), type: null, rows: [["brand", [{ text: brand }]], ["words", [quote(+a)]], ["d1", [{ text: c + (part.scores?.[c] != null ? " " + two(part.scores[c]) : "") }]], ...(part.unresolved ? [["why", [{ text: part.unresolved.reason }]]] : [])] };
+  }
+  return null;
+}
+// Every edit that a thing offers, as a state that the page can show before it is made. A "move" has a place to drop on, so a drag and a key can use it; the panel lists them all.
+// drag, keys and the panel read this one function.
+function transitions(ev, st, ref) {
+  const [k, a, b] = ref.split(":"), L = layoutOf(ev, st), P = piecesOf(ev), apps = appsOf(ev, st), out = [], seen = new Set();
+  const places = L.els.filter((e) => e.kind === "hole" || e.kind === "link"), where = (e) => `${clause(e.n)} ${e.path}`, fits = (e, ts) => takes(e.type).some((t) => ts.includes(t));
+  const push = (t) => { let label = t.label, n = 2; while (seen.has(label)) label = `${t.label} ${n++}`; seen.add(label); out.push({ ...t, label }); };
+  if (k === "p") {
+    const p = P.find((x) => x.id === +a);
+    if (!p) return [];
+    for (const e of places) if (fits(e, [p.type]) && !e.pids.includes(p.id)) push({ label: `→ ${where(e)}`, kind: "move", target: e.id, state: fill(st, e.n, e.key, p.value, p.id, e.many) });
+    if (numOf(st, P, p.id)) push({ label: "unlink", kind: "clear", state: unlink(st, p.id) });
+  } else if (k === "h") {
+    const e = places.find((x) => x.ask === ref);
+    if (!e) return [];
+    const ts = takes(e.type);
+    if (e.v != null) {
+      push({ label: "clear", kind: "clear", state: empty(st, e.n, e.key) });
+      if (e.kind === "link" && e.state !== "empty") {
+        const gone = empty(st, e.n, e.key), pid = e.pids[0] ?? null, type = pid != null ? P.find((p) => p.id === pid)?.type ?? ts[0] : ts[0];
+        for (const o of places) if (o !== e && fits(o, [type])) push({ label: `→ ${where(o)}`, kind: "move", target: o.id, state: fill(gone, o.n, o.key, e.v, pid, o.many, e.ref) });
+      }
+    }
+    for (const p of P) if (ts.includes(p.type) && !e.pids.includes(p.id)) push({ label: `← ${short(p.words, 18)} ${clause(p.part)}`, kind: "fill", state: fill(st, e.n, e.key, p.value, p.id, e.many) });
+    for (const t of ts) for (const m of WORLD.types[t]?.sum ?? []) if (m !== e.v) push({ label: `← ${short(m, 22)}`, kind: "fill", state: fill(st, e.n, e.key, m, null, e.many) });
+    if (!e.many) for (const x of apps) if (x.id !== e.app && x.id !== e.ref && ts.includes(takes(returnsOf(ev, x.f.fn))[0]) && !Object.values(st.parts[x.n].refs ?? {}).includes(e.app)) push({ label: `↩ ${clause(x.n)} ${x.f.fn}`, kind: "fill", state: fill(st, e.n, e.key, `${x.f.fn}()`, null, false, x.id) });
+    if (optional(e.type) && !e.many && e.v !== EMPTY) push({ label: EMPTY, kind: "fill", state: edit(st, (s) => { s.parts[e.n].things[e.key] = EMPTY; delete s.parts[e.n].by[e.key]; delete s.parts[e.n].refs?.[e.key]; }) });
+  } else if (k === "v") {
+    const n = +a, f = st.parts[n]?.fns.find((g) => g.fn === b);
+    if (!f) return [];
+    for (let m = 0; m < st.parts.length; m++) if (m !== n && !st.parts[m].fns.some((g) => g.fn === b)) push({ label: `→ ${clause(m)}`, kind: "move", target: "p-" + m, state: moveFn(st, n, m, f) });
+    push({ label: "remove", kind: "clear", state: dropFn(st, n, f) });
+  } else if (k === "c") {
+    for (const fn of FNS) if (!st.parts[+a]?.fns.some((g) => g.fn === fn)) push({ label: `+ ${fn}`, kind: "add", state: addFn(ev, st, +a, fn) });
+  }
+  return out;
+}
+const moves = (ev, st, ref) => transitions(ev, st, ref).filter((t) => t.kind === "move").map((t) => ({ target: t.target, state: t.state }));  // what a drag of this thing can land on
+const pulled = (ev, st, ref) => transitions(ev, st, ref).find((t) => t.kind === "clear")?.state ?? st;  // what pulling it far away does
+const changedIds = (ev, a, b) => layoutOf(ev, b).els.filter((e) => (e.kind === "hole" || e.kind === "link") && (JSON.stringify([a.parts[e.n]?.things[e.key], a.parts[e.n]?.refs?.[e.key]]) !== JSON.stringify([b.parts[e.n].things[e.key], b.parts[e.n].refs?.[e.key]]))).map((e) => e.id);
+
+// ---------- the panel: one at a time, under the paragraph, in the same marks ----------
+function panelOf(ev, st, ref, base) {
+  const f = facts(ev, st, ref);
+  if (!f) return null;
+  const acts = OPEN ? transitions(ev, st, ref) : [], shown = MORE ? acts : acts.slice(0, 8), inner = W - 24, labelW = 72, items = [];
+  let y = 12;
+  items.push({ kind: "name", id: "pn-name", x: 12, y, text: f.name, role: f.role, type: f.type ? names(f.type)[0] : null });
+  y += 36;
+  f.rows.forEach(([label, chips], r) => {
+    const ts = chips.map((c, j) => ({ ...c, kind: "chip", id: `pn-c-${r}-${j}-${sid(c.text)}`, w: tw(c.text, FONT.code) + 16 + (c.type ? 18 : 0), h: 28 }));
+    const fr = flowRow(ts, inner - labelW);
+    items.push({ kind: "label", id: `pn-l-${r}-${sid(label)}`, x: 12, y, text: label });
+    for (const t of ts) items.push({ ...t, x: 12 + labelW + t.x, y: y + t.y });
+    y += fr.h + 8;
+  });
+  if (acts.length) {
+    items.push({ kind: "rule", id: "pn-rule", y: y - 2, w: W - 12 });
+    y += 8;
+    const ts = shown.map((t, j) => ({ kind: "chip", id: `pn-a-${sid(t.label)}`, act: t.label, text: t.label, w: tw(t.label, FONT.code) + 20, h: 28 }));
+    if (acts.length > shown.length) ts.push({ kind: "chip", id: "pn-more", more: true, text: `+${acts.length - shown.length}`, w: 44, h: 28 });
+    const fr = flowRow(ts, inner);
+    for (const t of ts) items.push({ ...t, x: 12 + t.x, y: y + t.y });
+    y += fr.h + 8;
+  }
+  const target = base.els.find((e) => e.ask === ref || (e.kind === "piece" && "p:" + e.p.id === ref));
+  return { kind: "panel", id: "pn", x: 0, y: base.height + 20, w: W, h: y + 4, ref, items, sel: target ? { x: target.x, y: target.y, w: target.w, h: target.h ?? 28 } : null };
+}
+
 
 // ---------- the board: a pure function from a state to SVG (Dragology 0.2.0). ----------
 // Each thing that can be picked up lists the states that a drop can produce, each as d.dropTarget(the id of the place, the state).
@@ -439,11 +562,12 @@ function draggable({ state: st, d, draggedId }) {
   const edge = (w, hh) => h("rect", { className: "edge", x: -2, y: -2, width: w + 4, height: hh + 4, rx: 3, fill: "transparent", stroke: C.t1, strokeWidth: 2, strokeOpacity: 0 });
   const jig = (id, wide, ...kids) => h("g", { className: `jig${wide ? " wide" : ""}${sid(id) % 2 ? " late" : ""}` }, ...kids);
   const mark = (x, type) => h("rect", { x, y: 10, width: 8, height: 8, fill: color(type) });
-  const badge = (id, x, y, k, c) => { const s = "#" + k, w = tw(s, FONT.codeB) + 8; return h("g", { id, transform: translate(x - w / 2, y - 9) }, h("rect", { width: w, height: 18, rx: 9, fill: C.bg, stroke: c, strokeWidth: 2 }), code(w / 2, 13, s, { fontSize: 11, fontWeight: 600, textAnchor: "middle" })); };
-  const outline = (b, now) => h("rect", { transform: translate(b.x - 4, b.y - 4), width: b.w + 8, height: b.h + 8, rx: 4, fill: C.accent, fillOpacity: now ? 0.12 : 0, stroke: C.accent, strokeWidth: now ? 3 : 2 });
-  const hint = (words) => (words ? { onPointerEnter: () => DRAGGING || HELD || say(words), onPointerLeave: () => DRAGGING || HELD || say(LINE) } : {});
+  const badge = (id, x, y, k, c) => { const s = "#" + k, w = tw(s, FONT.codeB) + 8; return h("g", { id, transform: translate(x - w / 2, y - 9) }, h("rect", { width: w, height: 18, rx: 9, fill: C.bg, stroke: C.t1, strokeWidth: 2 }), code(w / 2, 13, s, { fontSize: 11, fontWeight: 600, textAnchor: "middle" })); };
+  const outline = (b, now) => h("rect", { transform: translate(b.x - 4, b.y - 4), width: b.w + 8, height: (b.h ?? 28) + 8, rx: 4, fill: C.accent, fillOpacity: now ? 0.12 : 0, stroke: C.accent, strokeWidth: now ? 3 : 2 });
+  const hint = (label, extra) => (label ? { onPointerEnter: () => DRAGGING || HELD || say(extra ? `${label} — ${extra}` : label), onPointerLeave: () => DRAGGING || HELD || say(LINE) } : {});
+  const glyph = (x, y, type) => { const k = typeIndex(type); return h("path", { d: SHAPES[k % 6][1], transform: translate(x, y), fill: color(type), stroke: C.t1, strokeWidth: 1.2, "data-glyph": `${SHAPES[k % 6][0]}-${k % 12}`, "data-type": takes(type)[0] }); };
   const grab = (id, label, options, far = st) => ({
-    className: "grab", role: "button", tabIndex: 0, "aria-label": label,
+    className: "grab", role: "button", tabIndex: 0, "aria-label": label, "data-targets": options().length + (far !== st ? 1 : 0), ...(options().length + (far !== st ? 1 : 0) ? {} : { "aria-disabled": "true" }),
     dragologyOnDrag: () => {
       const o = options();
       DRAGGING = true;
@@ -453,55 +577,66 @@ function draggable({ state: st, d, draggedId }) {
     dragologyZIndex: draggedId === id ? "/1" : false,
     onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); hold(id, [...options(), ...(far !== st ? [{ target: id, state: far }] : [])]); } },
   });
-  // the places that take a thing of this type: every hole of the paragraph whose type has it (a Many hole by the type of its items)
-  const holes = (type, skip) => L.els.filter((e) => (e.kind === "hole" || e.kind === "link") && takes(e.type).includes(type) && !skip(e)).map((e) => ({ e, target: e.id }));
-  const freeParts = (fn, not) => partsOf(ev).map((_, n) => n).filter((n) => n !== not && !st.parts[n].fns.some((g) => g.fn === fn));
   // the box of a hole: solid when a thing is in it, dashed while it is open. Both rects are always drawn, so that the library can blend 2 states of it.
-  const frame = (e, solid) => [h("rect", { y: 2, width: e.w, height: 24, rx: 2, fill: C.bg, stroke: color(e.type), strokeWidth: 2, strokeOpacity: solid ? 1 : 0 }),
-    h("rect", { y: 2, width: e.w, height: 24, rx: 2, fill: "none", stroke: color(e.type), strokeWidth: 2, strokeDasharray: "4 3", strokeOpacity: solid ? 0 : 1 })];
-  const chip = (e, props, ...kids) => h("g", { id: e.id, transform: translate(e.x, e.y), "data-ask": e.ask, ...props }, ...kids);
+  // Both paths are always drawn, so that the library can blend 2 states of a place. Solid: it holds something. Dashed: a hole. Dotted: an Empty. The border is the neutral ink, so it holds 3:1 on any background.
+  const frame = (e, solid) => { const d = shapePath(e.w, { socket: true, plug: e.plug }), dash = e.state === "empty" ? "1.5 3" : e.state === "optional" ? "2 3" : "4 3"; return [h("path", { className: "mark", d, fill: C.bg, stroke: C.t1, strokeWidth: 2, strokeOpacity: solid ? 1 : 0 }), h("path", { d, fill: "none", stroke: C.t1, strokeWidth: 2, strokeDasharray: dash, strokeOpacity: solid ? 0 : 1 })]; };
+  const chip = (e, props, ...kids) => h("g", { id: e.id, transform: translate(e.x, e.y), "data-ask": e.ask, "data-ref": e.ask, ...props }, ...kids);
+  const placeProps = (e, label) => ({ "data-role": e.ref ? "reference" : "place", "data-state": e.state, "data-arg": e.path, "data-of": e.app, "data-socket": PLUG.tag, ...(e.plug ? { "data-plug": PLUG.tag } : {}), ...(e.ref ? { "data-to": e.ref } : {}), "aria-label": `place ${e.path} : ${e.type}`, "data-label": label, ...hint(label, e.reason ? "open: " + e.reason : undefined) });
+  // The library blends the props of 1 element between 2 states, and a string that differs (aria-label) cannot be blended: a label is the same in every state of an id, and what changes goes in a data- prop.
+  const placeLabel = (e) => `${e.ref ? "reference" : "place"} ${e.path} : ${e.type}`;
 
   const draw = {
     socket: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, fill: "transparent" }),
     bubble: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, rx: 20, fill: C.surface }),
     run: (e) => txt(e.x, e.y + 19, e.text, { id: e.id }),
-    tag: (e) => code(e.x, e.y + 19, e.text, { id: e.id, fill: C.t2, "data-ask": e.ask ?? `c:${e.n}` }),
-    abstain: (e) => chip(e, hint(e.reason ? "Unresolved: " + e.reason : ""), h("rect", { width: e.w, height: 28, rx: 2, fill: "none", stroke: C.t2, strokeWidth: 2, strokeDasharray: "4 3" }), code(8, 19, e.text, { fill: C.t2 })),
+    tag: (e) => code(e.x, e.y + 19, e.text, { id: e.id, fill: C.t2, "data-ask": e.ask, "data-ref": e.ask, "data-role": "phrase", "data-brand": e.brand, "aria-label": `${e.brand} · ${e.text}`, "data-label": `${e.brand} · ${e.text}`, ...hint(`${e.brand} · ${e.text}`) }),
+    abstain: (e) => { const label = e.unresolved ? `${e.brand} · unresolved — ${e.reason}` : `${e.brand} · ${e.text}`; return chip(e, { "data-role": e.unresolved ? "unresolved" : "phrase", "data-brand": e.brand, "aria-label": label, "data-label": label, ...hint(label) }, h("rect", { className: "mark", width: e.w, height: 28, rx: 2, fill: "none", stroke: C.t1, strokeWidth: 2, strokeDasharray: "4 3" }), code(8, 19, e.text, { fill: C.t2 })); },
     piece: (e) => {
-      const p = e.p, c = color(p.type), k = numOf(st, P, p.id);
-      if (!OPEN) return h("g", { id: e.id, transform: translate(e.x, e.y), "data-link": "p" + p.id }, h("rect", { x: -2, y: 3, width: e.w + 4, height: 22, rx: 2, fill: c, fillOpacity: 0.2 }), h("rect", { x: -2, y: 23, width: e.w + 4, height: 2, fill: c }), txt(0, 19, p.words));
-      const options = () => [...holes(p.type, (t) => t.pids.includes(p.id)).map((o) => ({ target: o.target, state: fill(st, o.e.n, o.e.key, p.value, p.id, o.e.many) })), ...(k ? [{ target: "tray", state: unlink(st, p.id) }] : [])];
-      return h("g", { id: e.id, transform: translate(e.x, e.y), "data-link": "p" + p.id, ...grab(e.id, p.words, options) },
-        jig(e.id, false, h("rect", { y: 2, width: e.w, height: 24, rx: 2, fill: C.bg, stroke: c, strokeWidth: 2 }), edge(e.w, 28), txt(6, 19, p.words),
-          p.of ? code(12 + tw(p.words, FONT.body), 19, short(p.value, 20), { fill: C.t2 }) : null),
+      const p = e.p, c = color(p.type), k = numOf(st, P, p.id), label = `value ${p.words} : ${takes(p.type)[0]}`;
+      const as = { "data-role": "value", "data-ref": "p:" + p.id, "data-link": "p" + p.id, "aria-label": label, "data-label": label, ...hint(label) };
+      if (!OPEN) return h("g", { id: e.id, transform: translate(e.x, e.y), ...as }, h("rect", { x: -2, y: 3, width: e.w + 4, height: 22, rx: 2, fill: c, fillOpacity: 0.2 }), h("rect", { x: -2, y: 23, width: e.w + 4, height: 2, fill: c }), txt(0, 19, p.words));
+      const options = () => moves(ev, st, "p:" + p.id);
+      return h("g", { id: e.id, transform: translate(e.x, e.y), ...as, ...grab(e.id, label, options, pulled(ev, st, "p:" + p.id)) },
+        jig(e.id, false, h("rect", { className: "mark", y: 2, width: e.w, height: 24, rx: 2, fill: C.bg, stroke: C.t1, strokeWidth: 2 }), edge(e.w, 28), glyph(6, 9, p.type), txt(22, 19, p.words),
+          p.of ? code(28 + tw(p.words, FONT.body), 19, short(p.value, 20), { fill: C.t2 }) : null),
         k ? badge(`${e.id}-k${k}`, e.w, 3, k, c) : null);
     },
-    verb: (e) => {  // a function on a part: drag it to another part, or to the world to take it away
-      const f = e.f, options = () => [...freeParts(f.fn, e.n).map((m) => ({ target: "p-" + m, state: moveFn(st, e.n, m, f) })), { target: "tray", state: dropFn(st, e.n, f) }];
-      return chip(e, { ...grab(e.id, f.fn, options), ...hint(WORLD.functions[f.fn]?.asks) },
-        jig(e.id, false, h("rect", { y: 2, width: e.w, height: 24, rx: 12, fill: C.surface, stroke: C.t1, strokeWidth: 2 }), edge(e.w, 28),
-          h("text", { transform: translate(8, 19), fontFamily: C.code, fontSize: 14, fill: C.t1 }, e.pre, h("tspan", { fontWeight: 600 }, f.fn), h("tspan", { fill: C.t2 }, e.post))));
+    verb: (e) => {  // an operation: drag it to another part, or off the paragraph to take it away. Its plug fits the socket of its first place.
+      const f = e.f, options = () => moves(ev, st, e.ask), label = `operation ${f.fn} → ${e.returns}`;
+      return chip(e, { "data-role": "operation", "data-id": e.app, "data-fn": f.fn, "data-link": "a:" + e.app, "data-label": label, ...(e.plug ? { "data-plug": PLUG.tag } : {}), ...grab(e.id, label, options, pulled(ev, st, e.ask)), ...hint(label, WORLD.functions[f.fn]?.asks) },
+        jig(e.id, false, h("path", { className: "mark", d: shapePath(e.w, { plug: e.plug, round: true }), fill: C.surface, stroke: C.t1, strokeWidth: 2 }), edge(e.w, 28),
+          h("text", { transform: translate(10, 19), fontFamily: C.code, fontSize: 14, fill: C.t1 }, e.pre, h("tspan", { fontWeight: 600 }, f.fn), h("tspan", { fill: C.t2 }, e.post))));
     },
-    // a hole: dashed with the name of its type while it is open. A Many hole stays open for more, with the number of each piece that it has.
-    hole: (e) => chip(e, { opacity: e.faint ? 0.45 : 1, "data-link": e.pids.length ? "p" + e.pids[0] : "none", ...hint(e.reason ? "Open: " + e.reason : "") }, ...frame(e, e.many && e.pids.length),
-      h("g", { id: e.id + "-o" }, code(8, 19, e.text, { fill: C.t2 }))),
-    // a hole that a thing fills from elsewhere: drag the thing to another hole of its type, or anywhere else to pull it out (the hole is then open)
+    // a place: dashed with the name of its type while it is open. A Many place stays open for more, with the number of each piece that it has.
+    hole: (e) => { const label = placeLabel(e); return chip(e, { "data-link": e.pids.length ? "p" + e.pids[0] : "none", ...placeProps(e, label) }, ...frame(e, e.many && e.pids.length), glyph(12, 9, e.type), h("g", { id: e.id + "-o" }, code(28, 19, e.text, { fill: C.t2 }))); },
+    // a place that a thing fills: drag the thing to another place of its type, or anywhere else to pull it out (the place is then open). An Empty cannot move: it can only be pulled out.
     link: (e) => {
-      const id = `v-${e.f.id}-${e.key}-${sid(e.v)}`, pid = e.pids[0] ?? null, type = pid != null ? P.find((p) => p.id === pid)?.type ?? takes(e.type)[0] : takes(e.type)[0], out = empty(st, e.n, e.key);
-      const options = () => holes(type, (t) => t === e).map((o) => ({ target: o.target, state: fill(out, o.e.n, o.e.key, e.v, pid, o.e.many) }));
-      return chip(e, { opacity: 1, "data-link": pid != null ? "p" + pid : "none" }, ...frame(e, true),
-        h("g", { id, ...grab(id, e.v, options, out) }, jig(id, false, edge(e.w, 28), code(8, 19, e.text, { fontWeight: 600 }))));
+      const id = `v-${e.f.id}-${e.key}-${sid(e.v)}`, pid = e.pids[0] ?? null, type = pid != null ? P.find((p) => p.id === pid)?.type ?? takes(e.type)[0] : takes(e.type)[0], out = empty(st, e.n, e.key), label = placeLabel(e);
+      const options = () => moves(ev, st, e.ask);
+      return chip(e, { "data-link": e.ref ? "a:" + e.ref : pid != null ? "p" + pid : "none", ...placeProps(e, label) }, ...frame(e, true),
+        h("g", { id, "data-ref": e.ask, "data-link": e.ref ? "a:" + e.ref : pid != null ? "p" + pid : "none", ...grab(id, `place ${e.path} : ${e.type}`, options, pulled(ev, st, e.ask)) }, jig(id, false, edge(e.w, 28), glyph(12, 9, e.type), code(28, 19, e.text, { fontWeight: 600 }))));
     },
-    tray: (e) => h("rect", { id: e.id, transform: translate(e.x, e.y), width: e.w, height: e.h, rx: 2, fill: "none", stroke: C.rule, strokeWidth: 2 }),
-    tfn: (e) => h("g", { id: e.id, transform: translate(e.x, e.y), ...grab(e.id, e.fn, () => freeParts(e.fn).map((n) => ({ target: "p-" + n, state: addFn(ev, st, n, e.fn) }))), ...hint(WORLD.functions[e.fn]?.asks) },
-      jig(e.id, false, h("rect", { width: e.w, height: 28, rx: 2, fill: C.surface }), edge(e.w, 28), code(8, 19, e.fn, { fontWeight: 600 }))),
-    type: (e) => h("g", { id: e.id, transform: translate(e.x, e.y), ...grab(e.id, e.type, () => holes(e.type, (t) => t.v == null && !t.faint).map((o) => ({ target: o.target, state: empty(st, o.e.n, o.e.key) }))), ...hint(WORLD.types[e.type]?.doc) },
-      jig(e.id, false, h("rect", { width: e.w, height: 28, rx: 2, fill: C.bg, stroke: color(e.type), strokeWidth: 2, strokeDasharray: "4 3" }), edge(e.w, 28), mark(8, e.type), code(22, 19, e.type))),
-    member: (e) => h("g", { id: e.id, transform: translate(e.x, e.y), ...grab(e.id, e.m, () => holes(e.type, (t) => !t.many && t.v === e.m && !t.pids.length).map((o) => ({ target: o.target, state: fill(st, o.e.n, o.e.key, e.m, null, o.e.many) }))) },
-      jig(e.id, false, h("rect", { width: e.w, height: 28, rx: 2, fill: C.bg, stroke: color(e.type), strokeWidth: 2 }), edge(e.w, 28), txt(8, 19, short(e.m, 30), { fontWeight: 600 }))),
+    panel: (e) => {
+      const nx = Math.max(20, Math.min(e.w - 20, e.sel ? e.sel.x + e.sel.w / 2 : 40));
+      const item = (it) => {
+        if (it.kind === "label") return code(it.x, it.y + 19, it.text, { id: it.id, fill: C.t2 });
+        if (it.kind === "rule") return h("path", { id: it.id, d: `M12,${it.y}H${it.w}`, stroke: C.rule, strokeWidth: 1 });
+        if (it.kind === "name") { const x = it.x + (it.type ? 20 : 0); return h("g", { id: it.id }, it.type ? glyph(it.x, it.y + 9, it.type) : null, txt(x, it.y + 19, it.text, { fontWeight: 600 }), code(x + tw(it.text, FONT.strong) + 10, it.y + 19, it.role, { fill: C.t2 })); }
+        const act = !!it.act || it.more, press = () => (it.more ? (MORE = true, draw()) : applyAct(it.act));
+        const props = act ? { ...(it.act ? { "data-act": it.act, onPointerEnter: () => DRAGGING || HELD || hoverAct(it.act), onPointerLeave: () => DRAGGING || HELD || hoverAct(null) } : { "data-more": "" }), className: "act", role: "button", tabIndex: 0, "aria-label": it.act ?? "more", onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); press(); } } } : {};
+        return h("g", { id: it.id, transform: translate(it.x, it.y), ...props }, h("rect", { y: 2, width: it.w, height: 24, rx: act ? 12 : 2, fill: C.bg, stroke: act ? C.accent : C.rule, strokeWidth: 2 }), it.type ? glyph(8, 9, it.type) : null, code(it.type ? 26 : act ? 10 : 8, 19, it.text, { fill: act ? C.accent : C.t1 }));
+      };
+      return h("g", { id: e.id, transform: translate(e.x, e.y), "data-panel": "", "data-ref": e.ref },
+        h("rect", { id: "pn-box", width: e.w, height: e.h, rx: 2, fill: C.bg, stroke: C.rule, strokeWidth: 2 }),
+        h("path", { id: "pn-notch", d: `M${nx - 9},0L${nx},-9L${nx + 9},0`, fill: C.bg, stroke: C.rule, strokeWidth: 2 }),
+        h("path", { id: "pn-seam", d: `M${nx - 8},0H${nx + 8}`, stroke: C.bg, strokeWidth: 4 }),
+        ...e.items.map(item));
+    },
   };
   const held = HELD ? HELD.opts.map((o, k) => L.box[o.target] && outline(L.box[o.target], k === HELD.i)).filter(Boolean) : [];
-  return h("g", null, ...L.els.map((e) => draw[e.kind](e)), h("g", { id: "held" }, ...held));
+  const here = L.sel && !HELD ? [outline(L.sel, true)] : [];
+  const next = HOVER && !HELD ? changedIds(ev, st, HOVER.state).map((id) => L.box[id]).filter(Boolean).map((b) => outline(b)) : [];
+  return h("g", null, ...L.els.map((e) => draw[e.kind](e)), h("g", { id: "here" }, ...here), h("g", { id: "next" }, ...next), h("g", { id: "held" }, ...held));
 }
 
 // ---------- the page ----------
@@ -517,9 +652,8 @@ function draw() {
   W = Math.max(280, host.clientWidth);
   host.classList.toggle("open", OPEN);
   host.style.minHeight = "";
-  const st = HELD ? HELD.opts[HELD.i].state : reading(i);
-  root ??= createRoot(host);
-  root.render(h(DraggableRenderer, { key: `${i}-${OPEN}`, draggable, state: st, width: W, height: layout(EVENTS[i], st).height, onDropState: dropped, onDragState: previewed }));
+  if (SEL && !facts(EVENTS[i], reading(i), SEL)) SEL = null;
+  paint();
   const todo = unsaved(i);
   $("mode").setAttribute("aria-pressed", OPEN);
   $("save").hidden = !OPEN && !todo.length;
@@ -528,6 +662,28 @@ function draw() {
   $("undo").disabled = !undos[i]?.length;
   $("inspect").hidden = !OPEN;
   if (OPEN) inspect();
+}
+function paint() {  // the board again, from the current state: no other part of the page changes
+  const i = MSGS[at], st = HELD ? HELD.opts[HELD.i].state : reading(i);
+  root ??= createRoot($("board"));
+  root.render(h(DraggableRenderer, { key: `${i}-${OPEN}`, draggable, state: st, width: W, height: layout(EVENTS[i], st).height, onDropState: dropped, onDragState: previewed }));
+}
+function select(ref) {  // click: the thing opens in the panel. A click on nothing puts the panel away.
+  SEL = ref; MORE = false; HOVER = null; HELD = null;
+  if (ref && OPEN && picks(EVENTS[MSGS[at]], reading(MSGS[at])).some(([id]) => id === ref)) PICK = ref;
+  draw(); say(LINE);
+}
+function hoverAct(label) {  // the pointer is on an action: the places that it changes, and the line that Claude would receive
+  const i = MSGS[at], ev = EVENTS[i], t = label && SEL ? transitions(ev, reading(i), SEL).find((x) => x.label === label) : null;
+  HOVER = t ? { label, state: t.state } : null;
+  const ch = t ? differ(ev, reading(i), t.state) : [];
+  say(t ? (ch.length ? lineOf(ev, t.state, ch[0]) : "") : LINE);
+  paint();
+}
+function applyAct(label) {
+  const i = MSGS[at], ev = EVENTS[i], t = SEL ? transitions(ev, reading(i), SEL).find((x) => x.label === label) : null;
+  HOVER = null;
+  if (t) dropped(t.state);
 }
 // while the pointer moves: the line that a drop here records
 function previewed(next) {
@@ -551,7 +707,7 @@ function hold(src, opts) {
 }
 const heldSay = () => { const ev = EVENTS[MSGS[at]], next = HELD.opts[HELD.i].state, ch = differ(ev, reading(MSGS[at]), next); say(ch.length ? lineOf(ev, next, ch[0]) : ""); };
 document.addEventListener("keydown", (k) => {
-  if (!HELD) return;
+  if (!HELD) { if (k.key === "Escape" && SEL) select(null); return; }
   const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1, Tab: k.shiftKey ? -1 : 1 }[k.key];
   if (step) HELD.i = (HELD.i + step + HELD.opts.length) % HELD.opts.length;
   else if (k.key === "Enter" || k.key === " " || k.key === "Escape") {
@@ -567,7 +723,7 @@ document.addEventListener("keydown", (k) => {
 function restore(r) {  // a reading that you saved before (a Disagree line of the log), 1 part each
   const i = MSGS.findLast((m) => EVENTS[m].session === r.session && EVENTS[m].text === r.text), ev = EVENTS[i];
   if (ev == null || !(r.part < partsOf(ev).length)) return;
-  const st = reading(i), old = st.parts[r.part], p = { fns: [], things: {}, by: {} };
+  const st = reading(i), old = st.parts[r.part], p = { fns: [], things: {}, by: {}, refs: {} };
   for (const fn of r.demands || []) if (!p.fns.some((f) => f.fn === fn)) p.fns.push(old.fns.find((f) => f.fn === fn) ?? { id: "u" + ++UID, fn });
   for (const [k, v] of Object.entries(r.things || {})) {
     const fn = r.demands.find((fn) => k.startsWith(fn + ".")) ? "" : r.demands.find((fn) => holesOf(ev, fn).some(([path]) => path === k)), key = fn === "" ? k : fn ? `${fn}.${k}` : null;  // form 2 keys were the hole path alone
@@ -598,7 +754,7 @@ function load(data) {
   LINE = "";
   draw(); say(LINE);
 }
-function go(k) { const next = Math.max(0, Math.min(MSGS.length - 1, k)); if (next === at) return; at = next; HELD = null; LINE = ""; $("sent").hidden = true; draw(); say(LINE); }
+function go(k) { const next = Math.max(0, Math.min(MSGS.length - 1, k)); if (next === at) return; at = next; HELD = null; SEL = null; MORE = false; HOVER = null; LINE = ""; $("sent").hidden = true; draw(); say(LINE); }
 
 $("mode").addEventListener("click", () => { OPEN = !OPEN; HELD = null; draw(); say(LINE); });
 $("save").addEventListener("click", async () => {  // the local page adds 1 Disagree line for each part. The public page has no harness: it shows the lines only.
@@ -754,11 +910,20 @@ $("i-run").addEventListener("click", runPreview);
 $("i-reset").addEventListener("click", () => { for (const [name, [text]] of Object.entries(WORDINGS)) { $("pr-" + name).value = text; $("pr-" + name).classList.remove("edited"); } if (LOCAL) runPreview(); });
 $("i-select").addEventListener("change", () => { PICK = $("i-select").value; inspect(); });
 // a press on a function or a hole of the board, with no drag, picks its request
+// a press with no drag: on an action it acts, on a thing it selects, on nothing it deselects
 let pressed = null;
-document.addEventListener("pointerdown", (e) => { const el = e.target.closest?.("#board [data-ask]"); pressed = el ? { x: e.clientX, y: e.clientY, ask: el.getAttribute("data-ask") } : null; }, true);
-document.addEventListener("pointerup", (e) => { if (pressed && Math.hypot(e.clientX - pressed.x, e.clientY - pressed.y) < 5 && OPEN) { PICK = pressed.ask; setTimeout(inspect, 60); } pressed = null; }, true);
+document.addEventListener("pointerdown", (e) => { const t = e.target.closest?.("#board [data-act],#board [data-more],#board [data-ref]"); pressed = t ? { x: e.clientX, y: e.clientY, el: t } : e.target.closest?.("#board") ? { x: e.clientX, y: e.clientY, el: null } : null; }, true);
+document.addEventListener("pointerup", (e) => {
+  const p = pressed; pressed = null;
+  if (!p || Math.hypot(e.clientX - p.x, e.clientY - p.y) >= 5) return;
+  if (!p.el) return select(null);
+  if (p.el.hasAttribute("data-act")) return applyAct(p.el.getAttribute("data-act"));
+  if (p.el.hasAttribute("data-more")) { MORE = true; return draw(); }
+  select(p.el.getAttribute("data-ref"));
+}, true);
 if (["127.0.0.1", "localhost"].includes(location.hostname)) fetch("/data").then((r) => r.json()).then((own) => { LOCAL = true; load(own); }, () => load(DATA));  // your own log, in place of the recorded one
 else load(DATA);
 </script>
+<script>if (/[?&]audit/.test(location.search)) document.head.append(Object.assign(document.createElement("script"), { src: "audit.js" }));</script>
 </body>
 </html>

@@ -335,5 +335,361 @@ const READINGS = [
   ],
   "corrections": [],
   "fulfillment": []
+ },
+ {
+  "form": 4,
+  "world": "sha256:9f405426f2f0 (hand-written sample)",
+  "text": "Implement all ten of these in 3 cells. Implement all ten of these in 5 cells. Then delete it, and rewrite these cells with the functions.",
+  "phrases": [
+   {
+    "start": 0,
+    "end": 38,
+    "brand": "Asked",
+    "choice": {
+     "pick": "implement",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.93,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "c1",
+     "fn": "implement",
+     "args": {
+      "questions": {
+       "kind": "Constant",
+       "type": "Questions",
+       "value": "all ten of these",
+       "span": [
+        10,
+        26
+       ]
+      },
+      "cells": {
+       "kind": "Constant",
+       "type": {
+        "name": "Maybe",
+        "args": [
+         "int"
+        ]
+       },
+       "value": "3",
+       "span": [
+        30,
+        31
+       ]
+      }
+     }
+    }
+   },
+   {
+    "start": 39,
+    "end": 77,
+    "brand": "Asked",
+    "choice": {
+     "pick": "implement",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.92,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "c2",
+     "fn": "implement",
+     "args": {
+      "questions": {
+       "kind": "Constant",
+       "type": "Questions",
+       "value": "all ten of these",
+       "span": [
+        49,
+        65
+       ]
+      },
+      "cells": {
+       "kind": "Constant",
+       "type": {
+        "name": "Maybe",
+        "args": [
+         "int"
+        ]
+       },
+       "value": "5",
+       "span": [
+        69,
+        70
+       ]
+      }
+     }
+    }
+   },
+   {
+    "start": 78,
+    "end": 93,
+    "brand": "Asked",
+    "choice": {
+     "pick": "delete",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.81,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "c3",
+     "fn": "delete",
+     "args": {
+      "notebook": {
+       "ref": "c2"
+      }
+     }
+    }
+   },
+   {
+    "start": 94,
+    "end": 137,
+    "brand": "Asked",
+    "choice": {
+     "pick": "rewrite",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.86,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "c4",
+     "fn": "rewrite",
+     "args": {
+      "change": {
+       "kind": "Record",
+       "fields": {
+        "notebook": {
+         "kind": "Constant",
+         "type": "Notebook",
+         "value": "these cells",
+         "span": [
+          106,
+          117
+         ]
+        },
+        "code": {
+         "kind": "Constant",
+         "type": "Code",
+         "value": "the functions",
+         "span": [
+          123,
+          136
+         ]
+        }
+       }
+      }
+     }
+    }
+   }
+  ],
+  "constants": [
+   {
+    "start": 10,
+    "end": 26,
+    "type": "Questions",
+    "value": "all ten of these"
+   },
+   {
+    "start": 49,
+    "end": 65,
+    "type": "Questions",
+    "value": "all ten of these"
+   },
+   {
+    "start": 30,
+    "end": 31,
+    "type": "int",
+    "value": "3"
+   },
+   {
+    "start": 69,
+    "end": 70,
+    "type": "int",
+    "value": "5"
+   },
+   {
+    "start": 106,
+    "end": 117,
+    "type": "Notebook",
+    "value": "these cells"
+   },
+   {
+    "start": 123,
+    "end": 136,
+    "type": "Code",
+    "value": "the functions"
+   }
+  ],
+  "decisions": [
+   {
+    "id": "q1",
+    "phrase": 2,
+    "path": "notebook",
+    "state": "Then delete it,",
+    "instructions": "The text asks the reader to delete or get rid of cells of the notebook. Which Notebook does the text name for that? Candidates: the result of implement (c1), the result of implement (c2).",
+    "options": [
+     {
+      "id": "ref:c1",
+      "description": "the result of implement (c1)"
+     },
+     {
+      "id": "ref:c2",
+      "description": "the result of implement (c2)"
+     },
+     {
+      "id": "nothing",
+      "description": "none of these"
+     }
+    ],
+    "answers": {
+     "ref:c1": 0.21,
+     "ref:c2": 0.74,
+     "nothing": 0.05
+    }
+   },
+   {
+    "id": "q2",
+    "phrase": 3,
+    "path": "change.code",
+    "state": "and rewrite these cells with the functions.",
+    "instructions": "The text asks the reader to rewrite the notebook or a cell of it. Which Code does the text name for that?",
+    "options": [
+     {
+      "id": "the functions",
+      "description": "the functions"
+     },
+     {
+      "id": "the template",
+      "description": "the template"
+     },
+     {
+      "id": "nothing",
+      "description": "none of these"
+     }
+    ],
+    "answers": {
+     "the functions": 0.88,
+     "the template": 0.07,
+     "nothing": 0.05
+    }
+   }
+  ],
+  "corrections": [],
+  "fulfillment": []
+ },
+ {
+  "form": 4,
+  "world": "sha256:9f405426f2f0 (hand-written sample)",
+  "text": "> The old cells are gone.\nNow **delete** `the old cells` too.",
+  "phrases": [
+   {
+    "start": 0,
+    "end": 25,
+    "brand": "Written",
+    "choice": {
+     "pick": "nothing",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.01,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.9
+     }
+    },
+    "term": null
+   },
+   {
+    "start": 26,
+    "end": 61,
+    "brand": "Asked",
+    "choice": {
+     "pick": "delete",
+     "scores": {
+      "explain": 0.01,
+      "restate": 0.01,
+      "answer": 0.01,
+      "implement": 0.01,
+      "delete": 0.95,
+      "rewrite": 0.01,
+      "count": 0.01,
+      "write": 0.01,
+      "none": 0.02,
+      "nothing": 0.01
+     }
+    },
+    "term": {
+     "kind": "Application",
+     "id": "d1",
+     "fn": "delete",
+     "args": {
+      "notebook": {
+       "kind": "Constant",
+       "type": "Notebook",
+       "value": "the old cells",
+       "span": [
+        42,
+        55
+       ]
+      }
+     }
+    }
+   }
+  ],
+  "constants": [
+   {
+    "start": 42,
+    "end": 55,
+    "type": "Notebook",
+    "value": "the old cells"
+   }
+  ],
+  "decisions": [],
+  "corrections": [],
+  "fulfillment": []
  }
 ];
