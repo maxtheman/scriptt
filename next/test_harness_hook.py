@@ -198,6 +198,8 @@ def test_hooks() -> None:
             first = 1 + next(n for n, one in enumerate(readings) if one["id"] == line["id"])
             restored = post("restore", {"snapshot": first})
             assert restored["diagnostics"] == [] and restored["saved"]["corrections"] == [] and restored["saved"]["id"] == line["id"]
+            cli = subprocess.run([PYTHON, str(home / "harness.py"), "post", "/edit"], input=json.dumps(clear), capture_output=True, text=True)
+            assert json.loads(cli.stdout) == post("edit", clear) | {"draft": json.loads(cli.stdout)["draft"]} and json.loads(cli.stdout)["diagnostics"] == [], cli.stderr  # the mod's way in: the same answer
             print(f"serve: {len(readings)} readings, {len(worlds)} world(s); edit gave a draft, a wrong-typed edit gave {bad['diagnostics']}, accept saved a correction, restore saved snapshot {first}")
         finally:
             served.terminate()

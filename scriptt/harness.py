@@ -16,6 +16,7 @@ You run it for the rest:
   python harness.py serve [port]   the page, the readings, the worlds and the log, and the engine's edit, accept and restore
   python harness.py find WORDS     the phrases of every reading that have these words or this function; "?" finds the unresolved
   python harness.py world          the world as JSON (agree.world_record)
+  python harness.py post /accept   what POST /accept of serve answers, with the body on stdin (also /edit, /restore): the mod's way in
 
 Which evidence is about which obligation (the harness's rule; scriptt16.check then applies the engine's own: an artifact
 names a function and its values, and counts only for the 1 obligation that has exactly those):
@@ -366,6 +367,41 @@ def install():
     print(f"hooks are in {settings}\nd1 is set in {HOME / 'config.json'}" + "".join(f"\nworld.py fault: {text}" for _, _, text in faults))
 
 
+# ---- The engine's edits, for serve and for the mod ----
+plain = lambda found: [list(one) for one in found]
+
+
+def edited(body: dict, correction: bool) -> tuple:
+    saved = latest(body["reading"])
+    here = world(saved["world"])
+    reading, found = scriptt16.load(saved, here)
+    if reading is None:
+        return None, found
+    made_by = {term.number: term for _, term in scriptt16.obligations(reading) if isinstance(term, scriptt16.Application)}
+    value = None if body.get("value") is None else scriptt16.term_from(body["value"], here, made_by)
+    return scriptt16.edit(reading, body.get("number"), body["path"], value, correction, here, tuple(body["phrase"]) if body.get("phrase") else None)
+
+
+def posted(path: str, body: dict) -> dict:
+    """The engine's edit, accept and restore over the store, for serve and for `harness.py post PATH` (the mod)."""
+    match path:
+        case "/edit":
+            draft, found = edited(body, False)
+            return {"draft": draft and scriptt16.record(draft), "diagnostics": plain(found)}
+        case "/accept":
+            draft, found = edited(body, True)
+            if draft and not found:
+                draft, found = scriptt16.save(draft, store())
+            return {"saved": latest(body["reading"]) if not found else None, "diagnostics": plain(found)}
+        case "/restore":
+            chosen = scriptt16.saved(store())[int(body["snapshot"]) - 1]
+            reading, found = scriptt16.restore(store(), int(body["snapshot"]), world(chosen["world"]))
+            if reading is not None:
+                reading, found = scriptt16.save(reading, store())
+            return {"saved": latest(chosen["id"]) if reading is not None and not found else None, "diagnostics": plain(found)}
+    raise LookupError(path)
+
+
 def serve(port: int):
     """The page and the engine, on this computer only. Every meaning comes from scriptt16; the server only moves records.
 
@@ -379,36 +415,6 @@ def serve(port: int):
     from http.server import BaseHTTPRequestHandler, HTTPServer
 
     site = next((folder for folder in (HOME / "site", HOME.parent / "web" / "site") if folder.exists()), None)
-    plain = lambda found: [list(one) for one in found]
-
-    def edited(body: dict, correction: bool) -> tuple:
-        saved = latest(body["reading"])
-        here = world(saved["world"])
-        reading, found = scriptt16.load(saved, here)
-        if reading is None:
-            return None, found
-        made_by = {term.number: term for _, term in scriptt16.obligations(reading) if isinstance(term, scriptt16.Application)}
-        value = None if body.get("value") is None else scriptt16.term_from(body["value"], here, made_by)
-        return scriptt16.edit(reading, body.get("number"), body["path"], value, correction, here, tuple(body["phrase"]) if body.get("phrase") else None)
-
-    def posted(path: str, body: dict) -> dict:
-        match path:
-            case "/edit":
-                draft, found = edited(body, False)
-                return {"draft": draft and scriptt16.record(draft), "diagnostics": plain(found)}
-            case "/accept":
-                draft, found = edited(body, True)
-                if draft and not found:
-                    draft, found = scriptt16.save(draft, store())
-                return {"saved": latest(body["reading"]) if not found else None, "diagnostics": plain(found)}
-            case "/restore":
-                chosen = scriptt16.saved(store())[int(body["snapshot"]) - 1]
-                reading, found = scriptt16.restore(store(), int(body["snapshot"]), world(chosen["world"]))
-                if reading is not None:
-                    reading, found = scriptt16.save(reading, store())
-                return {"saved": latest(chosen["id"]) if reading is not None and not found else None, "diagnostics": plain(found)}
-        raise LookupError(path)
-
     class Page(BaseHTTPRequestHandler):
         def reply(self, body: bytes, kind: str = "application/json", status: int = 200):
             self.send_response(status)
@@ -467,6 +473,8 @@ if __name__ == "__main__":
             find(words)
         case ["world"]:
             print(json.dumps(agree.world_record(world())))
+        case ["post", path]:  # the body as JSON on stdin, the answer as JSON on stdout: what POST path of serve answers
+            print(json.dumps(posted(path, json.load(sys.stdin))))
         case ["serve", *port]:
             serve(int(port[0]) if port else 8787)
         case _:

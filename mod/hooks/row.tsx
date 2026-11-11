@@ -38,7 +38,7 @@ const started = new WeakSet<object>()
 
 // A prop left undefined or false is left out: the surface draws its default.
 const clean = (style: Record<string, unknown>) => Object.fromEntries(Object.entries(style).filter(([, v]) => v !== undefined && v !== false))
-const accepts = (hole: string, type: string) => hole.split('|').map(t => t.trim()).includes(type)
+const accepts = (view: View, hole: string, type: string) => (view.kinds[hole] ?? hole.split('|').map(t => t.trim())).includes(type)
 
 // The things in a part's calls: what a drag can pick there.
 const pick = (token: Token, view: View): Held | null => {
@@ -80,7 +80,7 @@ const drop = (held: Held, hit: Hit | null, view: View): Change[] | null => {
   const tray = hit?.kind === 'world-fn' || hit?.kind === 'world-type' || hit?.kind === 'member'
   const part = hit && 'part' in hit ? hit.part : hit?.kind === 'piece' ? view.parts.findIndex(p => p.start <= (view.pieces.find(x => x.id === hit.id)?.start ?? -1) && (view.pieces.find(x => x.id === hit.id)?.start ?? -1) < p.end) : -1
   // A hole of the function `fn` on the part that the world has and the part does not show yet: a drop there adds it.
-  const hidden = (fn: string, type: string) => view.parts[part]?.calls.find(c => c.fn === fn)?.hidden.find(h => accepts(h.type, type))
+  const hidden = (fn: string, type: string) => view.parts[part]?.calls.find(c => c.fn === fn)?.hidden.find(h => accepts(view, h.type, type))
   const remove = (from: number, fn: string) => {
     const change = at(from)
     change.demands = change.demands.filter(name => name !== fn)
@@ -96,7 +96,7 @@ const drop = (held: Held, hit: Hit | null, view: View): Change[] | null => {
     const hole = view.parts[hit.part]?.calls.find(c => c.fn === hit.fn)?.holes.find(h => h.path === hit.path)
     const key = `${hit.fn}.${hit.path}`
 
-    if (!hole || !accepts(hole.type, held.type) || (held.from?.key === key && held.from.part === hit.part)) {
+    if (!hole || !accepts(view, hole.type, held.type) || (held.from?.key === key && held.from.part === hit.part)) {
       return null
     }
 
@@ -289,7 +289,7 @@ const Row: ClientModule<View, S> = (view, surface) => {
     return {
       ...base,
       ...status,
-      ...(check != null && check < 0.5 ? { strikethrough: true } : {}),
+      ...(check != null && check === 'FAIL' ? { strikethrough: true } : {}),
       ...(isMoving && (n + s.phase) % 2 === 1 ? { italic: true } : {}),
       ...(lit.has(t.key) && t.look !== 'word' ? { weight: 'bold' as const, underline: true } : {}),
       ...(s.down?.token.key === t.key && !s.held ? { inverse: !('inverse' in base && base.inverse) } : {}),

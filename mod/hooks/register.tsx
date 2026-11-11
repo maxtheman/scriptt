@@ -1,28 +1,27 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, ProcessRunInit, Register } from 'claude-code'
 
-import type { Change, Mine, Piece, Reading, View, ViewPiece, World } from '../types'
+import type { Accepted, Change, Mine, Operation, Reading, Sent, TermRecord, Tree, View, ViewPiece, World } from '../types'
 
-// scriptt in the app. The harness (.scriptt/harness.py in the folder of the session) does all the reading and writes the log.
-// This mod runs it on each message that you type, attaches its block for Claude, and hands the reading of your own message
-// to hooks/row.tsx, which draws it on the message and lets you move its pieces. A drop there comes back here as a ui.message
-// and goes to the log through `harness.py reading`.
+// scriptt in the app. The harness (.scriptt/harness.py in the folder of the session) does all the reading: it saves each
+// reading to .scriptt/events.jsonl (form 5) and names its session in .scriptt/hooks.jsonl. This mod runs it on each message
+// that you type, attaches its block for Claude, and hands the reading of your own message to hooks/row.tsx, which draws it
+// on the message and lets you move its values. A drop there comes back here as a ui.message and goes to the engine as a
+// correction through `harness.py post /accept` (what POST /accept of `harness.py serve` answers). The mod computes no meaning.
 const PYTHONS = ['python3.14', '/opt/homebrew/bin/python3.14', '/usr/local/bin/python3.14']
 const HARNESS = '.scriptt/harness.py'
 // 1 colour for each type, in the order that the world and the message name the types. The status colours stay out of it.
 const COLOURS = ['#5b9cf5', '#e5a33a', '#b07ee8', '#3fb8c4', '#ee78b0', '#8f9df7', '#c9b037', '#f08a4b', '#6cc4f0', '#c58fd8']
 
-const readings = atom({ plugin: 'scriptt', key: 'readings' } as const, {}, { shape: 'readings-2' })
-const mine = atom({ plugin: 'scriptt', key: 'mine' } as const, {}, { shape: 'mine-3' })
+const readings = atom({ plugin: 'scriptt', key: 'readings' } as const, {}, { shape: 'readings-5' })
+const mine = atom({ plugin: 'scriptt', key: 'mine' } as const, {}, { shape: 'mine-5' })
 const said = atom({ plugin: 'scriptt', key: 'said' } as const, {})
-const checks = atom({ plugin: 'scriptt', key: 'checks' } as const, {})
-const world = atom({ plugin: 'scriptt', key: 'world' } as const, { functions: {}, types: {} }, { shape: 'world-3' })
+const world = atom({ plugin: 'scriptt', key: 'world' } as const, { functions: {}, types: {} }, { shape: 'world-5' })
 const session = atom({ plugin: 'scriptt', key: 'session' } as const, '')
 const interpreter = atom({ plugin: 'scriptt', key: 'python' } as const, '')
 
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error))
 const lastLine = (text: string) => (text.trim().split('\n').pop() ?? '').replace(/^scriptt: /, '').slice(0, 120)
-const one = (type: string) => type.split('|').map(t => t.trim()).find(t => t !== 'None') ?? type
 
 // The folder that has .scriptt/harness.py: the folder of the session, or the nearest folder above it.
 const UP = 'd=$PWD; while :; do [ -f "$d/.scriptt/harness.py" ] && printf %s "$d" && exit 0; [ "$d" = / ] && exit 1; d=$(dirname "$d"); done'
@@ -64,83 +63,120 @@ const harness = async ($: EngineInterface, args: string[], init?: ProcessRunInit
   return $.process.run([python, HARNESS, ...args], { ...init, cwd })
 }
 
-// Form 2 has no pieces: each hole value that the part's own words hold is one, at its first place in the part.
-const piecesOf = (r: Reading): Piece[] => {
-  if (r.pieces) {
-    return r.pieces
+// The board of `harness.py serve`, open on 1 reading.
+const BOARD = 'http://localhost:8787/'  // the desktop surface links http only to localhost; serve listens on 127.0.0.1
+
+// The name of a type as agree.show writes it, from its tree.
+const nameOf = (t: Tree): string =>
+  typeof t.constructor === 'string' ? `${t.constructor}[${nameOf(t.of ?? ({} as Tree))}]` : (t.sum ?? t.brand ?? t.base ?? t.product ?? t.member ?? '')  // every object has a constructor: the tree's is a name
+// The types of the values that a place of this type takes: the type, each alternative of a union at any depth, and the
+// argument of Many, Maybe or Later. A union's name is the world's; its alternatives come from its tree.
+const kindsOf = (name: string, w: World): string[] => {
+  const inner = /^(?:Many|Maybe|Later)\[(.*)\]$/.exec(name)?.[1]
+  if (inner) {
+    return kindsOf(inner, w)
+  }
+  const walk = (t: Tree): string[] => [nameOf(t), ...(t.alternatives ?? []).filter(a => !a.member).flatMap(walk)]
+  const tree = w.types[name]
+
+  return [...new Set(name.split(' | ').flatMap(part => (w.types[part] ? walk(w.types[part] as Tree) : [part])).concat(tree ? walk(tree) : []))]
+}
+// The words of each member of a sum type of the world, by its type.
+const membersOf = (w: World, name: string) => (w.types[name]?.alternatives ?? []).filter(a => a.member).map(a => a.words ?? '')
+
+// A term as the row shows it in a hole: a value as its words, the result of operation n as #n, an absence as None, a hole as null.
+const shown = (t: TermRecord | undefined): string | null => {
+  if (!t || 'hole' in t) {
+    return null
+  }
+  if ('constant' in t) {
+    return String(t.constant)
+  }
+  if ('ref' in t) {
+    return `#${t.ref}`
+  }
+  if ('function' in t) {
+    return t.id === null ? t.function : `#${t.id}`
+  }
+  if ('several' in t) {
+    return t.several.map(shown).join(', ')
   }
 
-  const out: Piece[] = []
-
-  r.demands.forEach((d, demand) => {
-    const part = d.part === null ? undefined : r.parts[d.part]
-
-    for (const [path, hole] of Object.entries(d.parameters)) {
-      const value = hole.value == null ? '' : String(hole.value)
-      const at = part && value ? r.text.slice(part.start, part.end).toLowerCase().indexOf(value.toLowerCase()) : -1
-
-      if (part && value && at >= 0) {
-        const start = part.start + at
-        const end = start + value.length
-
-        if (!out.some(p => p.start < end && start < p.end)) {
-          const words = r.text.slice(start, end)
-          out.push({ id: out.length, part: d.part ?? 0, start, end, words, type: one(hole.type), value, by: hole.by ?? '', to: { demand, path }, of: null })
-        }
-      }
-    }
-  })
-
-  return out.sort((a, b) => a.start - b.start)
+  return 'empty' in t ? 'None' : t.type
 }
 
-// The reading of 1 message as the row draws it: d1's reading with the user's own over it.
-const viewOf = (r: Reading, own: Mine, saved: Record<string, boolean>, done: Record<string, number>, w: World): View => {
-  const pieces = piecesOf(r)
-  const types = [...Object.keys(w.types), ...Object.values(w.functions).flatMap(f => Object.values(f.holes).map(one)), ...pieces.map(p => p.type)]
-  const named = [...new Set(types)].filter(t => !w.types[t]?.fields)
+// The reading of 1 message as the row draws it: the engine's reading, with the user's changes over it until the engine takes them.
+const viewOf = (r: Reading, own: Mine, saved: Record<string, boolean>, w: World): View => {
+  const pieces: ViewPiece[] = r.constants
+    .filter(c => c.at[0] >= 0)
+    .map((c, id) => ({ id, start: c.at[0], end: c.at[1], type: c.type, value: String(c.constant), of: null }))
+  const outcome = (id: string | null) => r.fulfillment?.find(one => String(one.obligation) === id)?.outcome ?? null
+  const holeTypes = [...Object.values(w.functions).flatMap(f => f.parameters.map(([, t]) => nameOf(t))), ...r.phrases.flatMap(p => p.terms.flatMap(t => Object.values(t.parameters)))]
+  const named = [...new Set([...holeTypes.flatMap(t => kindsOf(t, w)), ...pieces.map(p => p.type)])].filter(t => w.types[t] || pieces.some(p => p.type === t))
   const colours = Object.fromEntries(named.map((t, n) => [t, COLOURS[n % COLOURS.length] ?? 'text']))
 
-  const parts = r.parts.map((part, n) => {
+  const parts = r.phrases.map((phrase, n) => {
     const yours = own[n]
-    const demands = yours?.demands ?? part.demands
+    const demands = yours?.demands ?? phrase.terms.map(t => t.function)
     const things = yours?.things ?? {}
-    const choice = part.choice ?? part.demands[0] ?? (part.hole !== null ? 'none' : 'nothing')
-    const score = part.scores?.[choice] ?? r.demands.find(d => d.part === n && d.function === choice)?.p ?? part.hole
-    const tag = yours ? demands.join(' ') || 'nothing' : `${part.demands.join(' ') || choice}${score == null ? '' : ` ${score.toFixed(2)}`}`
+    const tag = phrase.quotes !== null ? 'quote' : [...phrase.terms.map(t => `#${t.id} ${t.function}${outcome(t.id) ? ` ${outcome(t.id)}` : ''}`), ...phrase.unresolved.map(u => `#${u.id} ?`)].join(' ') || 'nothing'
 
     const calls = demands.map(fn => {
-      const index = r.demands.findIndex(d => d.part === n && d.function === fn)
-      const d1 = r.demands[index]?.parameters ?? {}
-      const all = w.functions[fn]?.holes ?? {}
-      const paths = [...Object.keys(d1), ...Object.keys(things).filter(k => k.startsWith(`${fn}.`)).map(k => k.slice(fn.length + 1))]
-      const shown = [...new Set(paths)]
-      const holes = shown.map(path => {
+      const term: Operation | undefined = phrase.terms.find(t => t.function === fn)
+      const holes = Object.entries(term?.arguments ?? {}).map(([path, value]) => {
         const key = `${fn}.${path}`
-        // The harness may write a number (an int); the row and the reading take text.
-        const value = key in things ? (things[key] ?? null) : d1[path]?.value == null ? null : String(d1[path]?.value)
-        const by = key in things
-          ? pieces.find(p => String(p.value) === value)
-          : pieces.find(p => p.id === d1[path]?.piece) ?? pieces.find(p => p.to?.demand === index && p.to.path === path)
+        const said = key in things ? (things[key] ?? null) : shown(value)
+        const at = value && 'at' in value ? value.at : null
+        const piece = key in things ? pieces.find(p => p.value === said) : pieces.find(p => at && p.start === at[0] && p.end === at[1])
 
-        return { path, type: one(d1[path]?.type ?? all[path] ?? 'str'), value, piece: value === null ? null : (by?.id ?? null) }
+        return { path, type: term?.parameters[path] ?? '', value: said, piece: said === null ? null : (piece?.id ?? null) }
       })
-      const hidden = Object.entries(all).filter(([path]) => !shown.includes(path)).map(([path, type]) => ({ path, type: one(type) }))
+      const hidden = Object.entries(term?.parameters ?? {}).filter(([path]) => !(path in (term?.arguments ?? {}))).map(([path, type]) => ({ path, type }))
 
-      return { fn, holes, hidden, check: done[fn] ?? null }
+      return { fn, holes, hidden, check: term ? outcome(term.id) : null }
     })
 
-    return { start: part.start, end: part.end, tag, demands, things, calls, said: saved[n] ?? null }
+    // A phrase holds the white space after it: the tag goes after its last word.
+    return { start: phrase.start, end: phrase.start + r.text.slice(phrase.start, phrase.end).trimEnd().length, tag: yours ? demands.join(' ') || 'nothing' : tag, demands, things, calls, said: saved[n] ?? null }
   })
 
   return {
     text: r.text,
     colours,
+    kinds: Object.fromEntries([...new Set(holeTypes)].map(t => [t, kindsOf(t, w)])),
     parts,
-    pieces: pieces.map((p): ViewPiece => ({ id: p.id, start: p.start, end: p.end, type: p.type, value: String(p.value), of: p.of && !p.of.at ? p.of.piece : null })),
-    functions: Object.entries(w.functions).map(([name, f]) => ({ name, asks: f.asks ?? '' })),
-    types: named.map(name => ({ name, doc: w.types[name]?.doc ?? '', members: w.types[name]?.sum ?? [] })),
+    pieces,
+    functions: Object.entries(w.functions).map(([name, f]) => ({ name, asks: f.asks })),
+    types: named.map(name => ({ name, doc: '', members: membersOf(w, name) })),
   }
+}
+
+// The value of a change as a term record: a value of the message by its place, a member of the world by its type, the
+// result of an operation by its number, or a cleared hole. null: the engine has no such value.
+const valueOf = (said: string | null, place: string, r: Reading, w: World): TermRecord | null => {
+  if (said === null) {
+    return { hole: place, reason: 'cleared' }
+  }
+  if (/^#\d+$/.test(said)) {
+    return { ref: said.slice(1) }
+  }
+  const given = r.constants.find(c => String(c.constant) === said)
+  if (given) {
+    return given
+  }
+  const sum = Object.keys(w.types).find(name => membersOf(w, name).includes(said))
+
+  return sum ? { constant: said, type: sum, at: [-1, -1] } : null
+}
+
+// The latest snapshot of the reading that the harness made for this session, from its 2 files.
+const latest = async ($: EngineInterface, id: string): Promise<Reading | undefined> => {
+  const at = await home($)
+  const sent: Sent[] = (await $.fs.read(`${at}/.scriptt/hooks.jsonl`)).trim().split('\n').filter(Boolean).map(line => JSON.parse(line))
+  const mine = [...sent].reverse().find(line => line.event === 'UserPromptSubmit' && line.session === id)
+  const lines: Reading[] = (await $.fs.read(`${at}/.scriptt/events.jsonl`)).trim().split('\n').filter(Boolean).map(line => JSON.parse(line))
+
+  return mine ? [...lines].reverse().find(line => line.id === mine.reading) : undefined
 }
 
 export const register: Register = on => {
@@ -173,8 +209,12 @@ export const register: Register = on => {
 
       if (ran.exitCode === 0 && ran.stdout.trim()) {
         context = JSON.parse(ran.stdout).hookSpecificOutput?.additionalContext
-        const log = (await $.fs.read(`${await home($)}/.scriptt/events.jsonl`)).trim().split('\n')
-        const record: Reading = JSON.parse(log[log.length - 1] ?? '')
+        const record = await latest($, id)
+
+        if (!record) {
+          throw new Error('the harness named no reading for this session')
+        }
+
         await update($, readings, all => ({ ...all, [e.text]: record }))
         lastText = e.text
         $.ui.status(undefined)
@@ -193,24 +233,19 @@ export const register: Register = on => {
     return next(context ? { ...e, context: [...(e.context ?? []), context] } : e)
   })
 
-  // When Claude's turn ends: the harness checks the reply against each ask of the message.
+  // When Claude's turn ends, the Stop hook of the harness checks it from the transcript and saves the outcomes with the
+  // reading. The mod runs no check of its own (it has no transcript): it reads the latest snapshot again.
   on('turn.complete', async ($, e, next) => {
     const id = await read($, session)
-    const ended = await next(e)  // the reply is in the result of the turn
+    const ended = await next(e)
 
-    if (id && lastText && ended?.text) {
+    if (id && lastText) {
       try {
-        const event = { hook_event_name: 'Stop', session_id: id, last_assistant_message: ended.text }
-        await harness($, [], { stdin: JSON.stringify(event), timeoutMs: 60000 })
-        const log = (await $.fs.read(`${await home($)}/.scriptt/events.jsonl`)).trim().split('\n')
-        const record = JSON.parse(log[log.length - 1] ?? '')
-
-        if (record.event === 'Stop' && record.checks) {
-          const of = lastText
-          await update($, checks, all => ({ ...all, [of]: record.checks }))
-        }
+        const of = lastText
+        const record = await latest($, id)
+        record && (await update($, readings, all => ({ ...all, [of]: record })))
       } catch {
-        // the check is extra: a turn ends the same without it
+        // the outcomes are extra: a turn ends the same without them
       }
     }
 
@@ -227,27 +262,31 @@ export const register: Register = on => {
 
     const { Box, Client } = $.ui.resolve(e)
     const text = reading.text
-    const props = viewOf(reading, (await read($, mine))[text] ?? {}, (await read($, said))[text] ?? {}, (await read($, checks))[text] ?? {}, await read($, world))
+    const { Link } = $.ui.resolve(e)
+    const props = viewOf(reading, (await read($, mine))[text] ?? {}, (await read($, said))[text] ?? {}, await read($, world))
 
     return (
-      <Box width="100%">
+      <Box width="100%" flexDirection="column">
         <Client key="row" module="./row.tsx" width="100%" props={props} />
+        <Link key="board" href={`${BOARD}?reading=${reading.id}`}>open the board for this message</Link>
       </Box>
     )
   })
 
-  // A press or a drop in the row: the user's reading of 1 or 2 parts. Each goes to the log; the row shows it at once.
-  // If the log does not take one, that part goes back and the status line says why.
+  // A press or a drop in the row: the user's change of 1 or 2 parts. Each changed hole goes to the engine as a correction;
+  // the row shows it at once. If the engine does not take one, that part goes back and the status line says why.
   on('ui.message', async ($, e, next) => {
     const data = (e.data ?? {}) as { text?: unknown; changes?: unknown }
-    const reading = typeof data.text === 'string' ? (await read($, readings))[data.text] : undefined
+    const text = typeof data.text === 'string' ? data.text : ''
 
-    for (const raw of reading && Array.isArray(data.changes) ? (data.changes as Partial<Change>[]) : []) {
-      if (!reading || typeof raw.part !== 'number' || !reading.parts[raw.part] || !Array.isArray(raw.demands) || typeof raw.things !== 'object') {
+    for (const raw of text && Array.isArray(data.changes) ? (data.changes as Partial<Change>[]) : []) {
+      const reading = (await read($, readings))[text]
+      const phrase = typeof raw.part === 'number' ? reading?.phrases[raw.part] : undefined
+
+      if (!reading || !phrase || typeof raw.part !== 'number' || !Array.isArray(raw.demands) || typeof raw.things !== 'object') {
         continue
       }
 
-      const { text, session: id } = reading
       const part = raw.part
       const demands = raw.demands.filter(name => typeof name === 'string')
       const things = Object.fromEntries(Object.entries(raw.things ?? {}).filter(([, v]) => v === null || typeof v === 'string'))
@@ -260,13 +299,38 @@ export const register: Register = on => {
       })
 
       let failed = ''
+      let now = reading
+      const w = await read($, world)
 
       try {
-        const ran = await harness($, ['reading'], { stdin: JSON.stringify({ session: id, text, part, demands, things }) })
-        failed = ran.exitCode === 0 ? '' : lastLine(ran.stderr) || `the harness ended with status ${ran.exitCode}`
+        if (demands.join(' ') !== phrase.terms.map(t => t.function).join(' ')) {
+          throw new Error('adding or removing a function is not a correction the engine takes yet')
+        }
+
+        for (const [key, said] of Object.entries(things)) {
+          const [fn = '', ...rest] = key.split('.')
+          const path = rest.join('.')
+          const term = phrase.terms.find(t => t.function === fn)
+          const value = term ? valueOf(said, term.parameters[path] ?? '', now, w) : null
+
+          if (!term || term.id === null || !value) {
+            throw new Error(`no correction for ${key}`)
+          }
+
+          const ran = await harness($, ['post', '/accept'], { stdin: JSON.stringify({ reading: now.id, number: Number(term.id), path, value }) })
+          const answer: Accepted = ran.exitCode === 0 ? JSON.parse(ran.stdout) : { saved: null, diagnostics: [], error: lastLine(ran.stderr) }
+
+          if (!answer.saved) {
+            throw new Error(answer.error || `the engine refused it: ${answer.diagnostics.map(d => d.filter(x => x !== null).join(' ')).join('; ')}`)
+          }
+
+          now = answer.saved
+        }
       } catch (error) {
         failed = lastLine(reason(error))
       }
+
+      now !== reading && (await update($, readings, all => ({ ...all, [text]: now })))
 
       if (failed) {
         await update($, mine, all => {
@@ -278,7 +342,7 @@ export const register: Register = on => {
       }
 
       await update($, said, all => ({ ...all, [text]: { ...(all[text] ?? {}), [part]: !failed } }))
-      $.ui.status(failed ? `${failed}: your reading was not saved` : undefined)
+      $.ui.status(failed ? `${failed}: your change was not saved` : undefined)
     }
 
     return next(e)

@@ -1,40 +1,37 @@
 # scriptt
 
-scriptt draws, on each message that you type in the Claude desktop app, what the local decision model d1 read the message as. The harness (`.scriptt/harness.py`) reads the message against your world (`.scriptt/world.py`) and writes the reading to `.scriptt/events.jsonl`. The mod runs the harness when you send a message and attaches its block for Claude.
+scriptt draws, on each message that you type in the Claude desktop app, what the local decision model d1 read the message as. The harness (`.scriptt/harness.py`) reads the message against your world (`.scriptt/world.py`) with the reader `scriptt16.py`, saves the reading to `.scriptt/events.jsonl` (form 5) and names its session in `.scriptt/hooks.jsonl`. The mod runs the harness when you send a message, attaches its block for Claude, and draws the latest snapshot of that reading. It computes no meaning of its own.
 
 ## The row of your message
 
-The row shows your message as you typed it, in the code font. Each piece of it that has a type of the world (a member of a sum type, a number, a path) is in the colour of that type. After each part (sentence) is its tag: the functions that it asks for, or d1's choice when it asks for none, with d1's score. Nothing moves. Under the message is 1 button, `scriptt`.
+The row shows your message as you typed it, in the code font. Each value of it that has a type of the world (a member of a sum type, a number, a path that exists) is in the colour of that type. After each phrase is its tag: each obligation that it asks for, as `#0 redesign`, with the outcome of the check at the end of the turn once there is one (`PASS`, `FAIL`, `UNVERIFIED`); `#2 ?` for a request no function fits; `nothing`; or `quote` for a quote of an earlier reply. Under the message are a link, `open the board for this message` (the page of `harness.py serve` on `http://localhost:8787/?reading=<id>`), and 1 button, `scriptt`.
 
 Press `scriptt` to turn on drag mode. Press it again to turn it off.
 
 - The things that can move slant back and forth.
-- Each part shows its calls, such as `redesign(surface=the page#1)`. A hole that is filled shows its value in the colour of its type. An open hole shows the name of its type.
-- A piece that a hole takes, and the hole, show the same number (`#1`). A piece that stands for another piece shows both numbers: `it#2=#1`.
+- Each phrase shows its calls, such as `show(subject=#0)`: a value in the colour of its type, the result of obligation 0 as `#0`, a deliberate absence as `None`, an open hole as the name of its type. A value of the message and the hole that takes it show the same number (`#1`).
+- A call that FAILed the check is struck through.
 - The world is under the message: its functions on 1 row, then 1 row for each sum type, its name and its members, then 1 row of the other types.
-- With the pointer on a function or a type of the world, the line under the world shows its docstring.
 
 What you can move:
 
-- A function onto a part: the part asks for it. From one part onto another: it moves. Onto the world: the part does not ask for it.
-- A piece, a member of the world, or the value of a hole into a hole of the same type: it fills the hole.
-- The value of a hole onto the world: the hole is open.
-- A type of the world onto a function of a part: that function's hole of that type is added, open. A thing dropped on a function fills such a hole.
+- A value of the message or a member of the world into a hole whose type takes it (a union takes each of its alternatives): it fills the hole.
+- The value of a hole onto the world: the hole is cleared.
 
-While you drag, the holes that can take the thing are underlined, and the line under the world shows what the drop will record, as `harness.py reading` takes it. Over a place that cannot take it, the line is empty and the thing turns to the error colour. A tap picks a thing and a second tap drops it, the same as a drag.
-
-Each drop goes to `.scriptt/events.jsonl` through `harness.py reading`, and Claude receives it with your next message. The tag of the part turns to the success colour when the log took it. When it did not, the part goes back, its tag turns to the error colour, and the status line under the prompt says why. When d1's check of Claude's reply says a function was not done, that function is struck through in drag mode.
+Each drop goes to the engine as a correction, through `harness.py post /accept` (what POST /accept of `harness.py serve` answers): the engine checks it against the types of the world and saves a new snapshot, and the row draws that snapshot. The tag of the phrase turns to the success colour when the engine took it. When it did not, the phrase goes back, its tag turns to the error colour, and the status line under the prompt says why, with the engine's diagnostics.
 
 If the harness or d1 does not run, the row stays as the app draws it and the status line says why.
 
 ## What is not done
 
-- The mod has not been seen in the desktop app. The tests run against the test kit. They do not show that the app sends pointer events to a message row, or that the code font lines up with the cells that the pointer events name.
+- The mod has not been seen in the desktop app. The tests run against the test kit with a form-5 line that the engine wrote.
+- Moving a function onto or off a phrase is refused with a status line: it is not a correction the engine takes yet (the engine's new-operation edit needs a value for a parameter).
+- The mod runs no check at the end of a turn: it reads the outcomes that the Stop hook of the harness saved (that hook reads the transcript, which the mod does not have). With no Stop hook installed in the folder, no outcomes are drawn.
+- With the hooks installed by `harness.py install` too, a message typed in the app is read twice: once by the mod, once by the hook.
+- The board link needs `harness.py serve` running; the page it serves is the old one until the new board replaces it.
 - Until the row gets its first pointer event, drag mode draws its things as buttons: press a thing, then press where it goes.
 - The mod reads the length of a text as its width in cells. Wide characters (emoji, Chinese) put the pointer off from the thing under it.
-- Product types are not in the world rows. Their holes are shown by path, as `rewrite(change.code=Code)`.
-- What a piece stands for (`of`) is shown and cannot be changed.
-- The terminal draws the row the same way. VS Code and the mobile app have no `Client`: they draw the message as the app does, with no reading.
+- VS Code and the mobile app have no `Client`: they draw the message as the app does, with no reading.
 
 ## Install
 
@@ -48,13 +45,13 @@ In the desktop app: click + next to the prompt box, then Plugins, Add marketplac
 
 ## Setup
 
-The folder of the session, or a folder above it, needs `.scriptt/harness.py` and `.scriptt/world.py`, and Python 3.14. The mod uses the nearest one. The mod tries `python3.14`, then `/opt/homebrew/bin/python3.14`, then `/usr/local/bin/python3.14`.
+The folder of the session, or a folder above it, needs `.scriptt/` as the installer leaves it (`harness.py`, `agree.py`, `scriptt16.py`, `world.py`), and Python 3.14. The mod uses the nearest one. The mod tries `python3.14`, then `/opt/homebrew/bin/python3.14`, then `/usr/local/bin/python3.14`.
 
 ## Files
 
-- `hooks/register.tsx`: the hooks module. It runs the harness, keeps the readings, and records each drop.
+- `hooks/register.tsx`: the hooks module. It runs the harness, keeps the readings, turns a form-5 line into what the row draws, and sends each drop to the engine.
 - `hooks/row.tsx`: the surface module that draws the row and handles the pointer.
-- `types/index.d.ts`: the record, the user's reading, and what the mod keeps for the session.
+- `types/index.d.ts`: the form-5 line, the world record, a change, and what the mod keeps for the session.
 
 ## Tests
 

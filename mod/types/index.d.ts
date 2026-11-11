@@ -1,39 +1,84 @@
-// What the mod keeps for the session. A Reading is 1 line of .scriptt/events.jsonl for a message, as harness.py wrote it.
-// Form 3 adds `choice` and `scores` to a part, `pieces`, and `piece` to a hole. A form 2 line has none of them: the mod derives them.
-export type Hole = { type: string; value: string | null; by: string | null; piece?: number }
-export type Demand = { function: string; p: number; by: string; part: number | null; parameters: Record<string, Hole>; python?: string; result?: string }
-export type Part = { start: number; end: number; demands: string[]; hole: number | null; choice?: string; scores?: Record<string, number> }
-export type Piece = {
-  id: number
-  part: number
+// What the mod keeps for the session. A Reading is the latest snapshot of 1 reading in .scriptt/events.jsonl (form 5), as
+// scriptt16.record wrote it. Which reading belongs to which message of which session is in .scriptt/hooks.jsonl.
+
+// A term as a record writes it: a value the message gives, the result of an earlier operation, an operation written in place,
+// a record, a collection, a deliberate absence, or a hole with its reason.
+export type TermRecord =
+  | { constant: string | number; type: string; at: [number, number] }
+  | { ref: string }
+  | Operation
+  | { fields: Record<string, TermRecord>; type: string }
+  | { several: TermRecord[]; type: string }
+  | { empty: string }
+  | { hole: string; reason: string }
+export type Operation = {
+  id: string | null
+  function: string
+  type: string
+  parameters: Record<string, string>
+  arguments: Record<string, TermRecord>
+  judgments?: { valid: boolean; diagnostics: string[][]; complete: boolean; pending: boolean; deferred: boolean; ready: boolean }
+}
+export type Phrase = {
   start: number
   end: number
-  words: string
-  type: string
-  value: string
-  by: string
-  to: { demand: number; path: string } | null
-  of: { piece: number; at?: string } | null
+  brand: string
+  starts_by: string
+  quotes: number | null
+  terms: Operation[]
+  unresolved: { id: string; reason: string; place: number }[]
 }
-export type Reading = { text: string; session: string; parts: Part[]; demands: Demand[]; p: Record<string, number>; form?: number; pieces?: Piece[] }
+// 1 outcome of the check at the end of a turn, for 1 obligation.
+export type Checked = { obligation: number; criterion: string; outcome: 'PASS' | 'FAIL' | 'UNVERIFIED'; evidence: number | null; claim: number | null }
+export type Reading = {
+  form: 5
+  id: string
+  text: string
+  world: string
+  snapshot?: string
+  phrases: Phrase[]
+  constants: { constant: string | number; type: string; at: [number, number] }[]
+  decisions: unknown[]
+  corrections: { operation: number; path: string; status: string }[]
+  fulfillment?: Checked[]
+}
 export type Readings = Record<string, Reading>
-// The user's reading of 1 part, as `harness.py reading` takes it: the functions it asks for, and the holes the user filled or opened.
-export type Change = { part: number; demands: string[]; things: Record<string, string | null> }
-// For each part number: the user's last reading of it.
-export type Mine = Record<string, Omit<Change, 'part'>>
-// For each message, d1's check of the reply against each function that the message asks for.
-export type Checks = Record<string, number>
-// For each part number: whether the log took the user's last reading of it.
-export type Said = Record<string, boolean>
-// `harness.py world`: each function with its docstring and holes, each type with its members (sum) or fields (product).
+// 1 line of .scriptt/hooks.jsonl: the session that sent a reading.
+export type Sent = { event: string; session: string | null; reading?: string }
+
+// A type of the world as agree.tree writes it.
+export type Tree = {
+  sum?: string
+  alternatives?: Tree[]
+  member?: string
+  words?: string
+  base?: string
+  brand?: string
+  of?: Tree
+  constructor?: string
+  product?: string
+  fields?: Record<string, Tree>
+}
+// `harness.py world`: agree.world_record.
 export type World = {
-  functions: Record<string, { asks: string | null; returns: string; holes: Record<string, string> }>
-  types: Record<string, { sum?: string[]; fields?: Record<string, string>; doc: string | null }>
+  identity?: string
+  types: Record<string, Tree & { kind?: string }>
+  functions: Record<string, { asks: string; parameters: [string, Tree][]; result: Tree }>
 }
 
+// The user's change of 1 part, as the row posts it: the functions it asks for, and the holes the user filled or opened.
+export type Change = { part: number; demands: string[]; things: Record<string, string | null> }
+// For each part number: the user's last change of it.
+export type Mine = Record<string, Omit<Change, 'part'>>
+// For each part number: whether the engine took the user's last change of it.
+export type Said = Record<string, boolean>
+// What `harness.py post /accept` answers.
+export type Accepted = { saved: Reading | null; diagnostics: (string | number | null)[][]; error?: string }
+
 // What the row's surface module (hooks/row.tsx) draws: the props that the hooks module hands it.
+// check: the outcome of the check at the end of the turn, or null before it.
 export type ViewHole = { path: string; type: string; value: string | null; piece: number | null }
-export type ViewCall = { fn: string; holes: ViewHole[]; hidden: { path: string; type: string }[]; check: number | null }
+export type ViewCall = { fn: string; holes: ViewHole[]; hidden: { path: string; type: string }[]; check: string | null }
 export type ViewPart = {
   start: number
   end: number
@@ -47,6 +92,8 @@ export type ViewPiece = { id: number; start: number; end: number; type: string; 
 export type View = {
   text: string
   colours: Record<string, string>
+  // For each type that a hole can name: the types of the values it takes.
+  kinds: Record<string, string[]>
   parts: ViewPart[]
   pieces: ViewPiece[]
   functions: { name: string; asks: string }[]
@@ -60,7 +107,6 @@ declare module 'claude-code' {
       readings: Shaped<Readings>
       mine: Shaped<Record<string, Mine>>
       said: Record<string, Said>
-      checks: Record<string, Checks>
       world: Shaped<World>
       session: string
       python: string
