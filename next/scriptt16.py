@@ -859,9 +859,12 @@ def choose(phrase: Phrase, environment: Environment, search: Search) -> Phrase:
     The first question offers every function, "none" (something that no
     function fits) and "nothing" (a remark, a reason, a rule or a greeting).
     After each operation, function or not, d1 is asked whether the phrase also
-    asks for something else; a function it already asked for is offered again
-    only if the phrase gives a value for one of its places that it has not
-    taken, so the same words cannot ask for the same operation twice. "none" gives an unresolved operation, and the
+    asks for something else. A function the phrase already asked for is
+    offered again only if the phrase gives a value for one of its places that
+    it has not taken; an answer that still repeats an operation of the phrase
+    with the same values is the same request again: the phrase asks for no
+    more, and that decision names no operation. (Two unknown operations in a
+    row stay two: nothing tells them apart.) "none" gives an unresolved operation, and the
     asking goes on; an invalid answer gives one and ends it. Past
     ``Limits.operations``, one more answer that is not "nothing" is kept as an
     unresolved operation with reason "bounded". A later operation can use the
@@ -870,14 +873,16 @@ def choose(phrase: Phrase, environment: Environment, search: Search) -> Phrase:
     state = search.text[phrase.start:phrase.end].strip()
     terms: list[Application | Unresolved] = []
     results: list[Application] = []
+    meant = lambda term: (term.function.name, {path: meant_value(one) for path, one in bindings(term).items()}) if isinstance(term, Application) else None
+
 
     def again(function: Function) -> bool:
         """Decides whether a function the phrase already asked for could apply once more: the phrase gives a value for one of its places that it has not taken."""
-        taken = [value for term in terms if isinstance(term, Application) and term.function == function for value in bindings(term).values()]
-        same = lambda one, other: one is other or isinstance(one, Constant) and isinstance(other, Constant) and (one.type, one.value) == (other.type, other.value)
+        taken = [meant_value(value) for term in terms if isinstance(term, Application) and term.function == function for value in bindings(term).values()]
         places = [kind.argument if isinstance(kind, Applied) and kind.constructor in (MAYBE, MANY) else kind for _, kind in function.parameters]
-        return any(fills(one, kind) and not any(same(one, value) for value in taken) for kind in places for one in environment.local)
+        return any(fills(one, kind) and meant_value(one) not in taken for kind in places for one in environment.local)
 
+    meant_value = lambda one: value_of(one, {id(made): made.number for made in results})
     while True:
         done = [term.function.asks if isinstance(term, Application) else ELSE[NONE] for term in terms]
         key = "also" if terms else "what"
@@ -893,6 +898,8 @@ def choose(phrase: Phrase, environment: Environment, search: Search) -> Phrase:
             term = applied(search.world.functions[best], Environment((*reversed(results), *environment.local), environment.context), search, state, search.limits.depth)
         else:
             term = Unresolved(next(search.numbers), "invalid answer" if best is None else "rejected")
+        if isinstance(term, Application) and meant(term) in [meant(one) for one in terms]:
+            break  # the same operation with the same values: the same request again, so the phrase asks for no more
         decision["operation"] = term.number
         terms.append(term)
         results += [one for one in operations(term, {id(one) for one in results}) if isinstance(one, Application)]

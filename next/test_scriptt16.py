@@ -862,12 +862,16 @@ def test_final_review():
         rerun = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(changed))), test, Standin(X.told(X.REDESIGN_SHOW[:1]), X.World(), test))
         assert [scriptt16.say(term) for _, term in scriptt16.obligations(rerun)] == ["redesign(surface='the mod')", "show(subject=redesign(surface='the mod'))"]
         two = "Show the mod and the page."
-        both = read(two, X.script({two: ("show", "show")}, {(two, "show", "subject"): X.MOD}))
-        corrected, _ = scriptt16.edit(both, 1, "subject", next(one for one in both.constants if lit(one) == X.PAGE), correction=True)
-        one_show = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(corrected))), test, Standin(X.script({two: "show"}, {(two, "show", "subject"): X.MOD}), X.World(), test))
-        assert one_show.corrections[0]["status"] == "invalidated" and "show" in one_show.corrections[0]["reason"]
-        kept = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(corrected))), test, Standin(X.script({two: ("show", "show")}, {(two, "show", "subject"): X.MOD}), X.World(), test))
-        assert kept.corrections[0]["status"] == "retained" and [scriptt16.say(term) for _, term in scriptt16.obligations(kept)][1] == "show(subject='the page')"
+        script = X.script({two: "show"}, {(two, "show", "subject"): X.MOD})
+        one = read(two, script)
+        both, _ = scriptt16.edit(one, None, "show.subject", next(one_ for one_ in one.constants if lit(one_) == X.PAGE), world=test)  # a second show in the phrase, by edit
+        corrected, faults = scriptt16.edit(both, 1, "subject", next(one_ for one_ in one.constants if lit(one_) == X.MOD), correction=True)
+        assert faults == [] and corrected.corrections[0]["of"] == 2
+        one_show = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(corrected))), test, Standin(script, X.World(), test))
+        assert one_show.corrections[0]["status"] == "invalidated" and "show" in one_show.corrections[0]["reason"]  # the phrase now asks for 1 show where it had 2
+        single, _ = scriptt16.edit(one, 0, "subject", next(one_ for one_ in one.constants if lit(one_) == X.PAGE), correction=True)
+        kept = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(single))), test, Standin(script, X.World(), test))
+        assert kept.corrections[0]["status"] == "retained" and scriptt16.say(scriptt16.obligations(kept)[0][1]) == "show(subject='the page')"
         # B. A whole collection beyond the bound is recorded as cut.
         extra = "".join(f'\ndef gather{index}(surface: Surface) -> Many[Observed]:\n    "gather notes {index}"\n' for index in range(9)) + '\ndef summarize(notes: Many[Observed]) -> Written:\n    "summarize notes"\n'
         gathered = scriptt16.read("Summarize the mod.", world_of(WORLD + extra, folder), [], Standin(X.script({"Summarize the mod.": "summarize"}), X.World(extra=extra), world_of(WORLD + extra, folder)), join=False)
@@ -875,7 +879,7 @@ def test_final_review():
 
 
 def test_same_words_once():
-    """The live d1 answered "also" with the same function again for the same words; the also-question no longer offers it.
+    """The live d1 answered "also" with the same function again for the same words; it is not offered again without a new value, and a repeat is the same request.
 
     The model below always picks redesign when it is offered, else "nothing more", and for a hole the first value of the
     text it has not picked in that phrase.
@@ -896,7 +900,16 @@ def test_same_words_once():
     twice = scriptt16.read("Redesign the mod and the page.", test, [], always, join=False)
     assert [term.function.name for _, term in scriptt16.obligations(twice)] == ["redesign", "redesign"]  # a second value in the phrase still allows a second redesign
     offered = [[one["description"] for one in decision["asked"]["also"]["options"]] for decision in once.decisions if "also" in decision["asked"]]
-    assert offered and all("change how it looks" not in one for one in offered)
+    assert offered and all("change how it looks" not in one for one in offered)  # no value left for another redesign: it is not offered
+    def live_like(state, asked):  # as the live d1 answered "Test the search too.": test, then research of its result, again and again
+        answers = {}
+        for key, question in asked.items():
+            ids = [one["id"] for one in question.get("options", [])]
+            want = {"what": "test", "also": "research"}.get(key, "0")
+            answers[key] = Standin.shares(ids, want if want in ids else scriptt16.NOTHING)
+        return answers
+    tested = scriptt16.read("Test the search too.", world_of((HERE / "world.py").read_text()), [], live_like, join=False)
+    assert [scriptt16.say(term) for _, term in scriptt16.obligations(tested)] == ["test(subject='the search')", "research(topic=test(subject='the search'))"]  # the repeat is the same request
 
 
 UNIT_TESTS = [test_same_words_once, test_final_review, test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
