@@ -1,6 +1,6 @@
 # Build output
 dist/
-site/
+/site/
 docs/_build/
 
 # Python and tool caches

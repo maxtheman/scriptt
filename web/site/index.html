@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>script&lt;T&gt;</title>
+<meta name="description" content="scriptt shows you how Claude Code understood your message before it starts work, and sends Claude back when it skips a step.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="canonical" href="https://scriptt.ai/">
+<meta name="theme-color" content="#0a0a0a">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://scriptt.ai/">
+<meta property="og:site_name" content="scriptt">
+<meta property="og:title" content="script<T>">
+<meta property="og:description" content="See how Claude Code understood your message before it starts work, and send Claude back when it skips a step.">
+<meta property="og:image" content="https://scriptt.ai/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="script<T>: See how Claude Code understood your message before it starts work.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="script<T>">
+<meta name="twitter:description" content="See how Claude Code understood your message before it starts work, and send Claude back when it skips a step.">
+<meta name="twitter:image" content="https://scriptt.ai/og.png">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "scriptt", "alternateName": "script<T>", "url": "https://scriptt.ai/", "applicationCategory": "DeveloperApplication", "operatingSystem": "macOS, Linux", "softwareVersion": "0.1.7", "description": "Claude Code hooks that show how Claude understood your message before it starts work, and send Claude back when it skips a step.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}</script>
+<link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --page:#0a0a0a; --pane:#111214; --tab:#18191c; --border:#26282c;
+    --ink:#f8f8f8; --mute:#aeaeae; --type:#89bdff; --fn:#65b042; --con:#b9a3c6; --accent:#f38ad5;
+    --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 16px/1.65 var(--sans); }
+  .titlebar { height: 40px; display: flex; align-items: center; gap: 20px; padding: 0 16px; border-bottom: 1px solid var(--border); background: var(--pane); font: 13px var(--mono); color: var(--mute); }
+  .titlebar .mark { font: 600 15px var(--mono); color: var(--ink); }
+  .titlebar .mark b, .wordmark b { color: var(--type); font-weight: 600; }
+  .titlebar .grow { flex: 1; }
+  .titlebar a { color: var(--mute); text-decoration: none; }
+  .titlebar a:hover, .titlebar a:focus-visible { color: var(--ink); }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 24px; display: grid; gap: 16px; }
+  .pane { background: var(--pane); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .tabs { display: flex; height: 34px; background: var(--tab); border-bottom: 1px solid var(--border); font: 12.5px var(--mono); }
+  .tabs span { display: flex; align-items: center; padding: 0 14px; border-right: 1px solid var(--border); color: var(--mute); }
+  .tabs span.on { background: var(--pane); color: var(--ink); box-shadow: inset 0 2px 0 var(--type); }
+  .body { padding: 24px 28px 26px; }
+  .hero { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); }
+  .wordmark { font: 600 52px/1 var(--mono); letter-spacing: -0.03em; margin: 4px 0 20px; }
+  .lead { font-size: 19px; line-height: 1.6; max-width: 62ch; margin: 0 0 24px; }
+  p { margin: 0 0 14px; max-width: 70ch; }
+  code { font: 14px var(--mono); color: var(--type); }
+  .install { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 0 0 12px; }
+  .install button { font: 600 15px var(--sans); color: #0a0a0a; background: var(--type); border: 0; border-radius: 6px; padding: 11px 18px; cursor: pointer; }
+  .install button:hover { background: #a6ceff; }
+  .install button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .install span { font-size: 14px; color: var(--mute); }
+  .curl { font: 13px var(--mono); color: var(--mute); margin: 0; }
+  .curl code { color: var(--ink); }
+  .demo iframe { display: block; width: 100%; height: 700px; border: 0; background: var(--page); }
+  h2 { font: 600 13px var(--mono); color: var(--mute); text-transform: none; margin: 22px 0 8px; }
+  h2:first-child { margin-top: 0; }
+  ul { margin: 0 0 14px; padding-left: 20px; max-width: 70ch; }
+  li { margin: 0 0 6px; }
+  li::marker { color: var(--mute); }
+  .statusbar { max-width: 1120px; margin: 0 auto 32px; padding: 0 16px; display: flex; gap: 18px; flex-wrap: wrap; font: 12px var(--mono); color: var(--mute); }
+  .statusbar a { color: var(--mute); }
+  @media (max-width: 640px) { .body { padding: 18px 16px; } .wordmark { font-size: 40px; } .demo iframe { height: 560px; } }
+</style>
+</head>
+<body>
+<div class="titlebar">
+  <span class="mark">script<b>&lt;T&gt;</b></span>
+  <span class="grow"></span>
+  <a href="/llms.txt">llms.txt</a>
+  <a href="/roadmap.md">roadmap</a>
+  <a href="/install.sh">install.sh</a>
+</div>
+<main>
+  <section class="pane">
+    <div class="tabs"><span class="on">README</span></div>
+    <div class="body">
+      <h1 class="wordmark" aria-label="scriptt">script<b>&lt;T&gt;</b></h1>
+      <p class="lead">scriptt shows you how Claude Code understood your message before it starts work, and sends Claude back when it skips a step. In one week of my own work, 37% of my messages to Claude were corrections. 23 times Claude reported a task as done after doing a different step than the one I asked for.</p>
+      <div class="install">
+        <button type="button" id="copy">Copy the install prompt</button>
+        <span>Paste it into Claude Code in your project's folder.</span>
+      </div>
+      <p class="curl">or run <code>curl -fsSL https://scriptt.ai/install.sh | sh</code></p>
+    </div>
+  </section>
+
+  <section class="pane demo">
+    <div class="tabs"><span class="on">board · this page, as d1 read it</span></div>
+    <iframe src="/board/?demo" title="The board, on the text of this page"></iframe>
+  </section>
+
+  <section class="pane">
+    <div class="tabs"><span class="on">world.py</span></div>
+    <div class="body">
+      <p>scriptt keeps a record of what you and Claude both believe about your project, in a short file called <code>world.py</code>. It lists the things you work on and the requests you make. For each request it says what the request takes and what it gives back. It knows the difference between one thing, a list of things, and a thing that exists only after a request is done. So Claude cannot report the redesigned page as tested before the redesign exists.</p>
+      <p>When you send a message, a small model on your machine compares it with the record before Claude reads it. Each request becomes a call with its inputs. Words that match nothing in the record go to Claude as questions to ask you. Drag a different type onto any word or a different input into any call. scriptt saves the change and applies it every time the message is read again. When Claude stops, scriptt searches the transcript for a file written or a command run for each call. Claude goes back to finish the calls with neither.</p>
+    </div>
+  </section>
+
+
+  <section class="pane">
+    <div class="tabs"><span class="on">how it works</span></div>
+    <div class="body">
+      <p>scriptt is two Claude Code hooks plus a file of ordinary Python types. It uses only the standard library on Python 3.14.</p>
+      <h2>world.py</h2>
+      <ul>
+        <li>An enum is a closed list of named things, such as "the page" or "the site". A phrase can only name a thing on the list.</li>
+        <li>A dataclass is a thing made of named fields. Each field gets its own value.</li>
+        <li>A <code>NewType</code> brand gives the same text a different role. <code>Asked</code> marks words you wrote and <code>Written</code> marks words an agent wrote. Text you paste from an earlier reply cannot count as your own request.</li>
+        <li><code>Many</code>, <code>Maybe</code> and <code>Later</code> wrap another type. <code>Many[T]</code> is a list. <code>Maybe[T]</code> is a value you may leave out on purpose. <code>Later[T]</code> is a value that exists only after another call finishes.</li>
+        <li>A function is a request. Its signature gives the types it takes and returns.</li>
+      </ul>
+      <p>These are standard Python, so type checkers such as mypy and ty already understand <code>world.py</code>. Each type has a fixed set of possible values, so every decision is a multiple-choice question. A 2-billion-parameter model can answer it, and a program can check the answer.</p>
+      <h2>UserPromptSubmit</h2>
+      <p>Claude Code runs a <code>UserPromptSubmit</code> hook each time you send a message, before Claude sees it, and adds the hook's output to the message. scriptt's hook splits the message into sentences and into text you pasted from earlier replies. For each of your sentences it asks d1 which function the sentence asks for, or none, and which value from the message or the record fits each argument's type. d1 gives a probability for each option instead of generating text, which makes it very fast. The answers become typed calls. An argument with no fitting value stays open, with the reason why. Claude receives the calls, the open arguments and the unlabelled words. Every question, option and probability goes into <code>.scriptt/events.jsonl</code>.</p>
+      <h2>Stop</h2>
+      <p>Claude Code runs a <code>Stop</code> hook when Claude finishes. scriptt's hook matches each call to a file written or a command run in the transcript and blocks the stop up to twice. You and the agent can then discuss any disagreements.</p>
+      <p>This is just the first feature built on the engine, mostly as a proof of concept. More to come soon!</p>
+      <h2>Requirements</h2>
+      <p>Claude Code, Python 3.14, and a d1 endpoint. The public release of d1 is pending.</p>
+    </div>
+  </section>
+</main>
+<div class="statusbar"><span>0.1.7</span><span>Python 3.14</span><span>Claude Code hooks</span><a href="/roadmap.md">roadmap</a></div>
+
+<template id="prompt">Set up scriptt in this project. scriptt is two Claude Code hooks and a file of Python types, .scriptt/world.py. Before you read each of my messages, a small local model, d1, turns each request in it into a typed call from world.py and gives every word a type. When you stop, the Stop hook checks each call against the files you wrote and the commands you ran. Do the steps in order. After each step, show me the command that you ran and what it printed.
+
+1. Run `python3.14 --version`. If Python 3.14 or later is missing, stop and tell me.
+
+2. In the folder of the project, run:
+   curl -fsSL https://scriptt.ai/install.sh | sh
+   Check: .scriptt/harness.py, .scriptt/agree.py, .scriptt/scriptt16.py, .scriptt/world.py, .scriptt/SKILL.md and .scriptt/config.json exist. .claude/settings.local.json has a UserPromptSubmit hook and a Stop hook that run harness.py. .claude/skills/scriptt/SKILL.md exists.
+
+3. Read .scriptt/SKILL.md and the docstring at the top of .scriptt/world.py.
+
+4. Ask me where d1 runs. The public release of d1 is pending, so the endpoint must be one that I already have. Write .scriptt/config.json in 1 of these 2 shapes.
+   A System One endpoint:
+   {"url": "http://127.0.0.1:8791/v1/systemone", "body": {"model": "d1-2B-MLX-8bit"}}
+   A CoreAI endpoint:
+   {"url": "http://HOST:PORT/v1/decide", "key_file": "PATH TO THE FILE WITH THE TOKEN", "body": {"model": "d1-2b", "priority": "bulk", "autoload": true}}
+   If I have no endpoint, keep the config.json that the installer wrote, tell me that each hook will print 1 line on stderr and that Claude Code will go on, and continue with step 5.
+
+5. Read this project: the README, the source folders and the last 20 commit messages. Propose a first .scriptt/world.py for it, in the form that the docstring of world.py describes:
+   - 5 to 10 functions that I ask for in this project. Each has a 1-line docstring that completes the sentence "The text asks the reader to ...".
+   - An enum for each group of things that have a name in this project, and a dataclass for each thing made of named fields.
+   - Built-ins (str, int, bool, pathlib.Path) for every other argument.
+   The world.py that the installer wrote is an example from another project. Show me the whole file that you propose. Wait for my yes before you write it.
+
+6. Send 1 test message through the harness. Replace THE MESSAGE with a sentence that asks for 1 of the functions:
+   echo '{"hook_event_name": "UserPromptSubmit", "session_id": "setup-test", "prompt": "THE MESSAGE"}' | python3.14 .scriptt/harness.py
+   Check: it prints JSON, and hookSpecificOutput.additionalContext starts with "scriptt:". .scriptt/events.jsonl has 1 more line. Show me that block. If d1 is not reachable, it prints 1 line on stderr that starts with "scriptt:". Show me that line.
+
+7. Tell me that `python3.14 .scriptt/harness.py serve` opens the board on http://127.0.0.1:8787, where I can drag a different type onto words or a different value into a call, and that my changes are kept on every rerun. Tell me that the Claude desktop app can show the reading on each of my messages, with this line in a terminal session of Claude Code: /plugin install scriptt --marketplace maxtheman/scriptt</template>
+
+<script src="/copy.js"></script>
+</body>
+</html>
