@@ -19,7 +19,9 @@
     --accent:#fb923c; --accent-bg:#3d2410; --no:#ff8b85; --no-bg:#3a1c1b; --paste:#24221d; } }
   * { box-sizing: border-box; }
   html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:14px/1.4 var(--ui); overflow:hidden; }
-  header { height:44px; display:flex; gap:12px; align-items:center; padding:0 16px; border-bottom:1px solid var(--rule); }
+  header { height:64px; display:flex; flex-wrap:wrap; column-gap:12px; row-gap:2px; align-content:center; align-items:center; padding:0 16px; border-bottom:1px solid var(--rule); }
+  header #snap { white-space:nowrap; }
+  header .key.legend { flex-basis:100%; flex-wrap:wrap; row-gap:0; column-gap:9px; white-space:nowrap; }
   header .grow { flex:1; }
   header .key { font:12px var(--code); color:var(--mute); display:flex; gap:12px; align-items:center; }
   header .key i { display:inline-block; width:18px; height:0; border-bottom:2px solid; vertical-align:middle; margin-right:4px; }
@@ -28,7 +30,7 @@
   button.go { background:var(--accent); border-color:var(--accent); color:#fff; }
   button:disabled { opacity:.4; cursor:default; }
   :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  #board { position:absolute; top:44px; left:0; right:0; bottom:56px; overflow:hidden; }
+  #board { position:absolute; top:64px; left:0; right:0; bottom:56px; overflow:hidden; }
   #board svg { display:block; touch-action:none; user-select:none; -webkit-user-select:none; }
   #board svg :focus, #board:focus, #board:focus-visible { outline:none; }
   #dock { position:absolute; left:0; right:0; bottom:0; height:56px; border-top:1px solid var(--rule); background:var(--card);
@@ -46,7 +48,7 @@
   <select id="pick" aria-label="reading"></select>
   <span id="snap" class="key"></span>
   <span class="grow"></span>
-  <span class="key" aria-label="key">
+  <span class="key legend" aria-label="key">
     <span><i style="border-color:var(--type)"></i>type</span>
     <span><i style="border-color:var(--con);border-bottom-style:dashed"></i>T[…]</span>
     <span><i style="border-color:var(--fn)"></i>ƒ</span>
