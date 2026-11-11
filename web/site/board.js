@@ -586,6 +586,11 @@ function drawOp(c, x, y, rec, d, draggedId, drawn, foc, li) {
   }
   if (j.pending || j.deferred) kids.push(txt(c.w + 3, 10, j.pending ? "⧗" : "⏲", F.small, C.mute));
   if (j.complete === false) kids.push(h("circle", { transform: translate(c.w - 2, 2), r: 3, fill: C.no }));
+  if (draggedId === id) { // held: the result itself, not the whole operation
+    const lab = `↩ ${t.function}`, w = tw(lab, F.monoB) + 14;
+    return h("g", { id, transform: translate(x, y + 14), className: "op", role: "button", "data-label": t.function, "data-op": t.id, dragologyOnDrag: () => spec({ t: "op", term: t }, d), dragologyZIndex: "/1" },
+      h("rect", { width: w, height: 22, rx: 11, fill: C.card, stroke: C.fn, strokeWidth: 1.25 }), txt(7, 15, lab, F.monoB, C.fn));
+  }
   drawn.set(id, { x, y: y + 14, w: c.w, h: 26, t });
   foc.push({ id, th: { t: "op", term: t }, zone: "text", x, li });
   return h("g", { id, transform: translate(x, y + 14), className: "op", role: "button", "data-label": t.function, "data-op": t.id, dragologyOnDrag: () => spec({ t: "op", term: t }, d), dragologyZIndex: draggedId === id ? "/1" : false, onClick: () => openThing({ t: "op", term: t }) }, ...kids);
@@ -786,7 +791,7 @@ function strip(st) {
   return out;
 }
 const clip = (s) => { s = s.replace(/\s+/g, " "); return s.length > 36 ? s.slice(0, 34) + "…" : s; };
-const valLabel = (v) => (v == null ? "∅" : v.ref != null ? "↩" + v.ref : v.hole ? "▢ " + v.reason : v.constant != null ? (v.at && v.at[0] >= 0 ? "“" + clip(v.constant) + "”" : v.constant) : "?");
+const valLabel = (v) => (v == null ? "∅" : v.ref != null ? "↩ " + ((allTerms(S.base).find((x) => x.t.id === String(v.ref)) || { t: { function: v.ref } }).t.function) : v.hole ? "▢ " + v.reason : v.constant != null ? (v.at && v.at[0] >= 0 ? "“" + clip(v.constant) + "”" : v.constant) : "?");
 function paintDock(st) {
   const dock = $("dock"), parts = [];
   const sp = (cls, s) => `<span class="${cls}">${esc(s)}</span>`;
