@@ -13,3 +13,4 @@ __pycache__/
 # Worlds that the examples and cases write
 *.duckdb
 *.duckdb.wal
+lab/
