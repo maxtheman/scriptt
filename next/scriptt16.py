@@ -87,7 +87,7 @@ ALSO = "The text asks the reader to {done}. Does it also ask the reader to do so
 NONE_OF_THESE = "the text names none of these"
 ABSENT = "the text leaves it out on purpose"
 LEFT_OUT = "The text asks the reader to {asks}. Does the text leave out the {role} on purpose?"
-"""Wordings that 0.1.6 and this repair add. None has a measurement with the real d1."""
+"""Wordings added since the earlier harness. None has a measurement with the real d1."""
 
 PASS, FAIL, UNVERIFIED = "PASS", "FAIL", "UNVERIFIED"
 
@@ -911,7 +911,7 @@ def choose(phrase: Phrase, environment: Environment, search: Search) -> Phrase:
 
 
 def chosen(choice: Choice) -> str | None:
-    """Decides an operation question from d1's shares, by the rule of the 0.1.6 harness (measured there on recorded messages).
+    """Decides an operation question from d1's shares, by the rule of the earlier harness (measured there on recorded messages).
 
     A function counts only if its share is greater than "(none)" and "(nothing)"
     together; else "(none)" (a request outside the world) if its share is at

@@ -37,7 +37,7 @@ import re
 import sys
 import urllib.request
 
-VERSION = "0.2.0"
+VERSION = "0.1.7"
 HOME = pathlib.Path(__file__).resolve().parent
 STORE = HOME / "events.jsonl"
 LOG = HOME / "hooks.jsonl"

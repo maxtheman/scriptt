@@ -42,6 +42,8 @@ At the end of the turn each obligation is checked: work by evidence only (the co
 - **`?` is an unresolved request**: the words ask for something and no function of the world fits. If it is a real ask,
   do it and propose the function to add to `.scriptt/world.py`. If it is a rule or a remark, follow it and add nothing.
 - **"Declared in world.py"** are the signatures and the docstrings that d1 read, and the words of the sum types.
+- **"Words with no sure kind"** are words for which d1 found no type of the world with a share of 0.5 or more. If
+  they matter to the request, ask the user what they are, or propose the types to add to `.scriptt/world.py`.
 - d1 can be wrong. Read the quoted words yourself before you act, above all before you delete. If the block is wrong,
   say so in 1 line and go on with what the message says.
 

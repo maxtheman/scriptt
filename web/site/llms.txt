@@ -1,31 +1,27 @@
 # scriptt
 
-> scriptt is a harness for Claude Code in 2 files, `.scriptt/harness.py` and `.scriptt/world.py`. A small local decision model, d1, decides which functions of `world.py` each sentence of a user's message asks for, before the agent reads the message. When the agent replies, d1 checks the reply against each ask.
+> scriptt (written script<T>) is two Claude Code hooks and a file of Python types, `.scriptt/world.py`. Before Claude reads each message of the user, a small local decision model, d1, turns each request in it into a typed call from `world.py` and gives every word a type. When Claude stops, the Stop hook checks each call against the files written and the commands run in the transcript, and sends Claude back at most twice. Version 0.1.7.
 
 Facts for an agent that sets scriptt up in a project:
 
 - It needs Python 3.14 or later. It uses the standard library only.
-- Install, in the folder of the project: `curl -fsSL https://scriptt.ai/install.sh | sh`. It writes `.scriptt/harness.py`, `.scriptt/SKILL.md` and `.scriptt/world.py`, then runs `python3.14 .scriptt/harness.py install`. That adds a UserPromptSubmit hook and a Stop hook to `.claude/settings.local.json`, copies the skill to `.claude/skills/scriptt/SKILL.md`, and writes `.scriptt/config.json` if there is none. An existing `.scriptt/world.py` is not replaced.
-- The public release of the d1 model is pending. The user must name an endpoint that they already have. `.scriptt/config.json` has 1 of 2 shapes:
+- Install, in the folder of the project: `curl -fsSL https://scriptt.ai/install.sh | sh`. It writes `.scriptt/harness.py`, `.scriptt/agree.py`, `.scriptt/scriptt16.py`, `.scriptt/SKILL.md` and `.scriptt/world.py`, then runs `python3.14 .scriptt/harness.py install`. That adds a UserPromptSubmit hook and a Stop hook to `.claude/settings.local.json`, copies the skill to `.claude/skills/scriptt/SKILL.md`, and writes `.scriptt/config.json` if there is none. An existing `.scriptt/world.py` is not replaced.
+- The public release of d1 is pending. The user must name an endpoint that they already have. `.scriptt/config.json` has 1 of 2 shapes:
   - A System One endpoint: `{"url": "http://127.0.0.1:8791/v1/systemone", "body": {"model": "d1-2B-MLX-8bit"}}`
   - A CoreAI endpoint: `{"url": "http://HOST:PORT/v1/decide", "key_file": "PATH TO THE FILE WITH THE TOKEN", "body": {"model": "d1-2b", "priority": "bulk", "autoload": true}}`
 - With no d1, each hook prints 1 line on stderr that starts with `scriptt:`, and Claude Code goes on.
-- `.scriptt/world.py` is the whitelist of the project. A function is something that a message can ask for. Its 1-line docstring completes the sentence "The text asks the reader to ...". For each sentence of a message, d1 makes 1 choice among the functions, "something else" and "nothing". Each parameter is a hole. A sum type (an `enum.Enum`) lists things that have a name. A product type (a dataclass) has fields. The built-ins are `str`, `int`, `bool` and `pathlib.Path`. The `world.py` that the installer writes is an example from another project. Propose a `world.py` for the project (5 to 10 functions) and write it only after the user says yes.
-- Test, with no Claude Code session: `echo '{"hook_event_name": "UserPromptSubmit", "session_id": "setup-test", "prompt": "THE MESSAGE"}' | python3.14 .scriptt/harness.py`. It prints JSON. `hookSpecificOutput.additionalContext` is the block that the agent receives, and it starts with `scriptt:`. Each event is 1 line of `.scriptt/events.jsonl`.
-- `python3.14 .scriptt/harness.py serve` shows the log on `http://127.0.0.1:8787`. Each message is shown as typed, with its typed pieces and the tag of each sentence. After a press on "scriptt", the user drags functions onto sentences, and pieces of the message or members of a sum type into holes of their type. Save adds the reading to the log, and the agent receives it with the next message.
-- `python3.14 .scriptt/harness.py find WORDS` prints the parts of logged messages that have these words. `find "?"` lists the parts where d1 found no function.
-- The Claude desktop app can draw d1's reading on each message of the user. In a terminal session of Claude Code: `/plugin install scriptt --marketplace maxtheman/scriptt`.
-- Each line of `.scriptt/events.jsonl` has `form` (the form of the line, now 3), `harness` (the version, now 0.1.6), `world` (a hash of world.py) and `at`.
+- `.scriptt/world.py` declares the project's vocabulary as Python types: an enum for each closed list of named things, a dataclass for each thing made of named fields, `NewType` brands (`Asked` for the user's words, `Written` for an agent's), `Many[T]`, `Maybe[T]` and `Later[T]`, and functions. A function is something a message can ask for. Its 1-line docstring completes the sentence "The text asks the reader to ...". The installed `world.py` is an example from another project. Propose a `world.py` for the project (5 to 10 functions) and write it only after the user says yes.
+- Test, with no Claude Code session: `echo '{"hook_event_name": "UserPromptSubmit", "session_id": "setup-test", "prompt": "THE MESSAGE"}' | python3.14 .scriptt/harness.py`. It prints JSON. `hookSpecificOutput.additionalContext` is the block that the agent receives, and it starts with `scriptt:`. Each reading is saved as 1 line of `.scriptt/events.jsonl` (form 5).
+- `python3.14 .scriptt/harness.py serve` opens the board on `http://127.0.0.1:8787`: each message with every word linked to its type. The user drags types onto words and values into arguments. Each change goes through the engine, and an accepted change is kept on every rerun.
+- The Claude desktop app can draw the reading on each message. In a terminal session of Claude Code: `/plugin install scriptt --marketplace maxtheman/scriptt`.
 - Remove: delete the 2 `harness.py` entries from `.claude/settings.local.json`, then `.claude/skills/scriptt/` and `.scriptt/`.
 
 ## Files
 
-- [install.sh](https://scriptt.ai/install.sh): the installer, 9 lines of sh
+- [install.sh](https://scriptt.ai/install.sh): the installer
 - [SKILL.md](https://scriptt.ai/SKILL.md): what the agent does when a prompt arrives with a block that starts "scriptt:"
-- [world.py](https://scriptt.ai/world.py): the example whitelist, with the rules for types and holes in its docstring
-- [harness.py](https://scriptt.ai/harness.py): the 2 hooks, the installer and the local page
-- [The page](https://scriptt.ai/): a recorded message as typed and as d1 read it, the drag mode that edits the reading, and a prompt to paste into a coding agent
-
-## Optional
-
-- [Source](https://github.com/maxtheman/scriptt): the repository, with the test that replays a recorded conversation
+- [world.py](https://scriptt.ai/world.py): the starter world, with the rules for types in its docstring
+- [harness.py](https://scriptt.ai/harness.py): the 2 hooks, the installer and the local server
+- [agree.py](https://scriptt.ai/agree.py) and [scriptt16.py](https://scriptt.ai/scriptt16.py): the engine
+- [The board](https://scriptt.ai/board/?demo): the board on the text of the home page, with the engine running in the browser
+- [Roadmap](https://scriptt.ai/roadmap.md)
