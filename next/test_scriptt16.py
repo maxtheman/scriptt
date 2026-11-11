@@ -874,7 +874,32 @@ def test_final_review():
         assert [len(one["cut"]) for one in gathered.decisions if one["path"] == "notes"][:1] == [1]
 
 
-UNIT_TESTS = [test_final_review, test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
+def test_same_words_once():
+    """The live d1 answered "also" with the same function again for the same words; the also-question no longer offers it.
+
+    The model below always picks redesign when it is offered, else "nothing more", and for a hole the first value of the
+    text it has not picked in that phrase.
+    """
+    test = world_of(WORLD)
+    picked: list[tuple[str, str]] = []
+    def always(state, asked):
+        answers = {}
+        for key, question in asked.items():
+            ids = {one["description"]: one["id"] for one in question.get("options", [])}
+            fresh = [text for text in ids if text.startswith("'") and (state, text) not in picked]
+            picked.extend((state, text) for text in fresh[:1] if key == "which")
+            pick = ids.get("change how it looks") or ids.get(scriptt16.ELSE[scriptt16.NOTHING]) if key in ("what", "also") else ids.get((fresh or [""])[0], ids.get(scriptt16.NONE_OF_THESE))
+            answers[key] = Standin.shares(list(ids.values()), pick) if ids else {"p_true": 0.9 if key == "0" else 0.1}
+        return answers
+    once = scriptt16.read("Redesign the mod. Show the page.", test, [], always, join=False)
+    assert [scriptt16.say(term) for _, term in scriptt16.obligations(once)] == ["redesign(surface='the mod')", "redesign(surface='the page')"]
+    twice = scriptt16.read("Redesign the mod and the page.", test, [], always, join=False)
+    assert [term.function.name for _, term in scriptt16.obligations(twice)] == ["redesign", "redesign"]  # a second value in the phrase still allows a second redesign
+    offered = [[one["description"] for one in decision["asked"]["also"]["options"]] for decision in once.decisions if "also" in decision["asked"]]
+    assert offered and all("change how it looks" not in one for one in offered)
+
+
+UNIT_TESTS = [test_same_words_once, test_final_review, test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
 
 
 # ---- Laws over the real next/world.py -------------------------------------------------

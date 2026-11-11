@@ -859,19 +859,30 @@ def choose(phrase: Phrase, environment: Environment, search: Search) -> Phrase:
     The first question offers every function, "none" (something that no
     function fits) and "nothing" (a remark, a reason, a rule or a greeting).
     After each operation, function or not, d1 is asked whether the phrase also
-    asks for something else. "none" gives an unresolved operation, and the
+    asks for something else; a function it already asked for is offered again
+    only if the phrase gives a value for one of its places that it has not
+    taken, so the same words cannot ask for the same operation twice. "none" gives an unresolved operation, and the
     asking goes on; an invalid answer gives one and ends it. Past
     ``Limits.operations``, one more answer that is not "nothing" is kept as an
     unresolved operation with reason "bounded". A later operation can use the
     results of an earlier one.
     """
     state = search.text[phrase.start:phrase.end].strip()
-    functions = {name: function.asks for name, function in search.world.functions.items()}
     terms: list[Application | Unresolved] = []
     results: list[Application] = []
+
+    def again(function: Function) -> bool:
+        """Decides whether a function the phrase already asked for could apply once more: the phrase gives a value for one of its places that it has not taken."""
+        taken = [value for term in terms if isinstance(term, Application) and term.function == function for value in bindings(term).values()]
+        same = lambda one, other: one is other or isinstance(one, Constant) and isinstance(other, Constant) and (one.type, one.value) == (other.type, other.value)
+        places = [kind.argument if isinstance(kind, Applied) and kind.constructor in (MAYBE, MANY) else kind for _, kind in function.parameters]
+        return any(fills(one, kind) and not any(same(one, value) for value in taken) for kind in places for one in environment.local)
+
     while True:
         done = [term.function.asks if isinstance(term, Application) else ELSE[NONE] for term in terms]
         key = "also" if terms else "what"
+        chosen = {term.function.name for term in terms if isinstance(term, Application)}
+        functions = {name: function.asks for name, function in search.world.functions.items() if name not in chosen or again(function)}
         answers, decision = ask(search, state, {key: OneOf(ALSO.format(done="; ".join(done)) if done else shipped.WHAT, functions | ELSE)}, {})
         decision["chosen"] = best = answers[key].best
         if best == NOTHING:
