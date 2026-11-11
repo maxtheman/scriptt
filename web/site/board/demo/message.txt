@@ -3,3 +3,33 @@ scriptt shows you how Claude Code understood your message before it starts work,
 scriptt keeps a record of what you and Claude both believe about your project, in a short file called world.py. It lists the things you work on and the requests you make. For each request it says what the request takes and what it gives back. It knows the difference between one thing, a list of things, and a thing that exists only after a request is done. So Claude cannot report the redesigned page as tested before the redesign exists.
 
 When you send a message, a small model on your machine compares it with the record before Claude reads it. Each request becomes a call with its inputs. Words that match nothing in the record go to Claude as questions to ask you. Drag a different type onto any word or a different input into any call. scriptt saves the change and applies it every time the message is read again. When Claude stops, scriptt searches the transcript for a file written or a command run for each call. Claude goes back to finish the calls with neither.
+
+scriptt is two Claude Code hooks plus a file of ordinary Python types. It uses only the standard library on Python 3.14.
+
+world.py
+
+- An enum is a closed list of named things, such as "the page" or "the site". A phrase can only name a thing on the list.
+
+- A dataclass is a thing made of named fields. Each field gets its own value.
+
+- A NewType brand gives the same text a different role. Asked marks words you wrote and Written marks words an agent wrote. Text you paste from an earlier reply cannot count as your own request.
+
+- Many, Maybe and Later wrap another type. Many[T] is a list. Maybe[T] is a value you may leave out on purpose. Later[T] is a value that exists only after another call finishes.
+
+- A function is a request. Its signature gives the types it takes and returns.
+
+Each type has a fixed set of possible values, so every decision is a multiple-choice question. A 2-billion-parameter model can answer it, and a program can check the answer.
+
+UserPromptSubmit
+
+Claude Code runs a UserPromptSubmit hook each time you send a message, before Claude sees it, and adds the hook's output to the message. scriptt's hook splits the message into sentences and into text you pasted from earlier replies. For each of your sentences it asks d1 which function the sentence asks for, or none, and which value from the message or the record fits each argument's type. d1 gives a probability for each option instead of generating text, which makes it very fast. The answers become typed calls. An argument with no fitting value stays open, with the reason why. Claude receives the calls, the open arguments and the unlabelled words. Every question, option and probability goes into .scriptt/events.jsonl.
+
+Stop
+
+Claude Code runs a Stop hook when Claude finishes. scriptt's hook matches each call to a file written or a command run in the transcript and blocks the stop up to twice. You and the agent can then discuss any disagreements.
+
+This is just the first feature built on the engine, mostly as a proof of concept. More to come soon!
+
+Requirements
+
+Claude Code, Python 3.14, and a d1 endpoint. The public release of d1 is pending.
