@@ -134,7 +134,7 @@
           await shot(`${pre}-a-open-link`);
           ok(/d1 · kind/.test(pageT) && all("#board [id^=pg-o-]").length >= 2, "A5 d1's options and probabilities for its words");
           // B7: revisit d1: click an option that is not the chosen one
-          const optEl = all("#board [id^=pg-o-]").find((g) => !/^●/.test(g.querySelector("text").textContent.trim()) && !/\(none\)/.test(g.dataset.label));
+          const optEl = all("#board [id^=pg-o-]").find((g) => !/^●/.test(g.querySelector("text").textContent.trim()) && !/\(none\)/.test(g.dataset.label) && g.getBoundingClientRect().bottom < innerHeight - 60);
           if (ok(optEl, "B7 an option d1 did not choose")) {
             const kind = optEl.dataset.label.split(" ")[0];
             await click(optEl); await until(() => staged(), 15000); await syncNet();
@@ -149,7 +149,7 @@
         // ---- B1: widen by the end handle (pointer); the draft is drawn in place before release
         const hd = el("#hd-e");
         if (ok(hd, "B1 the open link has handles")) {
-          const p = S.open.p, next = L.words.find((w) => w.s > p.end && document.querySelector(`#board text.w[data-s="${w.s}"]`) && w.s - p.end < 40);
+          const p = S.open.p, next = L.words.find((w) => w.s > p.end && /[\p{L}\p{N}]/u.test(w.str) && document.querySelector(`#board text.w[data-s="${w.s}"]`) && w.s - p.end < 40);
           const tgt = next && document.querySelector(`#board text.w[data-s="${next.s}"]`);
           if (ok(tgt, "B1 a word after the link")) {
             const q = tgt.getBoundingClientRect();
@@ -258,7 +258,8 @@
           for (const g of all("#board [id^=pc-]").slice(4, 12)) { n++; res = await dragToAccepted(g, `${pre}-c-words`); if (!res.none) break; await reset(); }
           if (ok(res && !res.none, `C1 the engine accepts some held words somewhere (tried ${n} links)`)) {
             const b = staged(); ok(b && sent(b) && b.number != null && b.value.constant !== undefined && b.value.at[0] >= 0, "C1 words into an accepting place stage (/edit {constant, type, at})");
-            ok(b && res.mid.places.some(([pid, txt]) => pid === "pl-" + b.number + "-" + b.path.replace(/\./g, "_") && txt === "⇠"), "C1 the draft shows the place filled before release");
+            const pid = "pl-" + b.number + "-" + b.path.replace(/\./g, "_"), inView = res.mid.places.find(([k]) => k === pid);
+            ok(b && (inView ? inView[1] === "⇠" : res.mid.dock.includes(b.path + "=“")), "C1 the draft shows the place filled before release (in the text, or in the dock when the place is out of view)");
             row.did.push("C1 → " + res.tid); await key("Escape");
           }
         }
@@ -270,6 +271,13 @@
             const mem = el("#board [id^=pg-m-]"); if (!mem) continue;
             tried.push(mem.dataset.label); res = await dragToAccepted(mem, `${pre}-c-member`); if (!res.none) break; await reset();
             if (tried.length >= 3) break;
+          }
+          if (!res || res.none) for (const g of all("#board [id^=pc-]")) { // else members from the pages of links (a sum type's page)
+            if (tried.length >= 4) break;
+            const k = g.dataset.kind; if (!k || k === "(none)" || k === "null") continue;
+            await reset(); await click(g); await pause();
+            const mem = el("#board [id^=pg-m-]"); if (!mem || tried.includes(mem.dataset.label)) continue;
+            tried.push(mem.dataset.label); res = await dragToAccepted(mem, `${pre}-c-member`); if (!res.none) break;
           }
           if (ok(res && !res.none, `C2 the engine accepts a member somewhere (members tried: ${tried.join(", ") || "none on any place's page"})`)) {
             const b = staged(); ok(b && sent(b) && b.value.at[0] === -1 && tried.includes(b.value.constant), "C2 member into an accepting place stages (/edit {constant: member words, at: [-1,-1]})");

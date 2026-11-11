@@ -368,8 +368,7 @@ function options(th) {
     case "op": places = placeOptions(() => ({ ref: th.term.id }), (pl) => pl.t.id === th.term.id); break;
     case "val": places = placeOptions(() => th.pl.v, (pl) => pl.t.id === th.pl.t.id && pl.path === th.pl.path); break;
   }
-  newHold();
-  verdicts(places.map((o) => o.body)); // the engine's verdict for every place, in one request
+  newHold(); // the verdicts are asked when a drag really starts (status) or a key picks the thing up (holdOf), not on a click
   return { out, places };
 }
 function far(th) {
@@ -927,6 +926,7 @@ function openThing(th) {
 function holdOf(th) {
   const { out, places } = options(th);
   th.places = places; delete th.rail;
+  verdicts(places.map((o) => o.body));
   const opts = [...out.filter((o) => !o.self), ...places.slice().sort((a, b) => b.open - a.open)];
   const fb = far(th);
   if (fb) opts.push({ target: null, body: fb, pull: true });
@@ -1035,8 +1035,9 @@ function paint() {
 // a press that never became a drag (a click) leaves nothing held
 function status(st) {
   (window.__status = window.__status || []).push(st.type + (st.pendingDrag ? "+pending" : "") + (st.springOrigin ? "+spring" : ""));
-  const was = DRAGGING || PENDING;
+  const was = DRAGGING || PENDING, wasD = DRAGGING;
   DRAGGING = st.type === "dragging"; PENDING = !!st.pendingDrag;
+  if (DRAGGING && !wasD && HELD && HELD.places) verdicts(HELD.places.map((o) => o.body)); // the engine's verdict for every place, in one request
   if (!DRAGGING && !st.pendingDrag && HELD) { HELD = null; RAIL_IDS = new Set(); LIVE = null; setTimeout(paint, 0); }
   else if (was && !DRAGGING && !PENDING) setTimeout(paint, 0);
 }
