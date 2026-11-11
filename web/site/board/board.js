@@ -199,7 +199,7 @@ function layout(rec) {
   for (const ph of rec.phrases) {
     if (!ph.terms.length && !ph.unresolved.length) continue;
     let last = -1;
-    for (let i = 0; i < chunks.length; i++) if (chunks[i].cs >= ph.start && chunks[i].cs < ph.end) last = i;
+    for (let i = 0; i < chunks.length; i++) if (chunks[i].cs < ph.end && chunks[i].ce > ph.start) last = i; // a phrase may start inside a run of characters
     if (last < 0) continue;
     const list = after.get(last) || [];
     for (const t of ph.terms) { const c = opChip(t, ph); measureOp(c, rec); list.push(c); }
@@ -610,7 +610,7 @@ function draggable({ state: st, d, draggedId, setState }) {
       if (!ws.length) continue;
       const a = X0 + ws[0].x, b = X0 + ws[ws.length - 1].x + ws[ws.length - 1].w, y = Y(li) + 41;
       bg.push(h("rect", { dragologyKey: `b${t.id}-${li}`, transform: translate(a, y), width: b - a, height: 1.5, fill: C.fn, opacity: 0.55 }));
-      if (ws[0].s <= p.start + 2) bg.push(h("rect", { dragologyKey: `bt${t.id}`, transform: translate(a, y - 4), width: 1.5, height: 5.5, fill: C.fn, opacity: 0.55 }));
+      if (ws[0].s <= p.start + 2) bg.push(h("rect", { dragologyKey: `bt${t.id}-${li}`, transform: translate(a, y - 4), width: 1.5, height: 5.5, fill: C.fn, opacity: 0.55 }));
     }
   }
   // the page of the open thing, or the world
@@ -634,19 +634,19 @@ function draggable({ state: st, d, draggedId, setState }) {
     }
   }
   // a staged change: ✓ and ✕ on the thing itself, after the changed link, place or operation (the dock has them too)
-  if (st.staged && !draggedId) {
+  if (st.staged && S.staged && !draggedId && JSON.stringify(st.change) === JSON.stringify(S.staged.body)) { // the live staged change only (springs also draw older states)
     const b = st.change;
     let at = null;
-    if (b.path === "kind") { for (const [k, a] of segs) if (changed.has(+k)) { const lp = a.parts[a.parts.length - 1]; if (!at || lp.y > at.y || (lp.y === at.y && lp.x1 > at.x)) at = { x: lp.x1 + 6, y: lp.y + 12 }; } }
+    if (b.path === "kind") { for (const [k, a] of segs) if (changed.has(+k)) { const lp = a.parts[a.parts.length - 1]; if (!at || lp.y > at.y || (lp.y === at.y && lp.x1 > at.x)) at = { x: lp.x1 + 2, y: lp.y - 4 }; } } // in the label row, after the change: no word is covered
     else if (b.number != null) { const bx = drawn.get("pl-" + b.number + "-" + b.path.replace(/\./g, "_")); if (bx) at = { x: bx.x + bx.w + 4, y: bx.y - 3 }; }
     else { const fresh = allTerms(rec).find((x) => !allTerms(S.base).some((y) => y.t.id === x.t.id)), bx = fresh && drawn.get("op-" + fresh.t.id); if (bx) at = { x: bx.x + bx.w + 4, y: bx.y }; }
     if (at) {
       const okv = verdict(S.staged.e) === "ok";
       const btn = (id, x, glyph, col, fn, name) => h("g", { id, transform: translate(x, at.y), role: "button", className: "stage", style: { cursor: "pointer" }, onClick: (ev) => { ev.stopPropagation(); fn(); } },
-        h("title", null, name), h("rect", { width: 24, height: 24, rx: 12, fill: C.card, stroke: col, strokeWidth: 1.5 }), txt(6.5, 17, glyph, F.monoB, col));
+        h("title", null, name), h("rect", { width: 20, height: 20, rx: 10, fill: C.card, stroke: col, strokeWidth: 1.5 }), txt(4.5, 15, glyph, F.monoB, col));
       if (okv) over.push(btn("stage-ok", at.x, "✓", C.fn, accept, "✓ a"));
-      over.push(btn("stage-no", at.x + (okv ? 28 : 0), "✕", C.no, cancel, "✕ esc"));
-      drawn.set("stage-ok", { x: at.x, y: at.y, w: 24, h: 24 });
+      over.push(btn("stage-no", at.x + (okv ? 23 : 0), "✕", C.no, cancel, "✕ esc"));
+      drawn.set("stage-ok", { x: at.x, y: at.y, w: 20, h: 20 });
     }
   }
   // the keyboard's target
@@ -1144,4 +1144,5 @@ async function choose(id) {
   $("keybtn").onclick = () => { const k = $("key"); k.hidden = !k.hidden; $("keybtn").setAttribute("aria-expanded", String(!k.hidden)); };
   addEventListener("resize", () => paint());
   await choose(first);
+  if (query.has("demo") && parent !== window) parent.postMessage({ scriptt: "ready" }, location.origin); // the landing page swaps its plain text for the board
 })();

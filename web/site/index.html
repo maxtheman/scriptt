@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>script&lt;T&gt;</title>
-<meta name="description" content="scriptt shows you how Claude Code understood your message before it starts work, and sends Claude back when it skips a step.">
+<meta name="description" content="Scriptt is prompting with a model for types to catch agent errors early.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -14,14 +14,14 @@
 <meta property="og:url" content="https://scriptt.ai/">
 <meta property="og:site_name" content="scriptt">
 <meta property="og:title" content="script<T>">
-<meta property="og:description" content="See how Claude Code understood your message before it starts work, and send Claude back when it skips a step.">
+<meta property="og:description" content="Scriptt is prompting with a model for types to catch agent errors early.">
 <meta property="og:image" content="https://scriptt.ai/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="script&lt;T&gt;: Scriptt is prompting with a model for types to catch agent errors early.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="script<T>">
-<meta name="twitter:description" content="See how Claude Code understood your message before it starts work, and send Claude back when it skips a step.">
+<meta name="twitter:description" content="Scriptt is prompting with a model for types to catch agent errors early.">
 <meta name="twitter:image" content="https://scriptt.ai/og.png">
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "scriptt", "alternateName": "script<T>", "url": "https://scriptt.ai/", "applicationCategory": "DeveloperApplication", "operatingSystem": "macOS, Linux", "softwareVersion": "0.1.7", "description": "Claude Code hooks that show how Claude understood your message before it starts work, and send Claude back when it skips a step.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}</script>
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
@@ -61,7 +61,19 @@
   .install span { font-size: 14px; color: var(--mute); }
   .curl { font: 13px var(--mono); color: var(--mute); margin: 0; }
   .curl code { color: var(--ink); }
-  .demo iframe { display: block; width: 100%; height: 700px; border: 0; background: var(--page); }
+  .install a.star { display: inline-flex; align-items: center; gap: 8px; font: 600 15px var(--sans); color: var(--ink); background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 10px 16px; text-decoration: none; }
+  .install a.star:hover, .install a.star:focus-visible { border-color: var(--mute); }
+  .install a.star svg, .titlebar a svg { width: 16px; height: 16px; fill: currentColor; }
+  .titlebar a.gh { display: inline-flex; align-items: center; gap: 6px; }
+  .reading { position: relative; }
+  .reading .loading { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; background: var(--tab); border-bottom: 1px solid var(--border); font: 12.5px var(--mono); color: var(--mute); }
+  .reading .loading .spin { width: 10px; height: 10px; border: 2px solid var(--border); border-top-color: var(--type); border-radius: 50%; animation: spin 0.9s linear infinite; }
+  .reading .loading.failed .spin { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .reading .loading .spin { animation: none; } }
+  .reading iframe { display: block; width: 100%; height: 760px; border: 0; background: var(--page); position: absolute; left: 0; top: 34px; visibility: hidden; }
+  .reading.ready iframe { position: static; visibility: visible; }
+  .reading.ready .loading, .reading.ready .plain { display: none; }
   h2 { font: 600 13px var(--mono); color: var(--mute); text-transform: none; margin: 22px 0 8px; }
   h2:first-child { margin-top: 0; }
   ul { margin: 0 0 14px; padding-left: 20px; max-width: 70ch; }
@@ -69,7 +81,7 @@
   li::marker { color: var(--mute); }
   .statusbar { max-width: 1120px; margin: 0 auto 32px; padding: 0 16px; display: flex; gap: 18px; flex-wrap: wrap; font: 12px var(--mono); color: var(--mute); }
   .statusbar a { color: var(--mute); }
-  @media (max-width: 640px) { .body { padding: 18px 16px; } .wordmark { font-size: 40px; } .demo iframe { height: 560px; } }
+  @media (max-width: 640px) { .body { padding: 18px 16px; } .wordmark { font-size: 40px; } .reading iframe { height: 600px; } }
 </style>
 </head>
 <body>
@@ -79,55 +91,48 @@
   <a href="/llms.txt">llms.txt</a>
   <a href="/roadmap.md">roadmap</a>
   <a href="/install.sh">install.sh</a>
+  <a class="gh" href="https://github.com/maxtheman/scriptt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
 </div>
 <main>
   <section class="pane">
     <div class="tabs"><span class="on">README</span></div>
     <div class="body">
       <h1 class="wordmark" aria-label="scriptt">script<b>&lt;T&gt;</b></h1>
-      <p class="lead">scriptt shows you how Claude Code understood your message before it starts work, and sends Claude back when it skips a step. In one week of my own work, 37% of my messages to Claude were corrections. 23 times Claude reported a task as done after doing a different step than the one I asked for.</p>
+      <p class="lead">Scriptt is prompting with a model for types to catch agent errors early.</p>
       <div class="install">
         <button type="button" id="copy">Copy the install prompt</button>
+        <a class="star" href="https://github.com/maxtheman/scriptt"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Star on GitHub</a>
         <span>Paste it into Claude Code in your project's folder.</span>
       </div>
       <p class="curl">or run <code>curl -fsSL https://scriptt.ai/install.sh | sh</code></p>
     </div>
   </section>
 
-  <section class="pane demo">
-    <iframe src="/board/?demo" title="The board, on the text of this page"></iframe>
-  </section>
-
-  <section class="pane">
-    <div class="tabs"><span class="on">world.py</span></div>
-    <div class="body">
-      <p>scriptt keeps a record of what you and Claude both believe about your project, in a short file called <code>world.py</code>. It lists the things you work on and the requests you make. For each request it says what the request takes and what it gives back. It knows the difference between one thing, a list of things, and a thing that exists only after a request is done. So Claude cannot report the redesigned page as tested before the redesign exists.</p>
+  <section class="pane reading" id="reading">
+    <div class="loading" id="loading" role="status"><span class="spin"></span><span id="loadtext">loading</span></div>
+    <article class="body plain" id="plain">
+      <p>scriptt shows you how Claude Code understood your message before it starts work, and sends Claude back when it skips a step. In one week of my own work, 37% of my messages to Claude were corrections. 23 times Claude reported a task as done after doing a different step than the one I asked for.</p>
+      <p>scriptt keeps a record of what you and Claude both believe about your project, in a short file called world.py. It lists the things you work on and the requests you make. For each request it says what the request takes and what it gives back. It knows the difference between one thing, a list of things, and a thing that exists only after a request is done. So Claude cannot report the redesigned page as tested before the redesign exists.</p>
       <p>When you send a message, a small model on your machine compares it with the record before Claude reads it. Each request becomes a call with its inputs. Words that match nothing in the record go to Claude as questions to ask you. Drag a different type onto any word or a different input into any call. scriptt saves the change and applies it every time the message is read again. When Claude stops, scriptt searches the transcript for a file written or a command run for each call. Claude goes back to finish the calls with neither.</p>
-    </div>
-  </section>
-
-
-  <section class="pane">
-    <div class="tabs"><span class="on">how it works</span></div>
-    <div class="body">
       <p>scriptt is two Claude Code hooks plus a file of ordinary Python types. It uses only the standard library on Python 3.14.</p>
       <h2>world.py</h2>
       <ul>
         <li>An enum is a closed list of named things, such as "the page" or "the site". A phrase can only name a thing on the list.</li>
         <li>A dataclass is a thing made of named fields. Each field gets its own value.</li>
-        <li>A <code>NewType</code> brand gives the same text a different role. <code>Asked</code> marks words you wrote and <code>Written</code> marks words an agent wrote. Text you paste from an earlier reply cannot count as your own request.</li>
-        <li><code>Many</code>, <code>Maybe</code> and <code>Later</code> wrap another type. <code>Many[T]</code> is a list. <code>Maybe[T]</code> is a value you may leave out on purpose. <code>Later[T]</code> is a value that exists only after another call finishes.</li>
+        <li>A NewType brand gives the same text a different role. Asked marks words you wrote and Written marks words an agent wrote. Text you paste from an earlier reply cannot count as your own request.</li>
+        <li>Many, Maybe and Later wrap another type. Many[T] is a list. Maybe[T] is a value you may leave out on purpose. Later[T] is a value that exists only after another call finishes.</li>
         <li>A function is a request. Its signature gives the types it takes and returns.</li>
       </ul>
       <p>Each type has a fixed set of possible values, so every decision is a multiple-choice question. A 2-billion-parameter model can answer it, and a program can check the answer.</p>
       <h2>UserPromptSubmit</h2>
-      <p>Claude Code runs a <code>UserPromptSubmit</code> hook each time you send a message, before Claude sees it, and adds the hook's output to the message. scriptt's hook splits the message into sentences and into text you pasted from earlier replies. For each of your sentences it asks d1 which function the sentence asks for, or none, and which value from the message or the record fits each argument's type. d1 gives a probability for each option instead of generating text, which makes it very fast. The answers become typed calls. An argument with no fitting value stays open, with the reason why. Claude receives the calls, the open arguments and the unlabelled words. Every question, option and probability goes into <code>.scriptt/events.jsonl</code>.</p>
+      <p>Claude Code runs a UserPromptSubmit hook each time you send a message, before Claude sees it, and adds the hook's output to the message. scriptt's hook splits the message into sentences and into text you pasted from earlier replies. For each of your sentences it asks d1 which function the sentence asks for, or none, and which value from the message or the record fits each argument's type. d1 gives a probability for each option instead of generating text, which makes it very fast. The answers become typed calls. An argument with no fitting value stays open, with the reason why. Claude receives the calls, the open arguments and the unlabelled words. Every question, option and probability goes into .scriptt/events.jsonl.</p>
       <h2>Stop</h2>
-      <p>Claude Code runs a <code>Stop</code> hook when Claude finishes. scriptt's hook matches each call to a file written or a command run in the transcript and blocks the stop up to twice. You and the agent can then discuss any disagreements.</p>
+      <p>Claude Code runs a Stop hook when Claude finishes. scriptt's hook matches each call to a file written or a command run in the transcript and blocks the stop up to twice. You and the agent can then discuss any disagreements.</p>
       <p>This is just the first feature built on the engine, mostly as a proof of concept. More to come soon!</p>
       <h2>Requirements</h2>
       <p>Claude Code, Python 3.14, and a d1 endpoint. The public release of d1 is pending.</p>
-    </div>
+    </article>
+    <iframe id="boardframe" src="/board/?demo" title="The board, on the text of this page" tabindex="-1"></iframe>
   </section>
 </main>
 <div class="statusbar"><span>0.1.7</span><span>Python 3.14</span><span>Claude Code hooks</span><a href="/roadmap.md">roadmap</a></div>
@@ -162,5 +167,6 @@
 7. Tell me that `python3.14 .scriptt/harness.py serve` opens the board on http://127.0.0.1:8787, where I can drag a different type onto words or a different value into a call, and that my changes are kept on every rerun. Tell me that the Claude desktop app can show the reading on each of my messages with the scriptt plugin (not yet tested in the desktop app), installed in a terminal session of Claude Code with: /plugin marketplace add maxtheman/scriptt, then /plugin install scriptt@scriptt</template>
 
 <script src="/copy.js"></script>
+<script src="/pane.js"></script>
 </body>
 </html>

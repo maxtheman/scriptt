@@ -35,7 +35,7 @@ def answer(path, body):
     note("");
     return py;
   })();
-  ready.catch((error) => note(`✕ the engine did not load: ${error}`));
+  ready.catch((error) => { note(`✕ the engine did not load: ${error}`); if (parent !== window) parent.postMessage({ scriptt: "failed" }, location.origin); });
   const ours = new Set(["/readings", "/worlds", "/log", "/edit", "/edits", "/accept", "/restore", "/rerun"]);
   window.fetch = async (input, init = {}) => {
     const path = new URL(typeof input === "string" ? input : input.url, location).pathname;
