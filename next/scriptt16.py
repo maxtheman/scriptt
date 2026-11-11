@@ -1024,11 +1024,12 @@ def fits(term: Term, goal: Type, path: str) -> list[tuple[str, str]]:
         case Several(element=element, terms=terms):
             if not (isinstance(goal, Applied) and goal.constructor == MANY and is_subtype(element, inner)):
                 return [(path, "type")]
-            return [found for one in terms for found in fits(one, element, path)]
+            return [found for one in terms for found in fits(one, element, path + "[]")]
         case Constant(type=given, value=value) if not inhabits(value, given):
             return [(path, "type")]
         case Record(product=product, fields=fields):
-            return checked(fields, dict(product.fields), path + ".") if is_subtype(product, inner) else [(path, "type")]
+            whole = goal.argument if isinstance(goal, Applied) and goal.constructor == MAYBE else goal  # a record is no collection
+            return checked(fields, dict(product.fields), path + ".") if is_subtype(product, whole) else [(path, "type")]
     optional = isinstance(goal, Applied) and goal.constructor == MAYBE
     return [] if fills(term, goal) or (optional and fills(term, inner)) else [(path, "type")]
 
@@ -1061,10 +1062,23 @@ def validate(reading: Reading) -> list[tuple[int, str, str]]:
     """The one validation judgment of a reading: (operation number, path, rule) for each fault.
 
     Checks each operation's arguments: missing, extra, type and kind, at every
-    depth of records and collections. References are checked where a term can
+    depth of records and collections, and that each constant's span in the text
+    says its value ("identity"). References are checked where a term can
     get one: by ``edit``, and by ``load`` for a reference to no operation.
     """
-    return [(term.number, path, rule) for _, term in obligations(reading) if isinstance(term, Application) for path, rule in checked(term.arguments, dict(term.function.parameters))]
+    found = []
+    for _, term in obligations(reading):
+        if isinstance(term, Application):
+            found += [(term.number, path, rule) for path, rule in checked(term.arguments, dict(term.function.parameters))]
+            found += [(term.number, path, "identity") for path, value in bindings(term).items() for one in (value.terms if isinstance(value, Several) else (value,))
+                      if isinstance(one, Constant) and one.start >= 0 and not says(reading.text[one.start:one.end], one.value)]
+    return found
+
+
+def says(text: str, value: object) -> bool:
+    """Decides whether a span of the text says a constant's value: its member words, number, path or words."""
+    words = value.words if isinstance(value, Member) else str(value)
+    return " ".join(text.split()).lower() == " ".join(words.split()).lower()
 
 
 def diagnostics(reading: Reading) -> list[tuple[int | None, str | None, str]]:
@@ -1169,10 +1183,14 @@ def requested(draft: Reading, path: str, value: Term, world: World | None, at: t
     source = value.terms[0] if isinstance(value, Several) and value.terms else value
     phrase = next((one for one in innermost(draft.message) if [one.start, one.end] == list(at or ())), None) or next((one for one, term in pairs if term is source), None) or next(
         (one for one in innermost(draft.message) if isinstance(source, Constant) and one.start <= source.start < one.end), None)
-    if function is None or kind is None or phrase is None:
-        return draft, None, "name" if function is None else "extra" if kind is None else "phrase"
-    if isinstance(kind, Applied) and kind.constructor == MANY and not isinstance(value, Several) and fills(value, kind.argument):
+    if isinstance(source, Application) and not any(term is source for _, term in pairs):
+        return draft, None, "reference"
+    if kind is not None and isinstance(kind, Applied) and kind.constructor == MANY and not isinstance(value, Several) and fills(value, kind.argument):
         value = Several(kind.argument, (value,))
+    if kind is not None and fits(value, kind, parameter):
+        return draft, None, "type"
+    if function is None or kind is None or phrase is None or phrase.brand.name != "Asked":  # only the user's own words ask, as in read
+        return draft, None, "name" if function is None else "extra" if kind is None else "phrase"
     new = Application(function, {one: value if one == parameter else Hole(other, "cleared") for one, other in function.parameters}, max((term.number for _, term in pairs), default=-1) + 1)
     message = fold(lambda one: dataclasses.replace(one, terms=one.terms + (new,)) if (one.start, one.end, one.inside) == (phrase.start, phrase.end, ()) else one, draft.message)
     return dataclasses.replace(draft, message=message), new.number, parameter
@@ -1190,9 +1208,9 @@ def place(application: Application, path: str) -> tuple[dict, str]:
 def corrected(draft: Reading, number: int, path: str, value: Term | None, asked: bool = False) -> None:
     """Keeps the correction at a place of a draft, replacing one already there; None removes it.
 
-    It records where the corrected operation stands in the source (its
-    phrase), what its other bindings mean (to tell it from a like operation in
-    that phrase), the value as a term record and, for each operation that the
+    It records where the corrected operation stands in the source (its phrase,
+    and which of that phrase's operations of its function it is), the
+    value as a term record and, for each operation that the
     value refers to, what that operation meant, so that a rerun can tell
     whether the correction still names the same place and the same result.
     """
@@ -1204,15 +1222,11 @@ def corrected(draft: Reading, number: int, path: str, value: Term | None, asked:
     if value is not None:
         phrase, target = next((phrase, term) for phrase, term in pairs if term.number == number)
         refers = [[term.number, term.function.name, meanings[entries.index(term)]] for term in operations(value, set()) if term in entries]
+        peers = [term for one, term in pairs if one is phrase and isinstance(term, Application) and term.function == target.function]
         draft.corrections.append(plain({"operation": number, "function": target.function.name, "phrase": [phrase.start, phrase.end], "path": path,
-                                        "others": context_of(meanings[entries.index(target)], path), "value": term_record(value, {term.number for term in entries}),
+                                        "ordinal": peers.index(target), "of": len(peers), "value": term_record(value, {term.number for term in entries}),
                                         "refers": refers, "requested": asked,
                                         "status": "retained", "reason": ""}))
-
-
-def context_of(meant: tuple, path: str) -> object:
-    """Returns what an operation means apart from one path: how a correction tells its operation from a like one."""
-    return plain({name: value for name, value in meant[-1].items() if name != path})
 
 
 def plain(data: object) -> object:
@@ -1259,8 +1273,9 @@ def record(reading: Reading) -> dict:
     applications, each with the declared type of each place and the engine's
     judgments at save time: valid, diagnostics, complete, pending (its value
     is not available yet), deferred (its own result comes later), ready (it
-    can start now); and
-    unresolved: its unresolved operation or None), constants
+    can start now), which ``load`` does not read: it judges again; and
+    unresolved: each unresolved operation with its place among the phrase's
+    operations), constants
     (every grounded span), decisions (every decision, d1's and the rules',
     with its path, its candidates and its choice as term records) and corrections.
     """
@@ -1271,10 +1286,9 @@ def record(reading: Reading) -> dict:
               for _, term in obligations(reading) if isinstance(term, Application)}
     phrases_line = []
     for phrase in innermost(reading.message):
-        unresolved = [term for term in phrase.terms if isinstance(term, Unresolved)]
         phrases_line.append({"start": phrase.start, "end": phrase.end, "brand": phrase.brand.name, "starts_by": phrase.starts_by, "quotes": phrase.quotes,
                              "terms": [term_record(term, written, judged) for term in phrase.terms if isinstance(term, Application)],
-                             "unresolved": {"id": str(unresolved[0].number), "reason": unresolved[0].reason} if unresolved else None})
+                             "unresolved": [{"id": str(term.number), "reason": term.reason, "place": place} for place, term in enumerate(phrase.terms) if isinstance(term, Unresolved)]})
     chosen = lambda value: [term_record(one, written) for one in value] if isinstance(value, list) else term_record(value, written) if isinstance(value, Constant | Application | Record | Several | Empty | Hole) else value
     decisions = [one | {"offered": [term_record(term, written) for term in one["offered"]], "cut": [term_record(term, written) for term in one["cut"]], "chosen": chosen(one["chosen"])}
                  for one in reading.decisions]
@@ -1342,8 +1356,8 @@ def recorded_phrases(line: dict, world: World, made_by: dict[int, Application] |
     found = []
     for phrase in line["phrases"]:
         terms = () if made_by is None else tuple(term_from(one, world, made_by, dangling) for one in phrase["terms"])
-        if made_by is not None and phrase["unresolved"]:
-            terms += (Unresolved(int(phrase["unresolved"]["id"]), phrase["unresolved"]["reason"]),)
+        for one in phrase["unresolved"] if made_by is not None else ():  # each unresolved operation at its place among the phrase's operations
+            terms = terms[:one["place"]] + (Unresolved(int(one["id"]), one["reason"]),) + terms[one["place"]:]
         found.append(Phrase(phrase["start"], phrase["end"], world.types[phrase["brand"]], (), phrase["starts_by"], phrase["quotes"], terms))
     return found[0] if len(found) == 1 else Phrase(0, len(line["text"]), None, tuple(found))
 
@@ -1368,7 +1382,12 @@ def load(line: dict, world: World) -> tuple[Reading | None, list[tuple[None, Non
         return None, [(None, None, "reference")]
     reading = Reading(line["id"], line["text"], message, rebuilt(line["constants"]), decisions, line["world"], [dict(one) for one in line["corrections"]], line.get("snapshot"),
                       [Checked(**one) for one in line["fulfillment"]] if "fulfillment" in line else None)
+    numbers = [term.number for _, term in obligations(reading)]
+    if len(set(numbers)) != len(numbers):  # two operations with one number: no reference can be trusted
+        return None, [(None, None, "identity")]
     found = validate(reading)
+    if found or dangling or any(one.obligation not in numbers for one in reading.fulfillment or ()):
+        reading = dataclasses.replace(reading, fulfillment=None)  # a saved check of another reading is not this reading's
     for number, path, rule in found:
         if rule in ("type", "kind"):  # a saved value of the wrong type is not trusted: its place becomes a hole
             holder, last = place(by_number(reading, number), path)
@@ -1399,6 +1418,14 @@ def save(reading: Reading, store: pathlib.Path) -> tuple[Reading, list[tuple[Non
     return dataclasses.replace(reading, base=line["snapshot"]), []
 
 
+def restore(store: pathlib.Path, snapshot: int, world: World) -> tuple[Reading | None, list]:
+    """Loads the n-th snapshot (from 1) as the current reading: a new draft over the store's latest snapshot, so it can be saved."""
+    lines = saved(store)
+    reading, found = load(lines[snapshot - 1], world)
+    latest = [line["snapshot"] for line in lines if line["id"] == lines[snapshot - 1]["id"]][-1]
+    return (dataclasses.replace(reading, base=latest) if reading else None), found
+
+
 def saved(store: pathlib.Path) -> list[dict]:
     """Returns every snapshot in the store, the oldest first."""
     return [json.loads(line) for line in store.read_text().splitlines()] if store.exists() else []
@@ -1418,7 +1445,6 @@ def rerun(line: dict, world: World, model: Model, limits: Limits = Limits()) -> 
             pairs = obligations(reading)
             entries = [term for _, term in pairs]
             made_by = {term.number: term for term in entries if isinstance(term, Application)}
-            meanings = meaning(reading)
             for number, function, before in correction["refers"]:  # the result a correction names must still mean what it meant
                 now = plain(meaning(reading)[entries.index(made_by[number])]) if number in made_by else None
                 if now != before:
@@ -1436,14 +1462,12 @@ def rerun(line: dict, world: World, model: Model, limits: Limits = Limits()) -> 
                 continue
             here = [term for phrase, term in pairs if [phrase.start, phrase.end] == correction["phrase"] and isinstance(term, Application)]
             same = [term for term in here if term.function.name == correction["function"]]
-            if len(same) > 1:
-                same = [term for term in same if context_of(meanings[entries.index(term)], correction["path"]) == correction["others"]]
             if not same:
                 now = " and ".join(term.function.name for term in here) or "no operation"
                 raise LookupError(f"{correction['function']} became {now} in its phrase, so the correction of {correction['path']} no longer applies")
-            if len(same) > 1:
-                raise LookupError(f"{len(same)} operations of {correction['function']} in its phrase read alike, so the correction of {correction['path']} has no one place")
-            target = same[0]
+            if len(same) != correction["of"]:
+                raise LookupError(f"its phrase now asks for {len(same)} {correction['function']} where it asked for {correction['of']}, so the correction of {correction['path']} has no one place")
+            target = same[correction["ordinal"]]
             try:
                 value = term_from(correction["value"], world, made_by)
             except LookupError as error:
@@ -1477,10 +1501,11 @@ def value_of(term: Term, index: dict[int, int]) -> object:
 
 
 def meaning(reading: Reading) -> list[tuple]:
-    """Returns each obligation as comparable data: its function, result type, whether it is pending, and the value at each path; or its unresolved reason."""
+    """Returns each obligation as comparable data: its function with its docstring and parameter types, result type, whether it is pending, and the value at each path; or its unresolved reason."""
     entries = [term for _, term in obligations(reading)]
     index = {id(term): number for number, term in enumerate(entries)}
-    return [("unresolved", term.reason) if isinstance(term, Unresolved) else (term.function.name, show(term.function.result), pending(term), {path: value_of(one, index) for path, one in bindings(term).items()})
+    return [("unresolved", term.reason) if isinstance(term, Unresolved) else (term.function.name, term.function.asks, [[name, show(kind)] for name, kind in term.function.parameters],
+                                                                              show(term.function.result), pending(term), {path: value_of(one, index) for path, one in bindings(term).items()})
             for term in entries]
 
 
@@ -1528,7 +1553,11 @@ def gate(source: str, folder: pathlib.Path, lines: list[dict], model: Model, act
     regressions, reread = [], []
     for number, line in enumerate(lines):
         again = rerun(line, proposed, model, limits)
-        before, after = meaning(load(line, active)[0]), meaning(again)
+        accepted = load(line, active)[0]
+        if accepted is None:  # the accepted line does not load under the active world: nothing can be compared
+            regressions.append((number, None))
+            continue
+        before, after = meaning(accepted), meaning(again)
         regressions += [(number, index) for index in range(max(len(before), len(after))) if index >= len(before) or index >= len(after) or after[index] != before[index]]
         reread.append(plain(record(again)))
     migrated, regressions = [one for one in regressions if one in migrations], [one for one in regressions if one not in migrations]
@@ -1567,9 +1596,9 @@ class Checked:
     Attributes:
         obligation: The operation number.
         criterion: The name of the criterion.
-        outcome: PASS (an artifact about this sound operation meets it),
-            FAIL (an artifact about it does not) or UNVERIFIED (no artifact is
-            about it alone, or the operation is unresolved, invalid or incomplete).
+        outcome: PASS (every artifact about this sound operation meets it),
+            FAIL (one about it does not) or UNVERIFIED (no artifact is about it
+            alone, or the operation is unresolved, invalid or incomplete).
         evidence: The index of the artifact that decided, or None.
         claim: d1's share that the reply says it is done: a judgment kept
             beside the outcome, never evidence.
@@ -1611,8 +1640,8 @@ def check(reading: Reading, reply: str, artifacts: list[Artifact], criteria: lis
     for term in entries:
         mine = [place for place, terms in concerns.items() if terms == [term] and sound(reading, term)]
         for name, criterion in criteria:
-            passed = [place for place in mine if criterion(term, artifacts[place])]
-            outcome, evidence = (PASS, passed[0]) if passed else (FAIL, mine[0]) if mine else (UNVERIFIED, None)
+            failed = [place for place in mine if not criterion(term, artifacts[place])]
+            outcome, evidence = (FAIL, failed[0]) if failed else (PASS, mine[0]) if mine else (UNVERIFIED, None)
             found.append(Checked(term.number, name, outcome, evidence, claims.get(f"did {term.number}")))
     outcomes = {one.outcome for one in found}
     verdict = FAIL if FAIL in outcomes else PASS if outcomes == {PASS} else UNVERIFIED

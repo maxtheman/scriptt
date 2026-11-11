@@ -90,8 +90,9 @@ def _():
                  "bindings": {path: f"{scriptt16.say(value)} : {agree.show(scriptt16.type_of(value))}" for path, value in scriptt16.bindings(term).items()} if isinstance(term, scriptt16.Application) else {},
                  "result": agree.show(term.function.result) if isinstance(term, scriptt16.Application) else None,
                  "pending": scriptt16.pending(term) if isinstance(term, scriptt16.Application) else None,
+                 "deferred (its own result comes later)": scriptt16.deferred(term) if isinstance(term, scriptt16.Application) else None,
                  "complete": scriptt16.complete(term) if isinstance(term, scriptt16.Application) else None,
-                 "ready": scriptt16.ready(one_reading, term) if isinstance(term, scriptt16.Application) else None}
+                 "ready (can start now)": scriptt16.ready(one_reading, term) if isinstance(term, scriptt16.Application) else None}
                 for phrase, term in scriptt16.obligations(one_reading)]
 
     {"diagnostics": scriptt16.diagnostics(reading), "obligations": judged(reading),
@@ -139,6 +140,14 @@ def _():
     {"load diagnostics": load_faults, "diagnostics after reload": scriptt16.diagnostics(loaded), "same meaning": scriptt16.meaning(loaded) == scriptt16.meaning(draft),
      "redesign kept once, show rebound": judged(loaded), "d1 calls during reload": d1.calls - calls_before,
      "record": json.loads(store.read_text().splitlines()[-1])["phrases"]}
+    return
+
+
+@app.cell
+def _():
+    """APPLY A FUNCTION to a value through edit: test the redesigned mod. A new operation with the next number, in the phrase of what it is given; no number changes."""
+    tested, tested_faults = scriptt16.edit(saved_draft, None, "test.subject", scriptt16.obligations(saved_draft)[0][1], correction=True, world=world)
+    {"diagnostics": tested_faults, "numbers in order": [term.number for _, term in scriptt16.obligations(tested)], "obligations": judged(tested)}
     return
 
 

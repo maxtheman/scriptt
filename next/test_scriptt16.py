@@ -103,8 +103,9 @@ def neutral(term, index: dict[int, int] | None):
             if term.number is None and (index is None or id(term) not in index):
                 return X.New(term.function.name)
             return X.Ref(index.get(id(term), -1) if index is not None else term.number)  # -1: an operation that is no obligation of the reading
-        case Record():
-            return X.New(term.product.name)
+        case Record(fields=fields):  # a candidate built from its fields, or a record that is a member of a Many
+            template = all(isinstance(one, Hole) and not one.reason for one in fields.values())
+            return X.New(term.product.name) if template else {name: neutral(one, index) for name, one in fields.items()}
         case Several(terms=terms):
             return tuple(neutral(one, index) for one in terms) if terms else X.EMPTY_LIST
         case Empty():
@@ -250,6 +251,10 @@ class Standin:
                     self.asked = {}
                 since = self.asked[state] = self.asked.get(state, -1) + 1
                 ops = self.script["ops"].get(phrase, X.NO_REQUEST)
+                named = [{X.ABSTAIN: scriptt16.ELSE[scriptt16.NONE]}.get(one) or X.docstrings(self.world).get(one, "") for one in (ops if isinstance(ops, tuple) else (ops,))[:since]]
+                if also and instructions.removeprefix("The text asks the reader to ").removesuffix(". Does it also ask the reader to do something else?") != "; ".join(named):
+                    answers[key] = {"probabilities": {"not offered": 1.0}}  # the question does not say what was already chosen
+                    continue
                 want = (ops[since] if since < len(ops) else X.NO_REQUEST) if isinstance(ops, tuple) else (ops if since == 0 else X.NO_REQUEST)
             else:
                 about = instructions.removeprefix("The text asks the reader to ").removeprefix("The message asks the reader to ")
@@ -339,6 +344,11 @@ def term_of(value, reading, world: agree.World, place, path: str = ""):
             if isinstance(kind, agree.Sum):
                 return next((one for one in scriptt16.members(kind) if one.value.words == words), Constant(kind, words, -1, -1))  # a non-member stays a non-member
             return Constant(kind, pathlib.Path(words) if name == "Path" else words, -1, -1)
+        case X.Passage(brand=brand, at=(start, end)):
+            return Constant(world.types[brand], reading.text[start:end], start, end)
+        case dict():  # a record that is a member of a Many
+            product = place.argument if place else None
+            return Record(product, {field: term_of(one, reading, world, dict(product.fields).get(field)) for field, one in value.items()})
         case X.Nothing(type=name):
             return Empty(named(name, world))
         case X.Members(type=name, values=values):
@@ -352,7 +362,7 @@ def term_of(value, reading, world: agree.World, place, path: str = ""):
         case "EMPTY":
             return Empty(place)
         case tuple():
-            terms = tuple(term_of(one, reading, world, None) for one in value)
+            terms = tuple(term_of(one, reading, world, place) if isinstance(one, dict) else term_of(one, reading, world, None) for one in value)
             return Several(place.argument if place else scriptt16.type_of(terms[0]), terms)
     raise ValueError(f"no engine term for {value!r}")
 
@@ -422,8 +432,10 @@ def observe(inputs: X.Inputs) -> dict:
                     except OSError:
                         step["accepted"] = False
                 elif kind in ("reload", "restore"):
-                    line = scriptt16.saved(store)[action[1] - 1 if kind == "restore" else -1]
-                    loaded, found = scriptt16.load(line, world_from(action[1], folder)[0] if kind == "reload" and len(action) > 1 else world)
+                    if kind == "restore":
+                        loaded, found = scriptt16.restore(store, action[1], world)
+                    else:
+                        loaded, found = scriptt16.load(scriptt16.saved(store)[-1], world_from(action[1], folder)[0] if len(action) > 1 else world)
                     step["diagnostics"] = found
                     current = loaded or current
                     step["rendered"] = rendered(current)
@@ -442,7 +454,15 @@ def observe(inputs: X.Inputs) -> dict:
                     _, name, given = action
                     function = world.functions[name]
                     places = dict(function.parameters)
-                    application = Application(function, {path: term_of(value, None, world, places.get(path)) for path, value in given.items()}, 0)
+                    arguments = {}
+                    for path, value in given.items():  # a dotted path is a field of a record argument
+                        first, _, field = path.partition(".")
+                        if field and isinstance(places.get(first), agree.Product):
+                            record = arguments.setdefault(first, Record(places[first], {}))
+                            record.fields[field] = term_of(value, None, world, dict(places[first].fields).get(field))
+                        else:
+                            arguments[path] = term_of(value, None, world, places.get(path))
+                    application = Application(function, arguments, 0)
                     built = scriptt16.Reading("law", "", scriptt16.Phrase(0, 0, world.types["Asked"], terms=(application,)), [], [], agree.identity(world))
                     found = scriptt16.diagnostics(built)
                     shown = built
@@ -768,7 +788,93 @@ def test_review_0249f2b():
         assert scriptt16.edit(reading, None, "no_such.surface", mod, world=test)[1] == [(None, "surface", "name")]
 
 
-UNIT_TESTS = [test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
+def test_final_review():
+    """The final review's counterexamples of 0249f2b, each beside its positive control."""
+    with tempfile.TemporaryDirectory() as name:
+        folder = pathlib.Path(name)
+        test = world_of(WORLD, folder)
+        read = lambda text, script, world=test: scriptt16.read(text, world, [], Standin(script, X.World(), world), join=False)
+        again = lambda reading, world=test: scriptt16.load(json.loads(json.dumps(scriptt16.record(reading))), world)
+        # A1. Every unresolved operation of a phrase survives save and load, in its place.
+        text = "Email an accountant, redesign the mod and book a flight."
+        three = read(text, X.script({text: (X.ABSTAIN, "redesign", X.ABSTAIN)}, {(text, "redesign", "surface"): X.MOD}))
+        loaded, found = again(three)
+        assert found == [] and [type(term).__name__ for _, term in scriptt16.obligations(loaded)] == ["Unresolved", "Application", "Unresolved"] == [type(term).__name__ for _, term in scriptt16.obligations(three)]
+        # A2. Two operations with one number do not load.
+        shown = read("Redesign the mod. Then show it.", X.told(X.REDESIGN_SHOW))
+        line = json.loads(json.dumps(scriptt16.record(shown)))
+        assert scriptt16.load(line, test)[1] == []
+        line["phrases"][1]["terms"][0]["id"] = "0"
+        assert scriptt16.load(line, test) == (None, [(None, None, "identity")])
+        # A3, A4. The gate compares what a function means, and a corpus line under another world is a regression, not a crash.
+        accepted = json.loads(json.dumps(scriptt16.record(read("Redesign the mod.", X.told(X.REDESIGN_SHOW[:1])))))
+        model = Standin(X.told(X.REDESIGN_SHOW[:1]), X.World(), test)
+        assert scriptt16.gate(WORLD + '\ndef paint(surface: Surface) -> Observed:\n    "paint it"\n', folder, [accepted], model, test, WORLD).activated
+        deleting = WORLD.replace('"change how it looks"', '"delete it permanently"')
+        assert scriptt16.gate(deleting, folder, [accepted], Standin(X.told(X.REDESIGN_SHOW[:1]), X.World(), world_of(deleting, folder)), test, WORLD).regressions == [(0, 0)]
+        elsewhere = dict(accepted, world="another world")
+        assert scriptt16.gate(WORLD + '\ndef paint(surface: Surface) -> Observed:\n    "paint it"\n', folder, [elsewhere], model, test, WORLD).regressions == [(0, None)]
+        # A5. A saved check is kept only for the reading it judged; an edit clears it.
+        checked, _, _ = scriptt16.check(shown, "", [], [("evidence", lambda term, artifact: False)], model)
+        assert again(checked)[0].fulfillment == checked.fulfillment and scriptt16.edit(checked, 1, "subject", shown.constants[0])[0].fulfillment is None
+        forged = json.loads(json.dumps(scriptt16.record(checked)))
+        forged["fulfillment"] = [{"obligation": 7, "criterion": "x", "outcome": "PASS", "evidence": 0, "claim": 1.0}]
+        assert scriptt16.load(forged, test)[0].fulfillment is None
+        # A6. A restored snapshot is a draft over the latest one: it can be saved; a draft from an old snapshot cannot.
+        store = folder / "store.jsonl"
+        first, _ = scriptt16.save(shown, store)
+        second, _ = scriptt16.save(scriptt16.edit(first, 1, "subject", shown.constants[0])[0], store)
+        restored, _ = scriptt16.restore(store, 1, test)
+        assert scriptt16.save(restored, store)[1] == [] and scriptt16.save(scriptt16.load(scriptt16.saved(store)[0], test)[0], store)[1] == [(None, None, "stale")]
+        # A7. A bare record is no collection of records.
+        many_cells = world_of(WORLD + '\ndef open_cells(cells: Many[Cell]) -> Observed:\n    "open several cells"\n', folder)
+        cell = Record(many_cells.types["Cell"], {"notebook": Constant(many_cells.types["Path"], pathlib.Path("notes.md"), -1, -1), "number": Constant(many_cells.types["int"], 3, -1, -1)})
+        assert scriptt16.checked({"cells": cell}, dict(many_cells.functions["open_cells"].parameters)) == [("cells", "type")]
+        assert scriptt16.checked({"cells": Several(many_cells.types["Cell"], (cell,))}, dict(many_cells.functions["open_cells"].parameters)) == []
+        # A8. A function is not applied inside a quote: a quote asks nothing.
+        quote = '"I compared the page and the mod for you today." Thanks.'
+        quoted = scriptt16.read(quote, test, [X.QUOTED], Standin(X.script({}), X.World(), test), join=False)
+        in_quote = next(one for one in quoted.constants if lit(one) == X.MOD and one.start < 50)
+        assert scriptt16.edit(quoted, None, "redesign.surface", in_quote, world=test)[1] == [(None, "surface", "phrase")]
+        mine = read("Thanks for the mod.", X.script({}))
+        assert scriptt16.edit(mine, None, "redesign.surface", mine.constants[0], world=test)[1] == []
+        # A10. One failing artifact about an operation fails it, whatever another says.
+        redesign = scriptt16.obligations(shown)[0][1]
+        good, bad = (scriptt16.Artifact("redesign", dict(scriptt16.bindings(redesign)), redesign.number) for _ in range(2))
+        outcome = lambda artifacts: [(one.outcome, one.evidence) for one in scriptt16.check(shown, "", artifacts, [("works", lambda term, artifact: artifact is good)], model)[0].fulfillment][0]
+        assert outcome([good]) == (X.PASS, 0) and outcome([bad, good]) == (X.FAIL, 0)
+        # A11. A constant's span must say its value.
+        moved = json.loads(json.dumps(scriptt16.record(shown)))
+        assert scriptt16.load(moved, test)[1] == []
+        moved["phrases"][0]["terms"][0]["arguments"]["surface"]["at"] = [0, 8]
+        assert scriptt16.load(moved, test)[1] == [(0, "surface", "identity")]
+        outside = dict(moved)
+        outside["phrases"][0]["terms"][0]["arguments"]["surface"]["at"] = [999, 1005]
+        assert scriptt16.load(outside, test)[1] == [(0, "surface", "identity")]
+        # B. A function is never its own new argument; a brand's words inhabit it; a requested operation stays requested after a later edit; a correction keeps which of its phrase's operations it is.
+        assert not any(isinstance(term, Application) and term.number is None and term.function.name == "redesign"
+                       for one in read("Redesign the mod.", X.told(X.REDESIGN_SHOW[:1])).decisions if one["path"] == "surface" for term in one["offered"])
+        assert scriptt16.inhabits("hello", test.types["Asked"]) and not scriptt16.inhabits(5, test.types["Asked"])
+        base = read("Redesign the mod.", X.told(X.REDESIGN_SHOW[:1]))
+        asked, _ = scriptt16.edit(base, None, "show.subject", base.constants[0], correction=True, world=test)
+        changed, _ = scriptt16.edit(asked, 1, "subject", scriptt16.obligations(asked)[0][1])
+        assert [one["requested"] for one in changed.corrections] == [True]
+        rerun = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(changed))), test, Standin(X.told(X.REDESIGN_SHOW[:1]), X.World(), test))
+        assert [scriptt16.say(term) for _, term in scriptt16.obligations(rerun)] == ["redesign(surface='the mod')", "show(subject=redesign(surface='the mod'))"]
+        two = "Show the mod and the page."
+        both = read(two, X.script({two: ("show", "show")}, {(two, "show", "subject"): X.MOD}))
+        corrected, _ = scriptt16.edit(both, 1, "subject", next(one for one in both.constants if lit(one) == X.PAGE), correction=True)
+        one_show = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(corrected))), test, Standin(X.script({two: "show"}, {(two, "show", "subject"): X.MOD}), X.World(), test))
+        assert one_show.corrections[0]["status"] == "invalidated" and "show" in one_show.corrections[0]["reason"]
+        kept = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(corrected))), test, Standin(X.script({two: ("show", "show")}, {(two, "show", "subject"): X.MOD}), X.World(), test))
+        assert kept.corrections[0]["status"] == "retained" and [scriptt16.say(term) for _, term in scriptt16.obligations(kept)][1] == "show(subject='the page')"
+        # B. A whole collection beyond the bound is recorded as cut.
+        extra = "".join(f'\ndef gather{index}(surface: Surface) -> Many[Observed]:\n    "gather notes {index}"\n' for index in range(9)) + '\ndef summarize(notes: Many[Observed]) -> Written:\n    "summarize notes"\n'
+        gathered = scriptt16.read("Summarize the mod.", world_of(WORLD + extra, folder), [], Standin(X.script({"Summarize the mod.": "summarize"}), X.World(extra=extra), world_of(WORLD + extra, folder)), join=False)
+        assert [len(one["cut"]) for one in gathered.decisions if one["path"] == "notes"][:1] == [1]
+
+
+UNIT_TESTS = [test_final_review, test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
 
 
 # ---- Laws over the real next/world.py -------------------------------------------------
@@ -876,7 +982,7 @@ def law_identity(world: agree.World) -> list[str]:
         model = Standin(X.script({"Show the mod.": "show", "Show the page.": "show"}, binds), X.World(), test)
         reading = scriptt16.read(text, test, [], model, join=False)
         _, page_show = [term for _, term in scriptt16.obligations(reading)]
-        draft, faults = scriptt16.edit(reading, page_show.number, "subject", mod, correction=True)
+        draft, faults = scriptt16.edit(reading, page_show.number, "subject", next(one for one in reading.constants if lit(one) == X.MOD), correction=True)
         more = Standin(X.script({"Show the mod.": ("show", "show"), "Show the page.": "show"}, binds), X.World(), test)
         again = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(draft))), test, more)
         shown = [(again.text[phrase.start:phrase.end].strip(), scriptt16.say(term)) for phrase, term in scriptt16.obligations(again)]
@@ -1024,7 +1130,7 @@ def main() -> int:
     for name, sha in provenance["files"].items():
         print(f"  {'committed at HEAD' if committed.get(name) == sha else 'NOT AS COMMITTED' if committed.get(name) else 'not in git (not imported)'}: {name}")
     for name, path in loaded.items():
-        print(f"  imported {name:<14} {pathlib.Path(path).resolve()}")
+        print(f"  imported {name:<14} {pathlib.Path(path).resolve()}  sha256 {hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()}")
     failures: list[str] = []
     failures += [f"{name} was imported from {path}, outside {X.DECLARED_ROOT}" for name, path in loaded.items() if not pathlib.Path(path).resolve().is_relative_to(X.DECLARED_ROOT)]
     imported = [pathlib.Path(path).resolve().relative_to(HERE.parent).as_posix() for path in loaded.values() if pathlib.Path(path).resolve().is_relative_to(HERE.parent)]
@@ -1098,8 +1204,8 @@ def main() -> int:
 
     print("deferred, not tested by this run: project-wide object navigation (which actual notebook a phrase means); identity of an object across messages; live d1 (every model answer here is the stand-in's)")
     print("the laws are structural checks over next/world.py and its declarations; they are no evaluation of the real d1")
-    dirty = [name for name in ("next/agree.py", "next/scriptt16.py", "next/world.py", "scriptt/harness.py", "next/expected.py", "next/test_scriptt16.py")
-             if subprocess.run(["git", "-C", str(HERE.parent), "diff", "--quiet", "HEAD", "--", name]).returncode]
+    status = subprocess.run(["git", "-C", str(HERE.parent), "status", "--porcelain", "--untracked-files=all"], capture_output=True, text=True).stdout
+    dirty = [line[3:] for line in status.splitlines()]  # any change or untracked file in the worktree, which could shadow a module
     if dirty:
         failures.append(f"not final: uncommitted {dirty}")
     print(f"receipt: {'FINAL' if not failures else 'NOT FINAL'}: engine commit {provenance['commit']}, expectations version {X.ORACLE_VERSION}"
