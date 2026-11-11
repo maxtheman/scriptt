@@ -663,7 +663,7 @@ def test_specimen():
         numbers = [term.number for _, term in scriptt16.obligations(tested)]
         assert faults == [] and numbers == [0, 3, 1, 2] and scriptt16.say(scriptt16.obligations(tested)[1][1]) == "test(subject='the mod')", (faults, numbers)
         assert [term.number for _, term in scriptt16.obligations(reading)] == [0, 1, 2]  # the base is untouched
-        assert scriptt16.edit(reading, None, "test.nothing", mod, world=world)[1] == [(None, "nothing", "reference")]
+        assert scriptt16.edit(reading, None, "test.nothing", mod, world=world)[1] == [(None, "nothing", "extra")]
         assert scriptt16.edit(reading, None, "redesign.surface", next(one for one in reading.constants if lit(one) == X.SEARCH), world=world)[1] == [(None, "surface", "type")]
         kept = scriptt16.rerun(json.loads(json.dumps(scriptt16.record(tested))), world, Standin(run.script, run.world, world))
         assert [scriptt16.say(term) for _, term in scriptt16.obligations(kept)][1] == "test(subject='the mod')" and kept.corrections[0]["status"] == "retained"
@@ -717,7 +717,58 @@ def test_rules():
         assert again.corrections[0]["status"] == "invalidated" and "subject" in again.corrections[0]["reason"], again.corrections
 
 
-UNIT_TESTS = [test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
+def test_review_0249f2b():
+    """The six counterexamples of the review of 0249f2b, each beside its positive control."""
+    with tempfile.TemporaryDirectory() as name:
+        folder = pathlib.Path(name)
+        test = world_of(WORLD, folder)
+        read = lambda text, script, world=test, spec=X.World(): scriptt16.read(text, world, [], Standin(script, spec, world), join=False)
+        reading = read("Redesign the mod.", X.told(X.REDESIGN_SHOW[:1]))
+        mod = reading.constants[0]
+        [(_, redesign)] = scriptt16.obligations(reading)
+        # 1. A new operation comes only from the reading's own world.
+        other = world_of(WORLD + '\ndef audit_extra(surface: Surface) -> Written:\n    "audit it"\n', folder)
+        assert scriptt16.edit(reading, None, "audit_extra.surface", mod, world=other)[1] == [(None, "surface", "identity")]
+        assert scriptt16.edit(reading, None, "show.subject", mod, world=test)[1] == []
+        # 2. An inserted operation's reference must still mean what it meant on rerun.
+        inserted, faults = scriptt16.edit(reading, None, "show.subject", redesign, correction=True, world=test)
+        line = json.loads(json.dumps(scriptt16.record(inserted)))
+        kept = scriptt16.rerun(line, test, Standin(X.told(X.REDESIGN_SHOW[:1]), X.World(), test))
+        assert faults == [] and kept.corrections[0]["status"] == "retained" and [scriptt16.say(term) for _, term in scriptt16.obligations(kept)] == ["redesign(surface='the mod')", "show(subject=redesign(surface='the mod'))"]
+        moved = scriptt16.rerun(line, test, Standin(X.script({"Redesign the mod.": "show"}, {("Redesign the mod.", "show", "subject"): X.MOD}), X.World(), test))
+        assert moved.corrections[0]["status"] == "invalidated" and "redesign" in moved.corrections[0]["reason"] and len(scriptt16.obligations(moved)) == 1, moved.corrections
+        # 3. The members of a union include the members of its sums: offered to a hole, inhabiting it, loading as it.
+        subject = test.types["Subject"]
+        assert [lit(one).value for one in scriptt16.members(subject)] == ["the page", "the mod"]
+        shown = read("Show it.", X.script({"Show it.": "show"}))
+        assert [len(one["offered"]) for one in shown.decisions if one["path"] == "subject"] == [2]
+        assert scriptt16.inhabits(scriptt16.members(test.types["Surface"])[1].value, subject) and not scriptt16.inhabits(99, subject)
+        assert scriptt16.term_from({"constant": "the mod", "type": "Subject"}, test, {}).value.name == "MOD"
+        # 4. A reference to no operation inside a record or a collection is a diagnostic, not a crash.
+        compared = read("Redesign the mod. Compare it with the page.", X.told(X.CASE["C10"].runs[1].expect["read"]["obligations"]))
+        line = json.loads(json.dumps(scriptt16.record(compared)))
+        assert scriptt16.load(line, test)[1] == []
+        line["phrases"][1]["terms"][0]["arguments"]["surfaces"]["several"] = [{"ref": "99"} if "ref" in one else one for one in line["phrases"][1]["terms"][0]["arguments"]["surfaces"]["several"]]
+        assert scriptt16.load(line, test)[1] == [(1, "surfaces", "reference")]
+        boxes = world_of(X.world_source(X.BOX_WORLD), folder)
+        packed = read("Redesign the mod. Pack it in a box.", X.told(X.CASE["C10"].runs[0].expect["read"]["obligations"]), boxes, X.BOX_WORLD)
+        line = json.loads(json.dumps(scriptt16.record(packed)))
+        assert scriptt16.load(line, boxes)[1] == []
+        line["phrases"][1]["terms"][0]["arguments"]["box"]["fields"]["surface"] = {"ref": "99"}
+        loaded, found = scriptt16.load(line, boxes)
+        assert found == [(1, "box.surface", "reference")] and not scriptt16.complete(scriptt16.obligations(loaded)[1][1])
+        # 5. A value with no place in the text joins a phrase only when one is given.
+        page = scriptt16.members(test.types["Surface"])[0]
+        assert scriptt16.edit(reading, None, "redesign.surface", page, world=test)[1] == [(None, "surface", "phrase")]
+        placed, faults = scriptt16.edit(reading, None, "redesign.surface", page, world=test, phrase=(0, len(reading.text)))
+        assert faults == [] and scriptt16.say(scriptt16.obligations(placed)[1][1]) == "redesign(surface='the page')"
+        # 6. A parameter the function does not declare is extra, also past a parameter.
+        assert scriptt16.edit(reading, None, "redesign.bad_param", mod, world=test)[1] == [(None, "bad_param", "extra")]
+        assert scriptt16.edit(reading, None, "redesign.surface.colour", mod, world=test)[1] == [(None, "surface.colour", "extra")]
+        assert scriptt16.edit(reading, None, "no_such.surface", mod, world=test)[1] == [(None, "surface", "name")]
+
+
+UNIT_TESTS = [test_review_0249f2b, test_rules, test_kinds, test_types, test_faults, test_grounding, test_synthesis, test_record_shape, test_specimen]
 
 
 # ---- Laws over the real next/world.py -------------------------------------------------

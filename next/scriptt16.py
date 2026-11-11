@@ -762,8 +762,9 @@ def candidates(goal: Type, environment: Environment, world: World, depth: int, a
 
 
 def members(goal: Type) -> list[Constant]:
-    """Returns each member of a sum as a constant with no span, for d1 to choose."""
-    return [Constant(goal, one, -1, -1) for one in getattr(goal, "alternatives", ()) if isinstance(one, Member)]
+    """Returns each member of a sum, and of the sums among its alternatives, as a constant of its own sum with no span."""
+    alternatives = getattr(goal, "alternatives", ())
+    return [Constant(goal, one, -1, -1) for one in alternatives if isinstance(one, Member)] + [found for one in alternatives if isinstance(one, Sum) for found in members(one)]
 
 
 def solve(goal: Type, environment: Environment, search: Search, state: str, path: str, applying: Function, depth: int) -> Term:
@@ -1087,7 +1088,8 @@ def inspect(reading: Reading, number: int, path: str) -> dict:
 # ---- Part 5: edits, records and the store -------------------------------------
 
 
-def edit(reading: Reading, number: int | None, path: str, value: Term | None, correction: bool = False, world: World | None = None) -> tuple[Reading, list[tuple[int, str, str]]]:
+def edit(reading: Reading, number: int | None, path: str, value: Term | None, correction: bool = False, world: World | None = None,
+         phrase: tuple[int, int] | None = None) -> tuple[Reading, list[tuple[int, str, str]]]:
     """Proposes one change at one place of an operation, and validates the whole proposed reading.
 
     The base reading is not changed: the draft is a copy that keeps every shared
@@ -1109,7 +1111,8 @@ def edit(reading: Reading, number: int | None, path: str, value: Term | None, co
         correction: True to keep the edit as an accepted manual correction (a
             new operation: as the user's request). A valid edit at a place that
             has a correction replaces it either way.
-        world: The world, for a new operation.
+        world: The world, for a new operation; it must be the reading's own.
+        phrase: (start, end) of the phrase a new operation joins, for a value with no place in the text.
 
     Returns:
         The draft and its diagnostics. With diagnostics the edit is rejected and
@@ -1120,9 +1123,10 @@ def edit(reading: Reading, number: int | None, path: str, value: Term | None, co
     value = copy.deepcopy(value, copies)
     asked = number is None
     if asked:
-        draft, number, path = requested(draft, path, value, world)
+        draft, number, rule = requested(draft, path, value, world, phrase)
         if number is None:
-            return draft, [(None, path.partition(".")[2], "reference")]
+            return draft, [(None, path.partition(".")[2], rule)]
+        path = rule
         value = bindings(by_number(draft, number))[path]
     entries = [term for _, term in obligations(draft)]
     target = next((term for term in entries if term.number == number), None)
@@ -1148,16 +1152,25 @@ def edit(reading: Reading, number: int | None, path: str, value: Term | None, co
     return draft, found
 
 
-def requested(draft: Reading, path: str, value: Term, world: World | None) -> tuple[Reading, int | None, str]:
-    """Adds a new operation that a value is given to, as ``edit`` describes. Returns the draft, its number and parameter (None if there is no such function or phrase)."""
+def requested(draft: Reading, path: str, value: Term, world: World | None, at: tuple[int, int] | None) -> tuple[Reading, int | None, str]:
+    """Adds a new operation that a value is given to, as ``edit`` describes.
+
+    Returns the draft, its number and parameter; or the draft, None and the
+    rule that refuses it: "identity" (a world other than the reading's),
+    "name" (no such function), "extra" (no such parameter), "phrase" (the value
+    has no place in the text and no phrase was given).
+    """
     name, _, parameter = path.partition(".")
-    function = world.functions.get(name) if world else None
+    if world is None or identity(world) != draft.world:
+        return draft, None, "identity"
+    function = world.functions.get(name)
     kind = dict(function.parameters).get(parameter) if function else None
     pairs = obligations(draft)
     source = value.terms[0] if isinstance(value, Several) and value.terms else value
-    phrase = next((one for one, term in pairs if term is source), None) or next((one for one in innermost(draft.message) if isinstance(source, Constant) and one.start <= source.start < one.end), None)
-    if kind is None or phrase is None:
-        return draft, None, path
+    phrase = next((one for one in innermost(draft.message) if [one.start, one.end] == list(at or ())), None) or next((one for one, term in pairs if term is source), None) or next(
+        (one for one in innermost(draft.message) if isinstance(source, Constant) and one.start <= source.start < one.end), None)
+    if function is None or kind is None or phrase is None:
+        return draft, None, "name" if function is None else "extra" if kind is None else "phrase"
     if isinstance(kind, Applied) and kind.constructor == MANY and not isinstance(value, Several) and fills(value, kind.argument):
         value = Several(kind.argument, (value,))
     new = Application(function, {one: value if one == parameter else Hole(other, "cleared") for one, other in function.parameters}, max((term.number for _, term in pairs), default=-1) + 1)
@@ -1282,28 +1295,27 @@ def type_named(name: str, world: World) -> Type:
     raise LookupError(f"{name} is no type of this world")
 
 
-def term_from(line: dict, world: World, made_by: dict[int, Application], dangling: list | None = None) -> Term:
+def term_from(line: dict, world: World, made_by: dict[int, Application], dangling: list | None = None, at: tuple = (None, ""), expected: Type | None = None) -> Term:
     """Rebuilds a term from its record. A reference becomes the same object as the operation it names.
 
-    A reference to no operation made before it is a hole with reason "dangling
-    reference", noted in ``dangling`` as (operation, path, "reference").
+    A reference to no operation made before it, at any depth, is a hole of its
+    place's type with reason "dangling reference", noted in ``dangling`` as
+    (operation, path, "reference"); ``at`` and ``expected`` say where it stands.
 
     Raises:
         LookupError: If the world has no such type, member or function, or a reference dangles and no list takes it.
     """
     if "ref" in line:
-        return made_by[int(line["ref"])]
+        number = int(line["ref"]) if str(line["ref"]).isdigit() else None
+        if number in made_by or dangling is None or expected is None:
+            return made_by[number]
+        dangling.append((*at, "reference"))
+        return Hole(expected, "dangling reference")
     if "function" in line:
         number = None if line["id"] is None else int(line["id"])
         function = world.functions[line["function"]]
-        arguments = {}
-        for name, one in line["arguments"].items():
-            missing = "ref" in one and not (str(one["ref"]).isdigit() and int(one["ref"]) in made_by)
-            if missing and dangling is not None:
-                dangling.append((number, name, "reference"))
-                arguments[name] = Hole(dict(function.parameters).get(name, Applied(MAYBE, Base("NoneType", type(None)))), "dangling reference")
-            else:
-                arguments[name] = term_from(one, world, made_by, dangling)
+        places = dict(function.parameters)
+        arguments = {name: term_from(one, world, made_by, dangling, (number, name), places.get(name)) for name, one in line["arguments"].items()}
         application = Application(function, arguments, number)
         if number is not None:
             made_by[number] = application
@@ -1319,9 +1331,9 @@ def term_from(line: dict, world: World, made_by: dict[int, Application], danglin
             value = pathlib.Path(value)
         return Constant(kind, value, *line.get("at", (-1, -1)))
     if "fields" in line:
-        return Record(kind, {name: term_from(one, world, made_by) for name, one in line["fields"].items()})
+        return Record(kind, {name: term_from(one, world, made_by, dangling, (at[0], f"{at[1]}.{name}"), dict(kind.fields).get(name)) for name, one in line["fields"].items()})
     if "several" in line:
-        return Several(kind.argument, tuple(term_from(one, world, made_by) for one in line["several"]))
+        return Several(kind.argument, tuple(term_from(one, world, made_by, dangling, at, kind.argument) for one in line["several"]))
     return Empty(kind) if "empty" in line else Hole(kind, line["reason"])
 
 
@@ -1350,7 +1362,10 @@ def load(line: dict, world: World) -> tuple[Reading | None, list[tuple[None, Non
     dangling: list[tuple[int, str, str]] = []
     rebuilt = lambda value: [term_from(one, world, made_by, dangling) for one in value] if isinstance(value, list) else term_from(value, world, made_by, dangling) if isinstance(value, dict) else value
     message = recorded_phrases(line, world, made_by, dangling)
-    decisions = [one | {"offered": rebuilt(one["offered"]), "cut": rebuilt(one["cut"]), "chosen": rebuilt(one["chosen"])} for one in line["decisions"]]
+    try:
+        decisions = [one | {"offered": rebuilt(one["offered"]), "cut": rebuilt(one["cut"]), "chosen": rebuilt(one["chosen"])} for one in line["decisions"]]
+    except KeyError:  # a decision's candidate names no operation
+        return None, [(None, None, "reference")]
     reading = Reading(line["id"], line["text"], message, rebuilt(line["constants"]), decisions, line["world"], [dict(one) for one in line["corrections"]], line.get("snapshot"),
                       [Checked(**one) for one in line["fulfillment"]] if "fulfillment" in line else None)
     found = validate(reading)
@@ -1404,12 +1419,16 @@ def rerun(line: dict, world: World, model: Model, limits: Limits = Limits()) -> 
             entries = [term for _, term in pairs]
             made_by = {term.number: term for term in entries if isinstance(term, Application)}
             meanings = meaning(reading)
+            for number, function, before in correction["refers"]:  # the result a correction names must still mean what it meant
+                now = plain(meaning(reading)[entries.index(made_by[number])]) if number in made_by else None
+                if now != before:
+                    raise LookupError(f"{correction['path']} referred to {function}, whose meaning changed from {before} to {now}")
             if correction.get("requested"):  # the user asked for this operation: give the value to the function again
                 try:
                     value = term_from(correction["value"], world, made_by)
                 except LookupError as error:
                     raise LookupError(f"the requested {correction['function']} of {correction['path']} no longer applies: {str(error).strip(chr(39))}")
-                draft, found = edit(reading, None, f"{correction['function']}.{correction['path']}", value, world=world)
+                draft, found = edit(reading, None, f"{correction['function']}.{correction['path']}", value, world=world, phrase=tuple(correction["phrase"]))
                 if found:
                     raise LookupError(f"the requested {correction['function']} of {correction['path']} no longer applies ({found})")
                 reading, correction = draft, correction | {"operation": max(term.number for _, term in obligations(draft))}
@@ -1425,10 +1444,6 @@ def rerun(line: dict, world: World, model: Model, limits: Limits = Limits()) -> 
             if len(same) > 1:
                 raise LookupError(f"{len(same)} operations of {correction['function']} in its phrase read alike, so the correction of {correction['path']} has no one place")
             target = same[0]
-            for number, function, before in correction["refers"]:
-                now = plain(meaning(reading)[entries.index(made_by[number])]) if number in made_by else None
-                if now != before:
-                    raise LookupError(f"{correction['path']} referred to {function}, whose meaning changed from {before} to {now}")
             try:
                 value = term_from(correction["value"], world, made_by)
             except LookupError as error:
