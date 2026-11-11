@@ -51,14 +51,16 @@
   .link:disabled, .link:disabled:hover { background: none; }
   :focus-visible { outline: var(--border) solid var(--accent); outline-offset: 2px; }
 
-  #top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); margin-bottom: var(--space-5); }
+  #top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-2) var(--space-5); margin-bottom: var(--space-5); }
   #nav, #foot, #paste { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
   #nav { margin-bottom: var(--space-4); }
   #foot { margin-top: var(--space-4); }
-  #say { position: sticky; bottom: 0; background: var(--bg); margin: 0; padding: var(--space-3) 0; min-height: calc(var(--leading-chip) + 2 * var(--space-3)); max-width: none; font: var(--weight-normal) var(--size-chip)/var(--leading-chip) var(--font-code); overflow-wrap: anywhere; }
-  #say:empty { position: static; }
-  #sent { margin: var(--space-3) 0 0; }
-  #install { margin-top: var(--space-7); }
+  #tabs { display: flex; gap: var(--space-5); }
+  .tab { background: none; border: 0; border-bottom: var(--border) solid transparent; border-radius: 0; padding: var(--space-1) 0; color: var(--text-2); font: var(--weight-normal) var(--size-body)/var(--leading-body) var(--font-text); cursor: pointer; }
+  .tab:hover { color: var(--text-1); }
+  .tab[aria-pressed="true"] { color: var(--text-1); border-bottom-color: var(--text-1); font-weight: var(--weight-strong); }
+  #where { font-family: var(--font-code); font-size: var(--size-chip); color: var(--text-2); }
+  #nav .link { font-size: var(--size-title); line-height: var(--leading-body); text-decoration: none; padding: 0 var(--space-2); }
   #paste { margin-bottom: var(--space-4); }
   #paste p { margin: 0; }
 
@@ -67,7 +69,7 @@
   #board svg { display: block; overflow: visible; }
   #board .grab { cursor: grab; touch-action: none; outline: none; }
   #board .act { cursor: pointer; outline: none; }
-  #board .act:hover > rect, #board .act:focus-visible > rect { fill: var(--surface); }
+  #board .act:hover > path.mark, #board .act:focus-visible > path.mark { fill: var(--surface); }
   #board .lit .mark { stroke-width: 4px; }  /* the thing and every mark of the same identity light together (Embark: coordinated focus) */
   #board .grab:hover > .jig > .edge, #board .grab:focus-visible > .jig > .edge, #board .lit > .jig > .edge { stroke-opacity: 1; }
   @keyframes jig { from { rotate: -1.2deg; } to { rotate: 1.2deg; } }
@@ -106,31 +108,28 @@
 </head>
 <body>
 <main>
-  <div id="top"><h1>scriptt</h1><a href="https://github.com/maxtheman/scriptt">GitHub</a></div>
+  <div id="top"><h1>scriptt</h1><nav id="tabs"><button type="button" class="tab" data-tab="board">Board</button><button type="button" class="tab" data-tab="d1">d1</button><button type="button" class="tab" data-tab="install">Install</button></nav><a href="https://github.com/maxtheman/scriptt">GitHub</a></div>
 
-  <div id="demo">
-    <div id="nav"><button type="button" class="link" id="prev">Previous message</button><span id="where"></span><button type="button" class="link" id="next">Next message</button></div>
+  <div id="demo" data-tabpane="board">
+    <div id="nav"><button type="button" class="link" id="prev" aria-label="Previous message" title="Previous message">‹</button><span id="where"></span><button type="button" class="link" id="next" aria-label="Next message" title="Next message">›</button></div>
     <div id="board" tabindex="-1"></div>
     <div id="foot">
       <button type="button" class="second" id="mode" aria-pressed="false">Edit</button>
-      <button type="button" class="first" id="save" hidden>Save</button>
-      <button type="button" class="second" id="undo" hidden>Undo</button>
+      <button type="button" class="second" id="undo" aria-label="Undo" title="Undo (Ctrl or Cmd Z)">↶</button>
+      <button type="button" class="second" id="redo" aria-label="Redo" title="Redo (Shift Ctrl or Cmd Z)">↷</button>
+      <button type="button" class="first" id="save">Save</button>
     </div>
-    <p id="say" aria-live="polite"></p>
-    <pre id="sent" hidden></pre>
-
-    <section id="inspect" hidden aria-labelledby="inspect-title">
-      <h2 id="inspect-title">d1 Prompt Builder &amp; Decision Inspector</h2>
-      <p id="i-source"></p>
-      <div id="i-prompts"></div>
-      <div class="row"><button type="button" class="first" id="i-run">Preview with these wordings</button><button type="button" class="second" id="i-reset">Reset the wordings</button><span id="i-status" aria-live="polite"></span></div>
-      <div id="i-changes"></div>
-      <div class="row"><label for="i-select">Decision</label><select id="i-select"></select></div>
-      <div id="i-decision"></div>
-    </section>
   </div>
 
-  <div id="install">
+  <section id="inspect" data-tabpane="d1" hidden aria-label="d1">
+    <div id="i-prompts"></div>
+    <div class="row"><button type="button" class="first" id="i-run">Preview</button><button type="button" class="second" id="i-reset">Reset</button><span id="i-status" aria-live="polite"></span></div>
+    <div id="i-changes"></div>
+    <div class="row"><select id="i-select" aria-label="Decision"></select></div>
+    <div id="i-decision"></div>
+  </section>
+
+  <div id="install" data-tabpane="install" hidden>
     <p>Run this in the folder of your project. It needs Python 3.14.</p>
     <pre>curl -fsSL https://scriptt.ai/install.sh | sh</pre>
     <div id="paste"><p>Or paste this prompt into your coding agent.</p><button type="button" class="second" id="copy">Copy the prompt</button></div>
@@ -173,8 +172,8 @@
 // Every word drawn below comes from the record (events.jsonl), from the world (world.py) or from the message. Nothing names a type or a function of a world.
 const { React, createRoot, DraggableRenderer, translate } = window.Dragology, h = React.createElement;
 let WORLD = { types: {}, functions: {} }, EVENTS = [], MSGS = [], FNS = [], TYPES = [], LOCAL = false, LEGACY = 0;
-let at = 0, OPEN = false, HELD = null, DRAGGING = false, LINE = "", UID = 0, W = 0, FONT = {}, C = {}, root = null, SEL = null, MORE = false, HOVER = null;  // SEL: the ref of the selected thing; HOVER: the action that the pointer is on
-const store = {}, saved = {}, undos = {};  // by message: your reading, the reading of each part that the log already has, and each state before an edit
+let at = 0, OPEN = false, HELD = null, DRAGGING = false, LINE = "", UID = 0, W = 0, FONT = {}, C = {}, root = null, SEL = null, NAV = [], MORE = false, HOVER = null;  // SEL: the ref of the selected thing; HOVER: the action that the pointer is on
+const store = {}, saved = {}, undos = {}, redos = {};  // by message: your reading, the reading of each part that the log already has, and each state before an edit
 const $ = (id) => document.getElementById(id);
 const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const two = (p) => Number(p).toFixed(2);
@@ -438,33 +437,53 @@ function layout(ev, st) {  // the paragraph, and under it the panel of the selec
 // ---------- what a thing is (facts), and what can be done with it (transitions) ----------
 // A ref names a thing: "p:ID" a value, "c:N" a phrase, "v:N:fn" an operation, "h:N:fn:path" a place, "t:Type" a type, "m:Type:member" a member.
 const returnsOf = (ev, fn) => WORLD.functions[fn]?.returns ?? ev.demands.find((d) => d.function === fn)?.returns ?? "";
-const typeChip = (t) => ({ text: names(t).join(" | ") || String(t), type: t });
+const typeChip = (t) => ({ text: names(t).join(" | ") || String(t), type: t, follow: "t:" + (takes(t)[0] ?? t) });
+const askOf = (n, key) => `h:${n}:${key.slice(0, key.indexOf("."))}:${key.slice(key.indexOf(".") + 1)}`;
 const placeAt = (ev, st, ref) => layoutOf(ev, st).els.find((e) => (e.kind === "hole" || e.kind === "link") && e.ask === ref);
+// d1's options at a place (its path) or for a phrase (no path): the recorded request, else the shares of the phrase.
+function decisionsFor(ev, n, path) {
+  const r = (ev.requests ?? []).find((x) => x.phrase === n && (path == null ? x.path == null : x.path === path) && x.options?.length);
+  if (r) return r.options.map((o) => ({ id: o.id, p: r.answer?.probabilities?.[o.id] ?? 0, tip: o.description }));
+  const sc = path == null ? partsOf(ev)[n]?.scores : null;
+  return sc ? Object.entries(sc).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id, p]) => ({ id, p, tip: WORLD.functions[id]?.asks })) : [];
+}
+// What a thing is, from the data: its name and type, rows of chips (a chip with `follow` goes to the thing that it names), and d1's options.
 function facts(ev, st, ref) {
-  const [k, a, b] = ref.split(":"), P = piecesOf(ev), quote = (n) => ({ text: `“${short(wordsOf(ev, n).trim(), 44)}”` });
+  const [k, a, b] = ref.split(":"), P = piecesOf(ev), quote = (n) => ({ text: `“${short(wordsOf(ev, n).trim(), 40)}”`, follow: `c:${n}` });
+  const row = (tip, chips) => ({ tip, chips });
   if (k === "p") {
     const p = P.find((x) => x.id === +a);
     if (!p) return null;
-    const into = st.parts.flatMap((s, n) => Object.keys(s.by).filter((key) => piecesIn(s, key).includes(p.id)).map((key) => ({ text: `${clause(n)} ${key.slice(key.indexOf(".") + 1)}` })));
-    return { role: "value", name: p.words, type: p.type, rows: [["type", [typeChip(p.type)]], ["source", [{ text: `${p.start}–${p.end}` }, quote(p.part)]], ["in", into.length ? into : [{ text: "—" }]]] };
+    const into = st.parts.flatMap((s, n) => Object.keys(s.by).filter((key) => piecesIn(s, key).includes(p.id)).map((key) => ({ text: `${clause(n)} ${key.slice(key.indexOf(".") + 1)}`, follow: askOf(n, key) })));
+    return { role: "value", name: p.words, type: p.type, rows: [row("type", [typeChip(p.type)]), row("source", [{ text: `${p.start}–${p.end}` }, quote(p.part)]), row("in", into)], options: [] };
   }
   if (k === "h") {
     const e = placeAt(ev, st, ref);
     if (!e) return null;
-    const holds = e.state === "hole" ? "◻" : e.state === "optional" ? "◌" : e.state === "empty" ? EMPTY : e.state === "none" ? "[ ]" : Array.isArray(e.v) ? e.v.map((x) => `“${short(x, 16)}”`).join(" ") : e.ref ? `${e.v}  ↩ ${clause(appsOf(ev, st).find((x) => x.id === e.ref)?.n ?? 0)}` : `“${short(e.v, 30)}”`;
-    return { role: e.ref ? "reference" : "place", name: e.path, type: e.type, rows: [["type", names(e.type).map(typeChip)], ["holds", [{ text: holds }]], ["of", [{ text: `${clause(e.n)} ${e.f.fn}` }]], ...(e.reason ? [["why", [{ text: e.reason }]]] : [])] };
+    const apps = appsOf(ev, st), prod = e.ref ? apps.find((x) => x.id === e.ref) : null;
+    const holds = e.state === "hole" ? "◻" : e.state === "optional" ? "◌" : e.state === "empty" ? EMPTY : e.state === "none" ? "[ ]" : Array.isArray(e.v) ? e.v.map((x) => `“${short(x, 16)}”`).join(" ") : prod ? `${e.v} ↩ ${clause(prod.n)}` : `“${short(e.v, 30)}”`;
+    const own = e.pids[0] != null ? `p:${e.pids[0]}` : prod ? `v:${prod.n}:${prod.f.fn}` : undefined;
+    return { role: e.ref ? "reference" : "place", name: e.path, type: e.type, rows: [row("type", names(e.type).map((t) => typeChip(t))), row("holds", [{ text: holds, follow: own }]), row("of", [{ text: `${clause(e.n)} ${e.f.fn}`, follow: `v:${e.n}:${e.f.fn}` }]), ...(e.reason ? [row("why", [{ text: e.reason }])] : [])], options: decisionsFor(ev, e.n, e.path) };
   }
   if (k === "v") {
     const f = st.parts[+a]?.fns.find((g) => g.fn === b);
     if (!f) return null;
-    const d = f.id[0] === "d" ? ev.demands[+f.id.slice(1)] : null, ret = returnsOf(ev, b), asks = WORLD.functions[b]?.asks;
-    return { role: "operation", name: b, type: ret || null, rows: [...(ret ? [["returns", [typeChip(ret)]]] : []), ...(asks ? [["asks", [{ text: asks }]]] : []), ["phrase", [quote(+a)]], ...(d ? [["d1", [{ text: two(d.p) }]]] : []), ["places", holesOf(ev, b).map(([path]) => ({ text: path }))]] };
+    const ret = returnsOf(ev, b), asks = WORLD.functions[b]?.asks;
+    return { role: "operation", name: `${clause(+a)} ${b}`, type: ret || null, rows: [...(ret ? [row("returns", [typeChip(ret)])] : []), ...(asks ? [row("asks", [{ text: asks }])] : []), row("phrase", [quote(+a)]), row("places", holesOf(ev, b).map(([path]) => ({ text: path, follow: `h:${a}:${b}:${path}` })))], options: decisionsFor(ev, +a, null) };
   }
   if (k === "c") {
     const part = partsOf(ev)[+a];
     if (!part) return null;
-    const c = choiceOf(part), brand = part.brand ?? ev.brand ?? "Asked";
-    return { role: part.unresolved ? "unresolved" : "phrase", name: clause(+a), type: null, rows: [["brand", [{ text: brand }]], ["words", [quote(+a)]], ["d1", [{ text: c + (part.scores?.[c] != null ? " " + two(part.scores[c]) : "") }]], ...(part.unresolved ? [["why", [{ text: part.unresolved.reason }]]] : [])] };
+    return { role: part.unresolved ? "unresolved" : "phrase", name: clause(+a), type: null, rows: [row("brand", [{ text: part.brand ?? ev.brand ?? "Asked" }]), row("words", [{ text: `“${short(wordsOf(ev, +a).trim(), 40)}”` }]), ...(part.unresolved ? [row("why", [{ text: part.unresolved.reason }])] : [])], options: decisionsFor(ev, +a, null) };
+  }
+  if (k === "t") {
+    const def = WORLD.types[a], where = layoutOf(ev, st).els.filter((e) => (e.kind === "hole" || e.kind === "link") && takes(e.type).includes(a)).slice(0, 8).map((e) => ({ text: `${clause(e.n)} ${e.path}`, follow: e.ask }));
+    return { role: "type", name: a, type: a, rows: [...(def?.sum?.length ? [row("members", def.sum.map((m) => ({ text: short(m, 30), role: "member", follow: `m:${a}:${m}` })))] : []), ...(def?.fields ? [row("fields", Object.entries(def.fields).map(([f, t]) => ({ text: `${f} : ${t}`, type: t, role: "field", follow: "t:" + (takes(t)[0] ?? t) })))] : []), row("used by", where)], options: [] };
+  }
+  if (k === "m") {
+    const mem = ref.split(":").slice(2).join(":");
+    if (!(WORLD.types[a]?.sum ?? []).includes(mem)) return null;
+    return { role: "member", name: short(mem, 30), type: a, rows: [row("type", [typeChip(a)])], options: [] };
   }
   return null;
 }
@@ -499,6 +518,9 @@ function transitions(ev, st, ref) {
     if (!f) return [];
     for (let m = 0; m < st.parts.length; m++) if (m !== n && !st.parts[m].fns.some((g) => g.fn === b)) push({ label: `→ ${clause(m)}`, kind: "move", target: "p-" + m, state: moveFn(st, n, m, f) });
     push({ label: "remove", kind: "clear", state: dropFn(st, n, f) });
+  } else if (k === "m") {
+    const mem = ref.split(":").slice(2).join(":");
+    for (const e of places) if (fits(e, [a])) push({ label: `→ ${where(e)}`, kind: "move", target: e.id, state: fill(st, e.n, e.key, mem, null, e.many) });
   } else if (k === "c") {
     for (const fn of FNS) if (!st.parts[+a]?.fns.some((g) => g.fn === fn)) push({ label: `+ ${fn}`, kind: "add", state: addFn(ev, st, +a, fn) });
   }
@@ -509,33 +531,21 @@ const pulled = (ev, st, ref) => transitions(ev, st, ref).find((t) => t.kind === 
 const changedIds = (ev, a, b) => layoutOf(ev, b).els.filter((e) => (e.kind === "hole" || e.kind === "link") && (JSON.stringify([a.parts[e.n]?.things[e.key], a.parts[e.n]?.refs?.[e.key]]) !== JSON.stringify([b.parts[e.n].things[e.key], b.parts[e.n].refs?.[e.key]]))).map((e) => e.id);
 
 // ---------- the panel: one at a time, under the paragraph, in the same marks ----------
-function panelOf(ev, st, ref, base) {
+function panelOf(ev, st, ref, base) {  // the panel is chains too: the way here, what the thing is, d1's options, and what can be done
   const f = facts(ev, st, ref);
   if (!f) return null;
-  const acts = OPEN ? transitions(ev, st, ref) : [], shown = MORE ? acts : acts.slice(0, 8), inner = W - 24, labelW = 72, items = [];
-  let y = 12;
-  items.push({ kind: "name", id: "pn-name", x: 12, y, text: f.name, role: f.role, type: f.type ? names(f.type)[0] : null });
-  y += 36;
-  f.rows.forEach(([label, chips], r) => {
-    const ts = chips.map((c, j) => ({ ...c, kind: "chip", id: `pn-c-${r}-${j}-${sid(c.text)}`, w: tw(c.text, FONT.code) + 16 + (c.type ? 18 : 0), h: 28 }));
-    const fr = flowRow(ts, inner - labelW);
-    items.push({ kind: "label", id: `pn-l-${r}-${sid(label)}`, x: 12, y, text: label });
-    for (const t of ts) items.push({ ...t, x: 12 + labelW + t.x, y: y + t.y });
-    y += fr.h + 8;
-  });
-  if (acts.length) {
-    items.push({ kind: "rule", id: "pn-rule", y: y - 2, w: W - 12 });
-    y += 8;
-    const ts = shown.map((t, j) => ({ kind: "chip", id: `pn-a-${sid(t.label)}`, act: t.label, text: t.label, w: tw(t.label, FONT.code) + 20, h: 28 }));
-    if (acts.length > shown.length) ts.push({ kind: "chip", id: "pn-more", more: true, text: `+${acts.length - shown.length}`, w: 44, h: 28 });
-    const fr = flowRow(ts, inner);
-    for (const t of ts) items.push({ ...t, x: 12 + t.x, y: y + t.y });
-    y += fr.h + 8;
-  }
+  const acts = OPEN ? transitions(ev, st, ref) : [], shown = MORE ? acts : acts.slice(0, 8), inner = W - 24, items = [], way = NAV.slice(0, -1).filter((r) => facts(ev, st, r));
+  let y = 12, c = 0;
+  const wd = (x) => 2 * PADX + (x.type ? GW : 0) + (x.p != null ? 30 : 0) + tw(x.text, x.head ? FONT.codeB : FONT.code);
+  const chain = (list) => { if (!list.length) return; const fl = flowChain(list.map((x) => ({ ...x, kind: "chip", id: `pn-${c++}-${sid(x.text)}`, w: wd(x) })), inner, y); for (const b of fl.blocks) items.push({ ...b, x: 12 + b.x }); y += fl.h + 12; };
+  chain([...(way.length ? [{ text: "‹", back: true, tip: "back" }] : []), ...way.map((r) => ({ text: facts(ev, st, r).name, crumb: r })), { text: f.name, type: f.type ? names(f.type)[0] : null, head: true }]);
+  for (const r of f.rows) chain(r.chips.map((x) => ({ ...x, tip: x.tip ?? r.tip })));
+  const best = Math.max(0, ...f.options.map((o) => o.p));
+  chain(f.options.map((o) => ({ text: short(o.id, 22), p: o.p, tip: o.tip, role: "option", best: o.p === best })));
+  chain([...shown.map((t) => ({ text: t.label, act: t.label })), ...(acts.length > shown.length ? [{ text: `+${acts.length - shown.length}`, more: true }] : [])]);
   const target = base.els.find((e) => e.ask === ref || (e.kind === "piece" && "p:" + e.p.id === ref));
-  return { kind: "panel", id: "pn", x: 0, y: base.height + 28, w: W, h: y + 4, ref, items, sel: target ? { x: target.x, y: target.y, w: target.w, h: target.h ?? BH } : null };
+  return { kind: "panel", id: "pn", x: 0, y: base.height + 28, w: W, h: y, ref, items, sel: target ? { x: target.x, y: target.y, w: target.w, h: target.h ?? BH } : null };
 }
-
 
 // ---------- the board: a pure function from a state to SVG (Dragology 0.2.0). ----------
 // Each thing that can be picked up lists the states that a drop can produce, each as d.dropTarget(the id of the place, the state).
@@ -604,17 +614,22 @@ function draggable({ state: st, d, draggedId }) {
     panel: (e) => {
       const nx = Math.max(20, Math.min(e.w - 20, e.sel ? e.sel.x + e.sel.w / 2 : 40));
       const item = (it) => {
-        if (it.kind === "label") return code(it.x, it.y + 19, it.text, { id: it.id, fill: C.t2 });
-        if (it.kind === "rule") return h("path", { id: it.id, d: `M12,${it.y}H${it.w}`, stroke: C.rule, strokeWidth: 1 });
-        if (it.kind === "name") { const x = it.x + (it.type ? 20 : 0); return h("g", { id: it.id, dragologyKey: it.id }, it.type ? glyph(it.x, it.y + 9, it.type) : null, txt(x, it.y + 19, it.text, { dragologyKey: "name", fontWeight: 600 }), code(x + tw(it.text, FONT.strong) + 10, it.y + 19, it.role, { dragologyKey: "role", fill: C.t2 })); }
-        const act = !!it.act || it.more, press = () => (it.more ? (MORE = true, draw()) : applyAct(it.act));
-        const props = act ? { ...(it.act ? { "data-act": it.act, onPointerEnter: () => DRAGGING || HELD || hoverAct(it.act), onPointerLeave: () => DRAGGING || HELD || hoverAct(null) } : { "data-more": "" }), className: "act", role: "button", tabIndex: 0, "aria-label": it.act ?? "more", onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); press(); } } } : {};
-        return h("g", { id: it.id, dragologyKey: it.id, transform: translate(it.x, it.y), ...props }, h("rect", { dragologyKey: "r", y: 2, width: it.w, height: 24, rx: act ? 12 : 2, fill: C.bg, stroke: act ? C.accent : C.rule, strokeWidth: 2 }), it.type ? glyph(8, 9, it.type) : null, code(it.type ? 26 : act ? 10 : 8, 19, it.text, { dragologyKey: "text", fill: act ? C.accent : C.t1 }));
+        const can = !!(it.act || it.more || it.follow || it.crumb || it.back), kind = it.act ? "act" : it.head ? "head" : it.crumb || it.back ? "crumb" : "fact";
+        const press = () => (it.act ? applyAct(it.act) : it.more ? (MORE = true, draw()) : it.back ? back() : it.crumb ? jump(it.crumb) : follow(it.follow));
+        const props = { "data-part": "", ...(it.role ? { "data-role": it.role } : {}), ...(it.act ? { "data-act": it.act, onPointerEnter: () => DRAGGING || HELD || hoverAct(it.act), onPointerLeave: () => DRAGGING || HELD || hoverAct(null) } : {}),
+          ...(it.more ? { "data-more": "" } : {}), ...(it.back ? { "data-back": "" } : {}), ...(it.crumb ? { "data-crumb": it.crumb } : {}), ...(it.follow && !it.crumb ? { "data-follow": it.follow } : {}),
+          ...(can ? { className: "act", role: "button", tabIndex: 0, "aria-label": it.act ?? it.tip ?? it.text, onKeyDown: (k) => { if (k.key === "Enter" || k.key === " ") { k.preventDefault(); k.stopPropagation(); press(); } } } : {}) };
+        const stroke = kind === "act" ? C.accent : kind === "crumb" ? C.rule : kind === "head" ? C.t1 : C.t2;
+        return h("g", { id: it.id, dragologyKey: it.id, transform: translate(it.x, it.y), "data-w": Math.round(it.w), ...(it.plug ? { "data-plug": PLUG.tag } : {}), ...(it.socket ? { "data-socket": PLUG.tag } : {}), ...props },
+          it.tip ? tip(it.tip) : null,
+          h("path", { dragologyKey: "body", className: "mark", d: shapePath(it.w, { socket: it.socket, plug: it.plug }), fill: kind === "crumb" ? C.surface : C.bg, stroke, strokeWidth: 2 }),
+          it.p != null ? h("rect", { dragologyKey: "bar", x: 3, y: BH - 6, width: Math.max(0, (it.w - 6) * it.p), height: 4, fill: it.best ? C.accent : C.t2 }) : null,
+          it.type ? glyph(PADX, 13, it.type) : null,
+          code(PADX + (it.type ? GW : 0), 23, it.text, { dragologyKey: "text", fill: kind === "act" ? C.accent : kind === "crumb" ? C.t2 : C.t1, fontWeight: it.head || it.best ? 600 : 400 }),
+          it.p != null ? code(it.w - PADX, 23, String(Math.round(it.p * 100)), { dragologyKey: "pct", fill: C.t2, textAnchor: "end", fontSize: 11 }) : null);
       };
       return h("g", { id: e.id, transform: translate(e.x, e.y), "data-panel": "", "data-ref": e.ref },
-        h("rect", { id: "pn-box", width: e.w, height: e.h, rx: 2, fill: C.bg, stroke: C.rule, strokeWidth: 2 }),
-        h("path", { id: "pn-notch", d: `M${nx - 9},0L${nx},-9L${nx + 9},0`, fill: C.bg, stroke: C.rule, strokeWidth: 2 }),
-        h("path", { id: "pn-seam", d: `M${nx - 8},0H${nx + 8}`, stroke: C.bg, strokeWidth: 4 }),
+        h("path", { id: "pn-notch", d: `M${nx - 9},0L${nx},-9L${nx + 9},0`, fill: "none", stroke: C.rule, strokeWidth: 2 }),
         ...e.items.map(item));
     },
   };
@@ -625,28 +640,26 @@ function draggable({ state: st, d, draggedId }) {
 }
 
 // ---------- the page ----------
-const say = (words) => { $("say").textContent = words ?? ""; };
+const say = () => {};  // nothing is said under the board: the page keeps its words to the message and the marks
 function draw() {
   $("nav").hidden = MSGS.length < 2;
-  if (!MSGS.length) { for (const id of ["board", "foot"]) $(id).hidden = true; return say("No messages yet. Send Claude a message in a folder where the harness is installed."); }
+  if (!MSGS.length) { for (const id of ["board", "foot"]) $(id).hidden = true; $("where").textContent = "—"; return; }
   const i = MSGS[at], host = $("board");
-  $("where").textContent = `Message ${at + 1} of ${MSGS.length}`;
+  $("where").textContent = `${at + 1}/${MSGS.length}`;
   $("prev").disabled = at === 0; $("next").disabled = at === MSGS.length - 1;
   FONT = { body: `400 16px ${css("--font-text")}`, strong: `600 16px ${css("--font-text")}`, code: `400 14px ${css("--font-code")}`, codeB: `600 14px ${css("--font-code")}` };
   C = { bg: css("--bg"), surface: css("--surface"), t1: css("--text-1"), t2: css("--text-2"), rule: css("--rule"), accent: css("--accent"), text: css("--font-text"), code: css("--font-code") };
   W = Math.max(280, host.clientWidth);
   host.classList.toggle("open", OPEN);
   host.style.minHeight = "";
-  if (SEL && !facts(EVENTS[i], reading(i), SEL)) SEL = null;
+  if (SEL && !facts(EVENTS[i], reading(i), SEL)) { SEL = null; NAV = []; }
   paint();
   const todo = unsaved(i);
   $("mode").setAttribute("aria-pressed", OPEN);
-  $("save").hidden = !OPEN && !todo.length;
   $("save").disabled = !todo.length;
-  $("undo").hidden = $("save").hidden && !undos[i]?.length;
   $("undo").disabled = !undos[i]?.length;
-  $("inspect").hidden = !OPEN;
-  if (OPEN) inspect();
+  $("redo").disabled = !redos[i]?.length;
+  if (TAB() === "d1") inspect();
 }
 function paint() {  // the board again, from the current state: no other part of the page changes
   const i = MSGS[at], st = HELD ? HELD.opts[HELD.i].state : reading(i);
@@ -654,8 +667,11 @@ function paint() {  // the board again, from the current state: no other part of
   root.render(h(DraggableRenderer, { key: `${i}-${OPEN}`, draggable, state: structuredClone(st), width: W, height: layout(EVENTS[i], st).height, onDropState: dropped, onDragState: previewed }));
 }
 const remount = () => { root?.unmount(); root = null; HELD = null; DRAGGING = false; draw(); };  // a fresh board (the audit uses it to end the drag that a synthetic press starts)
+function follow(ref) { if (!ref || ref === SEL) return; NAV.push(ref); SEL = ref; MORE = false; HOVER = null; draw(); }  // a chip names a thing: go to it, and keep the way back
+function back() { NAV.pop(); SEL = NAV.at(-1) ?? null; MORE = false; HOVER = null; draw(); }
+function jump(ref) { const k = NAV.indexOf(ref); if (k < 0) return; NAV.length = k + 1; SEL = ref; MORE = false; HOVER = null; draw(); }
 function select(ref) {  // click: the thing opens in the panel. A click on nothing puts the panel away.
-  SEL = ref; MORE = false; HOVER = null; HELD = null;
+  SEL = ref; NAV = ref ? [ref] : []; MORE = false; HOVER = null; HELD = null;
   if (ref && OPEN && picks(EVENTS[MSGS[at]], reading(MSGS[at])).some(([id]) => id === ref)) PICK = ref;
   draw(); say(LINE);
 }
@@ -681,7 +697,7 @@ function previewed(next) {
 function dropped(next) {
   const i = MSGS[at], ev = EVENTS[i], ch = differ(ev, reading(i), next);
   DRAGGING = false;
-  if (ch.length) { (undos[i] ??= []).push(reading(i)); store[i] = next; LINE = lineOf(ev, next, ch[0]); }
+  if (ch.length) { (undos[i] ??= []).push(reading(i)); redos[i] = []; store[i] = next; LINE = lineOf(ev, next, ch[0]); }
   draw(); say(LINE);
 }
 addEventListener("pointerup", () => setTimeout(() => { if (DRAGGING) { DRAGGING = false; $("board").style.minHeight = ""; say(LINE); } }, 50), true);
@@ -733,6 +749,7 @@ function load(data) {
   TYPES = [...Object.keys(WORLD.types).filter((t) => WORLD.types[t].sum), ...["str", "int", "Path", "bool"].filter((t) => holeTypes.includes(t))];
   for (const k of Object.keys(store)) { delete store[k]; delete saved[k]; }
   for (const k of Object.keys(undos)) delete undos[k];
+  for (const k of Object.keys(redos)) delete redos[k];
   for (const r of data.events) if (r.event === "Disagree" && Number.isInteger(r.part)) restore(r);
   // Your own log opens on the newest message. The recorded one opens on the message of 5 parts or fewer with the most pieces in holes, then the most pieces.
   const rank = (ev) => (partsOf(ev).length <= 5) * 100 + piecesOf(ev).filter((p) => p.to).length * 10 + piecesOf(ev).length * 3 - ev.text.length / 1e4;
@@ -740,27 +757,26 @@ function load(data) {
   LINE = "";
   draw(); say(LINE);
 }
-function go(k) { const next = Math.max(0, Math.min(MSGS.length - 1, k)); if (next === at) return; at = next; HELD = null; SEL = null; MORE = false; HOVER = null; LINE = ""; $("sent").hidden = true; draw(); say(LINE); }
+function go(k) { const next = Math.max(0, Math.min(MSGS.length - 1, k)); if (next === at) return; at = next; HELD = null; SEL = null; NAV = []; MORE = false; HOVER = null; LINE = ""; draw(); }
 
 $("mode").addEventListener("click", () => { OPEN = !OPEN; HELD = null; draw(); say(LINE); });
-$("save").addEventListener("click", async () => {  // the local page adds 1 Disagree line for each part. The public page has no harness: it shows the lines only.
-  const i = MSGS[at], ev = EVENTS[i], st = reading(i), todo = unsaved(i);
+$("save").addEventListener("click", async () => {  // the local page adds 1 Disagree line for each part. A save that fails keeps the draft and says so on the button.
+  const i = MSGS[at], ev = EVENTS[i], st = reading(i), todo = unsaved(i), b = $("save");
   try {
     if (LOCAL) for (const n of todo) {
       const answer = await fetch("/disagree", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session: ev.session, text: ev.text, part: n, ...readingOf(st, n) }) });
       if (!answer.ok) throw new Error(answer.status);
     }
     for (const n of todo) (saved[i] ??= {})[n] = sig(st, n);
-    $("sent").textContent = todo.map((n) => lineOf(ev, st, n)).join("\n"); $("sent").hidden = false; LINE = "";
-  } catch (error) { LINE = String(error.message); }
-  draw(); say(LINE);
+    delete b.dataset.error; b.title = ""; b.textContent = "Save";
+  } catch (error) { b.dataset.error = String(error.message); b.title = String(error.message); b.textContent = "Save ⚠"; }
+  draw();
 });
-$("undo").addEventListener("click", () => {  // the state before the last edit of this message
-  const i = MSGS[at], before = undos[i]?.pop();
-  if (!before) return;
-  store[i] = before; HELD = null; LINE = "Undone: the reading is as it was before the last drop.";
-  draw(); say(LINE);
-});
+const undo = () => { const i = MSGS[at], before = undos[i]?.pop(); if (!before) return; (redos[i] ??= []).push(reading(i)); store[i] = before; HELD = null; draw(); };
+const redo = () => { const i = MSGS[at], next = redos[i]?.pop(); if (!next) return; (undos[i] ??= []).push(reading(i)); store[i] = next; HELD = null; draw(); };
+$("undo").addEventListener("click", undo);
+$("redo").addEventListener("click", redo);
+document.addEventListener("keydown", (k) => { if ((k.metaKey || k.ctrlKey) && k.key.toLowerCase() === "z" && !k.target.closest?.("textarea,input,select")) { k.preventDefault(); if (k.shiftKey) redo(); else undo(); } });
 $("prev").addEventListener("click", () => go(at - 1));
 $("next").addEventListener("click", () => go(at + 1));
 $("copy").addEventListener("click", async () => {
@@ -777,6 +793,17 @@ document.addEventListener("keydown", (k) => { if (HELD || k.target.closest?.("#b
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => MSGS.length && draw());
 let resizing = 0;
 addEventListener("resize", () => { clearTimeout(resizing); resizing = setTimeout(() => { if (MSGS.length && Math.max(280, $("board").clientWidth) !== W) draw(); }, 150); });
+// ---------- the tabs: the board, d1 and the install text are 3 pages of one site ----------
+const TAB = () => (["board", "d1", "install"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "board");
+function tabs() {
+  const t = TAB();
+  for (const el of document.querySelectorAll("[data-tabpane]")) el.hidden = el.dataset.tabpane !== t;
+  for (const b of document.querySelectorAll("[data-tab]")) b.setAttribute("aria-pressed", String(b.dataset.tab === t));
+  if (t === "board" && MSGS.length) draw();
+  if (t === "d1" && MSGS.length) inspect();
+}
+addEventListener("hashchange", tabs);
+for (const b of document.querySelectorAll("[data-tab]")) b.addEventListener("click", () => { location.hash = b.dataset.tab; });
 // ---------- the inspector: the 5 wordings that d1 receives, and the request of d1 behind a function or a hole ----------
 // A request is what d1 read (state), the wording with its slots filled (instructions), the options, and d1's answer.
 // The page shows only requests that a line of the log recorded, or that POST /preview-prompts of harness.py serve returned.
@@ -794,7 +821,7 @@ const bitsOf = (p) => (p > 0 ? (-Math.log2(p)).toFixed(2) : "∞");
 const wordings = () => Object.fromEntries(Object.keys(WORDINGS).map((name) => [name, $("pr-" + name).value]));
 const edited = () => Object.fromEntries(Object.entries(wordings()).filter(([name, text]) => text !== WORDINGS[name][0]));
 function buildWordings() {
-  $("i-prompts").innerHTML = Object.entries(WORDINGS).map(([name, [text, slots]]) => `<label>${name} <span>slots: ${slots.map((s) => `{${s}}`).join(" ") || "none"}${name === "did" ? ". The reply check (Stop) uses it, not the reading: a preview of a message does not change with it." : ""}</span><textarea id="pr-${name}" rows="2" spellcheck="false">${esc(text)}</textarea></label>`).join("");
+  $("i-prompts").innerHTML = Object.entries(WORDINGS).map(([name, [text, slots]]) => `<label>${name} <span>${slots.map((s) => `{${s}}`).join(" ")}</span><textarea id="pr-${name}" rows="2" spellcheck="false">${esc(text)}</textarea></label>`).join("");
   for (const name of Object.keys(WORDINGS)) {
     const area = $("pr-" + name);
     area.addEventListener("input", () => area.classList.toggle("edited", area.value !== WORDINGS[name][0]));
@@ -821,8 +848,8 @@ function requestsFor(ev, pick, preview) {
     const phrases = preview.after.phrases, k = phrases.reduce((best, p, j) => (overlap(p.start, p.end, part.start, part.end) > overlap(phrases[best].start, phrases[best].end, part.start, part.end) ? j : best), 0), phrase = phrases[k];
     const here = preview.after.requests.filter((r) => r.phrase === k);
     let found = kind === "h" ? here.filter((r) => r.hole === path || r.hole?.endsWith("." + path)) : here.filter((r) => r.wording === "what");
-    let note = `The next engine read this part as the phrase "${short(phrase.words, 80)}": ${phrase.term ?? phrase.choice ?? "no choice"}${phrase.type ? " ➔ " + phrase.type : ""}.`;
-    if (kind === "h" && !found.length) { found = here.filter((r) => r.hole); note += ` It sent d1 no request for the hole ${path}${found.length ? "; these are its requests for the holes of that phrase" : ""}.`; }
+    let note = `${phrase.term ?? phrase.choice ?? "—"}${phrase.type ? " ➔ " + phrase.type : ""}`;
+    if (kind === "h" && !found.length) { found = here.filter((r) => r.hole); note += ""; }
     return { found, note };
   }
   const all = recorded(ev);
@@ -848,17 +875,12 @@ function inspect() {
   if (!list.some(([id]) => id === PICK)) PICK = list[0]?.[0] ?? null;
   $("i-select").innerHTML = list.map(([id, label]) => `<option value="${esc(id)}"${id === PICK ? " selected" : ""}>${esc(label)}</option>`).join("");
   $("i-run").disabled = !LOCAL || !!ASKING;
-  $("i-source").textContent = preview
-    ? `The requests below are from the last preview: the next engine (${preview.engine.split("/").slice(-2).join("/")}) read this message again with the world ${preview.world.split("/").slice(-2).join("/")} and the real d1 (${preview.d1}).`
-    : all.length ? "The requests below are the ones that this line of the log recorded."
-    : LOCAL ? `This line of the log is form ${ev.form ?? "?"}: it keeps d1's share of each function for each part, but not the requests (what d1 read, the wording, the options). There is nothing to inspect yet. Preview reads the message again with the next engine and the real d1, and shows its requests.`
-    : `The recorded demo log is form ${ev.form ?? "?"}: it keeps d1's share of each function for each part, but not the requests (what d1 read, the wording, the options), so there is nothing to inspect here. To edit a wording and see what d1 does with it, run python3.14 .scriptt/harness.py serve in your own folder.`;
   // the parse change of the last preview: each phrase, as it read before the edit and after it
   if (preview) {
     const before = (p) => preview.before.phrases.find((q) => q.start === p.start && q.end === p.end);
     const shown = (p) => (p ? p.term ?? p.choice ?? "-" : "(no such phrase)");
     const rows = preview.after.phrases.map((p) => { const b = before(p), sb = b?.shares?.[b.choice], sa = p.shares?.[p.choice]; return { p, b, sb, sa, moved: shown(b) !== shown(p) }; });
-    $("i-changes").innerHTML = `<h3>Parse change${preview.changed.length ? ` (edited: ${preview.changed.join(", ")})` : " (no wording edited)"}</h3><p>${preview.changes.length ? `${preview.changes.length} phrase${preview.changes.length > 1 ? "s read" : " reads"} differently.` : "None: every phrase reads as it did with the default wordings."}</p>
+    $("i-changes").innerHTML = `<h3>${preview.changed.join(" ")}</h3><p>${preview.changes.length}</p>
       <div class="scroll"><table><thead><tr><th>phrase</th><th>before</th><th class="num">p</th><th>after</th><th class="num">p</th><th class="num">Δ</th></tr></thead><tbody>${rows.map(({ p, b, sb, sa, moved }) =>
       `<tr${moved ? ' class="moved"' : ""}><td>${esc(short(p.words, 60))}</td><td><code>${esc(shown(b))}</code></td><td class="num">${sb != null ? sb.toFixed(3) : ""}</td><td><code>${esc(shown(p))}</code></td><td class="num">${sa != null ? sa.toFixed(3) : ""}</td><td class="num">${sa != null && sb != null ? (sa - sb >= 0 ? "+" : "") + (sa - sb).toFixed(3) : ""}</td></tr>`).join("")}</tbody></table></div>`;
   } else $("i-changes").innerHTML = "";
@@ -871,21 +893,21 @@ function inspect() {
   };
   $("i-decision").innerHTML = (note ? `<p>${esc(note)}</p>` : "") + (found.length ? found.map((r) => `<h3>${esc(r.wording ?? r.key)} ${r.hole ? `(hole ${esc(r.hole)})` : r.path ? `(path ${esc(r.path)})` : ""}${r.automatic ? " (automatic)" : ""}</h3>
     ${r.automatic ? `<p>Recorded without asking d1: ${esc(r.automatic)}</p>` : ""}<div>What d1 read (state):</div><pre>${esc(r.state)}</pre><div>The wording, with its slots filled (instructions):</div><pre>${esc(r.instructions)}</pre>${r.options?.length ? decisionTable(r, pair(r)) : ""}`).join("")
-    : "<p>No request of d1 matches this one. A hole that code filled, or that no candidate could fill, has no request.</p>");
+    : "<p>—</p>");
 }
 async function runPreview() {
   const i = MSGS[at], ev = EVENTS[i];
   if (!LOCAL) return;
   ASKING?.abort();
   ASKING = new AbortController();
-  $("i-status").textContent = "Reading the message with the next engine and d1…"; $("i-run").disabled = true;
+  $("i-status").textContent = "…"; $("i-run").disabled = true;
   try {
     const answer = await fetch("/preview-prompts", { method: "POST", headers: { "Content-Type": "application/json" }, signal: ASKING.signal, body: JSON.stringify({ text: ev.text, session: ev.session, prompts: edited() }) });
     const got = await answer.json().catch(() => ({ error: `the harness answered ${answer.status} with no JSON` }));
     if (!answer.ok || got.error) throw new Error(got.error || answer.status);
     PREVIEW[i] = got;
     const differs = Object.keys(WORDINGS).filter((name) => got.prompts.before[name] !== WORDINGS[name][0]);
-    $("i-status").textContent = `Read in ${got.seconds} s.` + (differs.length ? ` The engine's own defaults (the "before") differ from the defaults on this page for: ${differs.join(", ")}.` : "");
+    $("i-status").textContent = `${got.seconds} s` + (differs.length ? ` · ${differs.join(" ")}` : "");
   } catch (error) {
     if (error.name !== "AbortError") $("i-status").textContent = "No preview: " + error.message;
   } finally { ASKING = null; }
@@ -898,15 +920,19 @@ $("i-select").addEventListener("change", () => { PICK = $("i-select").value; ins
 // a press on a function or a hole of the board, with no drag, picks its request
 // a press with no drag: on an action it acts, on a thing it selects, on nothing it deselects
 let pressed = null;
-document.addEventListener("pointerdown", (e) => { const t = e.target.closest?.("#board [data-act],#board [data-more],#board [data-ref]"); pressed = t ? { x: e.clientX, y: e.clientY, el: t } : e.target.closest?.("#board") ? { x: e.clientX, y: e.clientY, el: null } : null; }, true);
+document.addEventListener("pointerdown", (e) => { const t = e.target.closest?.("#board [data-act],#board [data-more],#board [data-back],#board [data-crumb],#board [data-follow],#board [data-ref]"); pressed = t ? { x: e.clientX, y: e.clientY, el: t } : e.target.closest?.("#board") ? { x: e.clientX, y: e.clientY, el: null } : null; }, true);
 document.addEventListener("pointerup", (e) => {
   const p = pressed; pressed = null;
   if (!p || Math.hypot(e.clientX - p.x, e.clientY - p.y) >= 5) return;
   if (!p.el) return select(null);
   if (p.el.hasAttribute("data-act")) return applyAct(p.el.getAttribute("data-act"));
   if (p.el.hasAttribute("data-more")) { MORE = true; return draw(); }
+  if (p.el.hasAttribute("data-back")) return back();
+  if (p.el.hasAttribute("data-crumb")) return jump(p.el.getAttribute("data-crumb"));
+  if (p.el.hasAttribute("data-follow")) return follow(p.el.getAttribute("data-follow"));
   select(p.el.getAttribute("data-ref"));
 }, true);
+tabs();
 if (["127.0.0.1", "localhost"].includes(location.hostname)) fetch("/data").then((r) => r.json()).then((own) => { LOCAL = true; load(own); }, () => load(DATA));  // your own log, in place of the recorded one
 else load(DATA);
 </script>
