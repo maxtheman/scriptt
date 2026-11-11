@@ -1,7 +1,7 @@
 [
  {
   "form": 5,
-  "id": "929d320c801048f292b60245fb0b046a",
+  "id": "2ed6b387efdb4a619d5993b3b10a9d13",
   "text": "Redesign the mod. Then show it. Test the search too.",
   "source": "243d9d05090584b2",
   "world": "b193ec94c1e33177",
@@ -41,7 +41,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 18,
@@ -72,7 +72,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 32,
@@ -108,7 +108,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -933,12 +933,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "1ec5cc17f37844518780c7a9a3b4c8a6",
+  "snapshot": "e3312aec583045998a7e8131369ab127",
   "case": "C15 specimen"
  },
  {
   "form": 5,
-  "id": "9e7a462e29214e2caec1699b38b78bc8",
+  "id": "ee435058dd8c44a29efc4a064dfac809",
   "text": "Redesign the mod and show it.",
   "source": "98612ff7602a0ffa",
   "world": "567ca7e6e8bd3b95",
@@ -999,7 +999,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -1364,12 +1364,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "45acbe6cf0514fc69bee2ded62c66fd4",
+  "snapshot": "5768d7362cbd4090ac0f3da92e1af119",
   "case": "C16 conjunction"
  },
  {
   "form": 5,
-  "id": "211b0e712d594bcda60b9054da32b701",
+  "id": "b3195ba44cb74685ad2b9ea0a10874f1",
   "text": "Frobnicate the widget and redesign the mod.",
   "source": "4882bed27b25080c",
   "world": "567ca7e6e8bd3b95",
@@ -1409,10 +1409,13 @@
       }
      }
     ],
-    "unresolved": {
-     "id": "0",
-     "reason": "rejected"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "rejected",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [
@@ -1704,12 +1707,273 @@
    }
   ],
   "corrections": [],
-  "snapshot": "43cefa520f61462f9fe1d0bd76c93aad",
+  "snapshot": "9013791d36b240ff95160562772620be",
   "case": "C16 unknown_and_known"
  },
  {
   "form": 5,
-  "id": "2bffc78184e147968c322610b0697f11",
+  "id": "67bbbf703627451793863874fe867f79",
+  "text": "Frobnicate the widget and defenestrate the gadget.",
+  "source": "8217eaed9a778aec",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 50,
+    "brand": "Asked",
+    "starts_by": "",
+    "quotes": null,
+    "terms": [],
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "rejected",
+      "place": 0
+     },
+     {
+      "id": "1",
+      "reason": "rejected",
+      "place": 1
+     }
+    ]
+   }
+  ],
+  "constants": [],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Frobnicate the widget and defenestrate the gadget.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.9,
+       "(nothing)": 0.011111111111111112
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(none)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Frobnicate the widget and defenestrate the gadget.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to something else that it asks the reader to do or to answer. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.9,
+       "(nothing)": 0.011111111111111112
+      }
+     }
+    },
+    "function": null,
+    "operation": 1,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(none)"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Frobnicate the widget and defenestrate the gadget.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to something else that it asks the reader to do or to answer; something else that it asks the reader to do or to answer. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "230d1633567d44a5b573bdee05b1b033",
+  "case": "C16 two_unresolved"
+ },
+ {
+  "form": 5,
+  "id": "4707ab194e1c44e59b49fd891d088781",
   "text": "Compare the page and the mod.",
   "source": "00c5430b5303e95b",
   "world": "567ca7e6e8bd3b95",
@@ -1762,7 +2026,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -2027,12 +2291,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "a8b7bff94c1f4590afd3cd6f27eadd6b",
+  "snapshot": "4b421636452c485e906da1caad25ae56",
   "case": "C16 compare_conjunction"
  },
  {
   "form": 5,
-  "id": "bccb99bb310a402e86256f357f02aa1a",
+  "id": "630e4fed46384249a29c9c839bca1e1a",
   "text": "Show me the mod, redesigned.",
   "source": "c9e91f66caa51197",
   "world": "567ca7e6e8bd3b95",
@@ -2090,7 +2354,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -2383,12 +2647,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "e9d78395fceb4a0ca5b6c63371ba159f",
+  "snapshot": "7eb4002df5e14e56ae65c226b00cb3fd",
   "case": "C16 nested"
  },
  {
   "form": 5,
-  "id": "c4e8fc941ee04cf9af84630d5c45e1d0",
+  "id": "a73f8eb4378c48fc92834a76ff34e945",
   "text": "Redesign the mod. Redesign the mod again.",
   "source": "5f3b1a1c58ae9ada",
   "world": "567ca7e6e8bd3b95",
@@ -2428,7 +2692,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 18,
@@ -2464,7 +2728,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -2898,12 +3162,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "86909ecc3b654a9a9d8517c9d2656548",
+  "snapshot": "82364e0eb44243919f401818224a73a4",
   "case": "C17 identical_operations"
  },
  {
   "form": 5,
-  "id": "6a9201a647de49b992feaf4462a3e0e9",
+  "id": "5ad95112e0364cfc8eb338c0ba766c98",
   "text": "Redesign the mod. Show it. Compare it with the page.",
   "source": "d6258d413a212169",
   "world": "567ca7e6e8bd3b95",
@@ -2943,7 +3207,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 18,
@@ -2974,7 +3238,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 27,
@@ -3018,7 +3282,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -3712,12 +3976,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "1472366c941d46149fb113e2bfa8c13f",
+  "snapshot": "043b6dc0ba844126a4da9aee9b1f4172",
   "case": "C17 shared_result"
  },
  {
   "form": 5,
-  "id": "d13406ac4bc8450f9f5d5bee528514dc",
+  "id": "608f24de3115462ba9704723bcf23a6f",
   "text": "Redesign the mod. Redesign the mod again.",
   "source": "5f3b1a1c58ae9ada",
   "world": "567ca7e6e8bd3b95",
@@ -3757,7 +4021,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 18,
@@ -3793,7 +4057,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -4227,12 +4491,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "1581a8e9f485412e90fa87ad8e818375",
+  "snapshot": "c602ce3d56f34b02a0944537d05a5901",
   "case": "C17 one_artifact"
  },
  {
   "form": 5,
-  "id": "7fb575fd9d554102b5b82888bbd7c19c",
+  "id": "ab1996d5a63f49d0b0533591e0c2b047",
   "text": "Redesign the mod. Pack it in a box.",
   "source": "d902e9d2bcf18b23",
   "world": "9f6f358a7ee9d111",
@@ -4272,7 +4536,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 18,
@@ -4308,7 +4572,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -4819,12 +5083,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "9dcba258da524463b2b6411b898b1527",
+  "snapshot": "732acc4837b64681b0107b3fe6f24160",
   "case": "C10 record"
  },
  {
   "form": 5,
-  "id": "6101d0b4b724447bb9eec2932888a0c4",
+  "id": "a8ebf55e34f24a93807e4486c30386e2",
   "text": "Redesign the mod. Compare it with the page.",
   "source": "cf13ff762b8a527a",
   "world": "9f6f358a7ee9d111",
@@ -4864,7 +5128,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 18,
@@ -4908,7 +5172,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -5419,12 +5683,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "675f1d3ff29b45b98bfb2298b031f8d4",
+  "snapshot": "93887c4d80474ea686f902ce85e71d17",
   "case": "C10 several"
  },
  {
   "form": 5,
-  "id": "d8f5656ece34407893d26f130a3408f0",
+  "id": "4cc47e3a6b104ced9b8ff43ea1c34a81",
   "text": "Redesign the mod. Describe it.",
   "source": "42b15eed308dce45",
   "world": "9f6f358a7ee9d111",
@@ -5464,7 +5728,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 18,
@@ -5495,7 +5759,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -5980,12 +6244,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "09efffdefa7e401fa50b0f18ae85127c",
+  "snapshot": "95873913764142a3a1ab8f053850a46a",
   "case": "C10 maybe"
  },
  {
   "form": 5,
-  "id": "aefdbd1f28ee4023be8d4715ba01ed4a",
+  "id": "32bd79454cf74ba2a3f85c112a0c14c0",
   "text": "Redesign the mod. Pack it in a box. Explain that.",
   "source": "4b825646ed327f90",
   "world": "9f6f358a7ee9d111",
@@ -6025,7 +6289,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 18,
@@ -6061,7 +6325,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 36,
@@ -6092,7 +6356,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -6858,12 +7122,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "dfddfe8af13a455d98c24a8155d417ae",
+  "snapshot": "251e17622399407ebf4f590a8d33f064",
   "case": "C10 through_result"
  },
  {
   "form": 5,
-  "id": "b03943fb1cde482cbd7590d274ebd642",
+  "id": "3fa599f81b3547fb983e10edbaf75a26",
   "text": "Pack the mod in a box.",
   "source": "6990c75e5e0ed1be",
   "world": "9f6f358a7ee9d111",
@@ -6908,7 +7172,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -7195,12 +7459,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "03d5022fafab4cd6a259f3befae57558",
+  "snapshot": "84c5b859fb844b26a4541adf867e0481",
   "case": "C10 plain"
  },
  {
   "form": 5,
-  "id": "09ae2caee7f845e7a7e6646f7ad2d9b5",
+  "id": "f14f8cc3de9d42689a179d6a9aebed7d",
   "text": "Tag the mod in a box.",
   "source": "9398cac3d271f053",
   "world": "a4cba636f3b05fbb",
@@ -7236,7 +7500,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -7471,12 +7735,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "494e299e7cf940e292dfcd6b94d95494",
+  "snapshot": "493cafa66aa34df5bdce427f6c055159",
   "case": "C10 many_of_records"
  },
  {
   "form": 5,
-  "id": "20d3dcebff084333bc54ecb1f92ebd19",
+  "id": "b6b7a9c2a5f545928d6646f16bd18ea0",
   "text": "Email my accountant.",
   "source": "4ab85b95b9cf9847",
   "world": "567ca7e6e8bd3b95",
@@ -7489,10 +7753,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "rejected"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "rejected",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [],
@@ -7649,12 +7916,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "49efc8b16c474ea9948ead665ea1eb8d",
+  "snapshot": "277668e43a504025b57d1e011e629cd0",
   "case": "C01 unsupported"
  },
  {
   "form": 5,
-  "id": "05896d6b06dc4725a20fdff8b13a9df2",
+  "id": "2eacb291a1eb44d1ba7ee41013f01ea5",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -7694,7 +7961,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -7911,12 +8178,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "bd542af42dc043aaba0a4268e1b07244",
+  "snapshot": "5e50e5f269bb47bea3aa15f2bd90a8de",
   "case": "C01 supported"
  },
  {
   "form": 5,
-  "id": "b9cef6c8df2546798b9b3cc92ba427d6",
+  "id": "65684d984e5c480eb69924841c4edd3f",
   "text": "These seven words are the entire earlier reply.",
   "source": "4d70a18927f7cb10",
   "world": "567ca7e6e8bd3b95",
@@ -7929,18 +8196,18 @@
     "starts_by": "the log",
     "quotes": 0,
     "terms": [],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [],
   "decisions": [],
   "corrections": [],
-  "snapshot": "964d36158baf4b50851daacc0c0a6af3",
+  "snapshot": "da901ffde21d408fa90d45174c926f35",
   "case": "C13 whole_quote"
  },
  {
   "form": 5,
-  "id": "a6996e7912da47cfa7e9b88e73a5f04d",
+  "id": "21ff750bfaeb40e08244dd3a641e24cb",
   "text": "\"I compared the page and the mod for you today.\" Compare them.",
   "source": "4cfc739687a1d07d",
   "world": "567ca7e6e8bd3b95",
@@ -7953,7 +8220,7 @@
     "starts_by": "the log",
     "quotes": 0,
     "terms": [],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 48,
@@ -7985,7 +8252,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -8172,12 +8439,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "07535e0be77a4394896805f51184eb53",
+  "snapshot": "7ef2e71c914143a19045f262452265c6",
   "case": "C13 quoted_members"
  },
  {
   "form": 5,
-  "id": "261145b8501540ffa7689f7615c58251",
+  "id": "e8c35df9fd7041bfb1eb68dd596669b2",
   "text": "\"I compared the page and the mod for you today.\" Compare the page and the mod.",
   "source": "6fced846b618bc53",
   "world": "567ca7e6e8bd3b95",
@@ -8190,7 +8457,7 @@
     "starts_by": "the log",
     "quotes": 0,
     "terms": [],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 48,
@@ -8239,7 +8506,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -8520,12 +8787,299 @@
    }
   ],
   "corrections": [],
-  "snapshot": "7fae70a9efbb497c8eb89d7eccb2ec93",
+  "snapshot": "96cb27bd280d4fe18d2b5590ecf72f7e",
   "case": "C13 own_members"
  },
  {
   "form": 5,
-  "id": "619fa513348543cda47378eb155bcb2e",
+  "id": "1a229ad811d44ce7aa6003cb8f87261f",
+  "text": "\"I compared the page and the mod for you today.\" Redesign the mod.",
+  "source": "20b8874421c60a65",
+  "world": "567ca7e6e8bd3b95",
+  "base": null,
+  "phrases": [
+   {
+    "start": 0,
+    "end": 48,
+    "brand": "Written",
+    "starts_by": "the log",
+    "quotes": 0,
+    "terms": [],
+    "unresolved": []
+   },
+   {
+    "start": 48,
+    "end": 66,
+    "brand": "Asked",
+    "starts_by": "the phrase before it ends",
+    "quotes": null,
+    "terms": [
+     {
+      "id": "0",
+      "function": "redesign",
+      "type": "Later[Surface]",
+      "parameters": {
+       "surface": "Surface"
+      },
+      "arguments": {
+       "surface": {
+        "constant": "the mod",
+        "type": "Surface",
+        "at": [
+         58,
+         65
+        ]
+       }
+      },
+      "judgments": {
+       "valid": true,
+       "diagnostics": [],
+       "complete": true,
+       "pending": true,
+       "deferred": true,
+       "ready": true
+      }
+     }
+    ],
+    "unresolved": []
+   }
+  ],
+  "constants": [
+   {
+    "constant": "the page",
+    "type": "Surface",
+    "at": [
+     12,
+     20
+    ]
+   },
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     25,
+     32
+    ]
+   },
+   {
+    "constant": "the mod",
+    "type": "Surface",
+    "at": [
+     58,
+     65
+    ]
+   }
+  ],
+  "decisions": [
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "what": {
+      "type": "choice",
+      "instructions": "What does this text ask the reader to do?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "what": {
+      "probabilities": {
+       "redesign": 0.9,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.011111111111111112
+      }
+     }
+    },
+    "function": null,
+    "operation": 0,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "redesign"
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "which": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how it looks. Which surface does the text name for that?",
+      "options": [
+       {
+        "id": "0",
+        "description": "'the mod'"
+       },
+       {
+        "id": "none",
+        "description": "the text names none of these"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "which": {
+      "probabilities": {
+       "0": 0.9,
+       "none": 0.1
+      }
+     }
+    },
+    "function": "redesign",
+    "operation": 0,
+    "path": "surface",
+    "offered": [
+     {
+      "constant": "the mod",
+      "type": "Surface",
+      "at": [
+       58,
+       65
+      ]
+     }
+    ],
+    "cut": [],
+    "chosen": {
+     "constant": "the mod",
+     "type": "Surface",
+     "at": [
+      58,
+      65
+     ]
+    }
+   },
+   {
+    "by": "model",
+    "rule": "",
+    "state": "Redesign the mod.",
+    "asked": {
+     "also": {
+      "type": "choice",
+      "instructions": "The text asks the reader to change how it looks. Does it also ask the reader to do something else?",
+      "options": [
+       {
+        "id": "redesign",
+        "description": "change how it looks"
+       },
+       {
+        "id": "show",
+        "description": "show it"
+       },
+       {
+        "id": "compare",
+        "description": "compare several of them"
+       },
+       {
+        "id": "open_cell",
+        "description": "open a cell"
+       },
+       {
+        "id": "review",
+        "description": "review a cell"
+       },
+       {
+        "id": "follow",
+        "description": "follow a rule"
+       },
+       {
+        "id": "approve",
+        "description": "approve a review"
+       },
+       {
+        "id": "explain",
+        "description": "explain something"
+       },
+       {
+        "id": "(none)",
+        "description": "something else that it asks the reader to do or to answer"
+       },
+       {
+        "id": "(nothing)",
+        "description": "nothing: it is a remark, a reason, a rule or a greeting"
+       }
+      ]
+     }
+    },
+    "answers": {
+     "also": {
+      "probabilities": {
+       "redesign": 0.011111111111111112,
+       "show": 0.011111111111111112,
+       "compare": 0.011111111111111112,
+       "open_cell": 0.011111111111111112,
+       "review": 0.011111111111111112,
+       "follow": 0.011111111111111112,
+       "approve": 0.011111111111111112,
+       "explain": 0.011111111111111112,
+       "(none)": 0.011111111111111112,
+       "(nothing)": 0.9
+      }
+     }
+    },
+    "function": null,
+    "operation": null,
+    "path": null,
+    "offered": [],
+    "cut": [],
+    "chosen": "(nothing)"
+   }
+  ],
+  "corrections": [],
+  "snapshot": "e58ede9d279c4630ac5442f93792ee2f",
+  "case": "C13 apply_to_quote"
+ },
+ {
+  "form": 5,
+  "id": "c2f56275dce54d0f9b1ab6322e4e0942",
   "text": "\"These seven words are the entire earlier reply.\" Redesign the mod.",
   "source": "efd45e754476b15d",
   "world": "567ca7e6e8bd3b95",
@@ -8538,7 +9092,7 @@
     "starts_by": "the log",
     "quotes": 0,
     "terms": [],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 49,
@@ -8574,7 +9128,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -8791,12 +9345,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "b1dc349d4da1493ab80ba2a18df0435b",
+  "snapshot": "b3e9c724a500438d9d4e82750dc5ea34",
   "case": "C13 quote_and_request"
  },
  {
   "form": 5,
-  "id": "0fad42a3a8764fdc9c6cd4d8923e6f9e",
+  "id": "2f909dd7edf146e6b4e4adf26210a274",
   "text": "Explain in general, not the mod.",
   "source": "99092d03003a7a09",
   "world": "e7738a24d5c8fcaf",
@@ -8831,7 +9385,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -9065,12 +9619,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "03a1e1572b1c486ca4c3157d375f3213",
+  "snapshot": "1c7ad9b4c449485db375dd81732b4de0",
   "case": "C05 absent"
  },
  {
   "form": 5,
-  "id": "6d97e5d3f08c47f0bb4a1deaa794da49",
+  "id": "f1d60d77036d47f18836f5c7669ef83a",
   "text": "Explain the mod and the page.",
   "source": "7b488757bdc58be5",
   "world": "e7738a24d5c8fcaf",
@@ -9106,7 +9660,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -9361,12 +9915,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "c069439abf4d4106b4d6d60d68f08e4c",
+  "snapshot": "951e77c67ea84c2f92afaf7356ffdcb4",
   "case": "C05 unresolved"
  },
  {
   "form": 5,
-  "id": "40f4dfd8cf7f4c939430bea41be7060d",
+  "id": "7e1eeb57d9d140649665e2f896d0be3b",
   "text": "Explain the mod and the page.",
   "source": "7b488757bdc58be5",
   "world": "e7738a24d5c8fcaf",
@@ -9407,7 +9961,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -9658,12 +10212,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "0eeafc35c5154142b484cb21aceafe5e",
+  "snapshot": "73087ba792b2426da74d5a0482463281",
   "case": "C05 malformed"
  },
  {
   "form": 5,
-  "id": "f7f087a304764d4981d432fdfb30b038",
+  "id": "79f22b8864964bbaaf9ce0cb199b5a8a",
   "text": "Explain the mod and the page.",
   "source": "7b488757bdc58be5",
   "world": "e7738a24d5c8fcaf",
@@ -9704,7 +10258,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -9949,12 +10503,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "f34122e068274dc1a85cd78516814a3c",
+  "snapshot": "0be900de228645e5bdfa5288a98a7736",
   "case": "C05 missing"
  },
  {
   "form": 5,
-  "id": "5bda5b62055f44ffbf70a64e14307eaf",
+  "id": "2d2f0575e90f4fe1b41e2e7657d5e633",
   "text": "Explain the mod and the page.",
   "source": "7b488757bdc58be5",
   "world": "e7738a24d5c8fcaf",
@@ -9995,7 +10549,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -10250,12 +10804,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "bf09f577fd5149c48a7da4e250437fd1",
+  "snapshot": "4bb6022445054a448cab0e57c47ca540",
   "case": "C05 out_of_range"
  },
  {
   "form": 5,
-  "id": "0e10511ccdea4f1796b74a8d4a7d41ae",
+  "id": "692248d4ea864a40a74d2af1fe396473",
   "text": "Explain.",
   "source": "99dd304d9aa4f54c",
   "world": "e7738a24d5c8fcaf",
@@ -10290,7 +10844,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [],
@@ -10482,12 +11036,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "7b0a998c24f1469c8d3a0ad0783fd2bd",
+  "snapshot": "a731d0bea78347ab99fc723db414128e",
   "case": "C05 nothing_in_scope"
  },
  {
   "form": 5,
-  "id": "1b339f52357e4f7f850be788a9976fdc",
+  "id": "8af896b6e4da4b6a982f0088770aeb1b",
   "text": "Explain.",
   "source": "99dd304d9aa4f54c",
   "world": "e7738a24d5c8fcaf",
@@ -10523,7 +11077,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [],
@@ -10715,12 +11269,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "36cbc944531f447195be952319b3209c",
+  "snapshot": "2dae7815c2644607a300506cefd8c7f9",
   "case": "C05 nothing_in_scope_rejected"
  },
  {
   "form": 5,
-  "id": "c6f7ba9a7d894a3395bf807fcae953ab",
+  "id": "e305680b608348f4be9bf74ebad0ac70",
   "text": "Explain the mod.",
   "source": "bb0d958f897ea567",
   "world": "e7738a24d5c8fcaf",
@@ -10760,7 +11314,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -11001,12 +11555,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "abf769755a0d434daa28cbb58a5c4eb0",
+  "snapshot": "6fcba53979a741b7ae95dcf220a7bae1",
   "case": "C05 given"
  },
  {
   "form": 5,
-  "id": "eda3d8e4b2cd4739b996517e44c632fe",
+  "id": "e876d6d6c562411db0be51795c431266",
   "text": "Compare them.",
   "source": "103f3832b8c08783",
   "world": "567ca7e6e8bd3b95",
@@ -11042,7 +11596,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [],
@@ -11212,12 +11766,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "5fa7bebccc8c4a6c86570a79d5e1e64e",
+  "snapshot": "6979ae75b84847cda2fb43cf7fc5d890",
   "case": "C06 unknown"
  },
  {
   "form": 5,
-  "id": "cfe04906c3b24294a569ba399b897e08",
+  "id": "32be73123c174b41b54ba97b052ceb82",
   "text": "Compare them.",
   "source": "103f3832b8c08783",
   "world": "567ca7e6e8bd3b95",
@@ -11253,7 +11807,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [],
@@ -11423,12 +11977,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "82f233be7b064968bc8b6f4f1fbeda08",
+  "snapshot": "33cf57df0e6a40848258f814bf898714",
   "case": "C06 explicit_empty"
  },
  {
   "form": 5,
-  "id": "e73e95ffd5a9458797e55a979d499e02",
+  "id": "2d81a415b6674739a037d8dbf0c23b71",
   "text": "I like the page. Compare it, not the mod.",
   "source": "bde2829b937f1b01",
   "world": "567ca7e6e8bd3b95",
@@ -11441,7 +11995,7 @@
     "starts_by": "the first word",
     "quotes": null,
     "terms": [],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 17,
@@ -11482,7 +12036,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -11814,12 +12368,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "ddf94dfcbcfd458da8b8f53e7b5f7e58",
+  "snapshot": "e3716f0c827d4be0b48bcf3846a0f41d",
   "case": "C06 earlier_not_local"
  },
  {
   "form": 5,
-  "id": "7eb52dd23db7436aac4f6b6f0b073d46",
+  "id": "5d557e3bd5ec4e028ead68a38c966645",
   "text": "Compare the page and the mod.",
   "source": "00c5430b5303e95b",
   "world": "567ca7e6e8bd3b95",
@@ -11855,7 +12409,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -12103,12 +12657,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "99fc53cfc17647f1a34fb5e5824c8fb4",
+  "snapshot": "ee1afad96e9b41cab7cb656e5c8d9b4c",
   "case": "C06 all_rejected"
  },
  {
   "form": 5,
-  "id": "51580ccfb2a14c1bbff90b763fd25bdf",
+  "id": "414cb4e4a38044509592170d23738815",
   "text": "Compare none of them, neither the page nor the mod.",
   "source": "8d286a72451b6c8e",
   "world": "567ca7e6e8bd3b95",
@@ -12144,7 +12698,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -12392,12 +12946,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "f1250bdd59b14a749f008447ef750735",
+  "snapshot": "3cc88c8f4cff4620ad83f7281feab46c",
   "case": "C06 absent_many"
  },
  {
   "form": 5,
-  "id": "01c6dafb66b74f8e812163bd43304b6c",
+  "id": "b56d9f4a3b6a4ae585c2e0691d508291",
   "text": "Email an accountant.",
   "source": "6b3b6e4d89217afc",
   "world": "f0b9d9f56bd3049e",
@@ -12410,10 +12964,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "rejected"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "rejected",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [],
@@ -12580,12 +13137,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "b7fde45de3b247af9e4894d24eb787f2",
+  "snapshot": "821e088cbef44938a42581f644c7b133",
   "case": "C14 reserved_name"
  },
  {
   "form": 5,
-  "id": "efa9e3dd054345908cc7d74003842c63",
+  "id": "e8de3701b16f433a879e0e2a0e45fb66",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -12598,10 +13155,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "invalid answer"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "invalid answer",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [
@@ -12683,12 +13243,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "b1a8445def004af7ace80b39032b4435",
+  "snapshot": "81f8c6be503245b3a4192d5c2e0a37e3",
   "case": "C14 out_of_set"
  },
  {
   "form": 5,
-  "id": "975d86900667421e8b9ee7d6f508478a",
+  "id": "bb29483f4b754d399b0a20adaabeebde",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -12701,10 +13261,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "invalid answer"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "invalid answer",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [
@@ -12780,12 +13343,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "b2761e1513e4467e8662a4e97e9569cb",
+  "snapshot": "11194d20bbe443b691facde833964716",
   "case": "C14 missing"
  },
  {
   "form": 5,
-  "id": "f6b401fd5fe243f4b81093aaa3d5707b",
+  "id": "89f71b1504f74a21b77d6f4ba8e8105a",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -12798,10 +13361,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "invalid answer"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "invalid answer",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [
@@ -12883,12 +13449,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "6ee25aac5eff449b9f4e153d9037adf9",
+  "snapshot": "124df1b583e54094994a6e2f0a9663dc",
   "case": "C14 not_numbers"
  },
  {
   "form": 5,
-  "id": "d181bbccde55489bb8e4d311ece747e8",
+  "id": "5013b7aaab2f430fa06a783efb5be463",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -12901,10 +13467,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "invalid answer"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "invalid answer",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [
@@ -12973,7 +13542,7 @@
     "answers": {
      "what": {
       "probabilities": {
-       "redesign": NaN,
+       "redesign": "NaN",
        "show": 0.0,
        "compare": 0.0,
        "open_cell": 0.0,
@@ -12995,12 +13564,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "f0f8be3f4d3346b98b3971e8a46c062d",
+  "snapshot": "e1c0abcc09a0404ea62d0ecc48f1232b",
   "case": "C14 nan"
  },
  {
   "form": 5,
-  "id": "72095111ea3c4609bc4b138c3e0d3fcf",
+  "id": "8208174fe631402f8a71895e4eaaf9e6",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -13013,10 +13582,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "invalid answer"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "invalid answer",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [
@@ -13085,7 +13657,7 @@
     "answers": {
      "what": {
       "probabilities": {
-       "redesign": Infinity,
+       "redesign": "Infinity",
        "show": 0.0,
        "compare": 0.0,
        "open_cell": 0.0,
@@ -13107,12 +13679,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "d56517707d744782b1365c252c3fea3a",
+  "snapshot": "40cbed8716704c44bd30f718a710ed92",
   "case": "C14 infinite"
  },
  {
   "form": 5,
-  "id": "63d78c5997404d319abc5be4f434fdd9",
+  "id": "94fb58a0e8434758995d13d99c94a275",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -13125,10 +13697,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "invalid answer"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "invalid answer",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [
@@ -13211,12 +13786,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "793b70b353254cbb8a108620efc7780c",
+  "snapshot": "127bb3218f064efa937c592c54006b89",
   "case": "C14 negative"
  },
  {
   "form": 5,
-  "id": "347ee5df7e9e436e8381bd84e60d78f8",
+  "id": "d98c88fa632c4b79b6066e326707c967",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -13229,10 +13804,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "invalid answer"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "invalid answer",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [
@@ -13323,12 +13901,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "7d8863260f104c0684deba5271866985",
+  "snapshot": "a866e94149d14cb7b74f6be3240fef75",
   "case": "C14 out_of_range"
  },
  {
   "form": 5,
-  "id": "c1436b03b779469ea3ed8dfe0767005d",
+  "id": "071bc27169f04ce2b10a2f3d81a3e4d1",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -13341,10 +13919,13 @@
     "starts_by": "",
     "quotes": null,
     "terms": [],
-    "unresolved": {
-     "id": "0",
-     "reason": "invalid answer"
-    }
+    "unresolved": [
+     {
+      "id": "0",
+      "reason": "invalid answer",
+      "place": 0
+     }
+    ]
    }
   ],
   "constants": [
@@ -13435,12 +14016,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "560b9d5b39584933b7cd7f1b7929297b",
+  "snapshot": "f9127889fc304d7ca1b1e34890fe2be6",
   "case": "C14 unnormalized"
  },
  {
   "form": 5,
-  "id": "e389de238b04466f9b4d24ac1b943814",
+  "id": "69f017f2e58d433db068094c764a9097",
   "text": "Show whichever of the page, the site, the ui, the mod, the pane, the visualization, the harness, the hook and the tests changed.",
   "source": "65aaf6fb9a983e02",
   "world": "b193ec94c1e33177",
@@ -13476,7 +14057,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -13908,12 +14489,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "060c8a2ff8434fa9a8e7f39e06573b2c",
+  "snapshot": "37363243e75d48fdb71fb02989c0720b",
   "case": "C14 bounded"
  },
  {
   "form": 5,
-  "id": "b5aae5fcd67044d79b1106fe61ffa87a",
+  "id": "4e2498824ef8436796c2448b8d68634a",
   "text": "Redesign the mod, show it, compare it with the page and explain it.",
   "source": "dc2bb4d7c639a041",
   "world": "567ca7e6e8bd3b95",
@@ -14008,10 +14589,13 @@
       }
      }
     ],
-    "unresolved": {
-     "id": "3",
-     "reason": "bounded"
-    }
+    "unresolved": [
+     {
+      "id": "3",
+      "reason": "bounded",
+      "place": 3
+     }
+    ]
    }
   ],
   "constants": [
@@ -14581,12 +15165,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "2aa64ab750da443da6acf0eb2c48c726",
+  "snapshot": "7266058bec43449496fe58df3623bf47",
   "case": "C14 too_many_operations"
  },
  {
   "form": 5,
-  "id": "efdfb69b438f4f2bba14b02a2b9301ae",
+  "id": "14a8e9f8ee5048bc8ca68d668975a7b4",
   "text": "Redesign the mod.",
   "source": "9dc4677f41805788",
   "world": "567ca7e6e8bd3b95",
@@ -14626,7 +15210,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -14843,12 +15427,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "62420b17803c46fa9b558e6c4367741b",
+  "snapshot": "9b2d11ebc94f4a6a87e4a49c94a6a1f6",
   "case": "C14 well_formed"
  },
  {
   "form": 5,
-  "id": "da0d10b564d8424a991416c77dcf9cf4",
+  "id": "f5963e7891de4218abdda40d50d723af",
   "text": "Reshape cell 3 of notes.md. Open that cell.",
   "source": "9c8bd0d5ea9d626a",
   "world": "3b0b4ae70d2a1981",
@@ -14901,7 +15485,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 28,
@@ -14932,7 +15516,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -15495,12 +16079,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "047905bdd1914fed86f1396b1713e882",
+  "snapshot": "53c80c8aa58540278763ac8d3cefb4db",
   "case": "C07 reshape_open"
  },
  {
   "form": 5,
-  "id": "8e8eac40f2a44d39b8900bf1733a989a",
+  "id": "aa7a46030bb34bd481a2b160e9f25a78",
   "text": "Redesign the page. Show the mod redesigned.",
   "source": "8318c91a53cc0ed8",
   "world": "567ca7e6e8bd3b95",
@@ -15540,7 +16124,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 19,
@@ -15594,7 +16178,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -16138,12 +16722,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "9bed22bf5906447f9382365f52189e7e",
+  "snapshot": "66630a6572334cfcb8b3717b8a3b1040",
   "case": "C08 page_then_mod"
  },
  {
   "form": 5,
-  "id": "868c9cfb7297416dbba6de804ea04f77",
+  "id": "a233ab59bc734c58a9f9ce71b9b2526e",
   "text": "Make a token for the mod. Use that token.",
   "source": "56459f848a0ea35e",
   "world": "6886e77e7f53c8e6",
@@ -16183,7 +16767,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 26,
@@ -16214,7 +16798,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -16700,12 +17284,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "339a00770e274f4eb38eb1c2d9426e4c",
+  "snapshot": "3e94bcf6cad849ae8566815df9b8214d",
   "case": "C09 chain"
  },
  {
   "form": 5,
-  "id": "f4ff5028a1b340cba90c42b3ffcb41ab",
+  "id": "f7bd6ab5531b4696aa71f57ed5527714",
   "text": "Use a token.",
   "source": "bb002b0d4f81ede6",
   "world": "6886e77e7f53c8e6",
@@ -16741,7 +17325,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [],
@@ -16931,12 +17515,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "5d18266ab8eb4d1a913bf444133075f0",
+  "snapshot": "53fc161f1e224ac489edfed4a4b0adf8",
   "case": "C09 contrast"
  },
  {
   "form": 5,
-  "id": "b4fdd883f71b4d09a50dcd5f6b72dcd6",
+  "id": "ec417d602cb84df0a3f574ca94de59aa",
   "text": "Gather notes on the mod. Summarize them.",
   "source": "ec28f3bc1936b141",
   "world": "24411101b0dd9a87",
@@ -16976,7 +17560,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 25,
@@ -17007,7 +17591,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -17533,12 +18117,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "1162a9be1af54896929e6f590051c74f",
+  "snapshot": "6f03ea934e7f4cbca32a0804ea087b4a",
   "case": "C09 whole_many"
  },
  {
   "form": 5,
-  "id": "cbf43bc2132547a5814022aeb12b8e57",
+  "id": "73646a50db56486e81fc00afdaddaaab",
   "text": "Find a note on the mod. Keep it.",
   "source": "9bd0197bff9897d9",
   "world": "24411101b0dd9a87",
@@ -17578,7 +18162,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 24,
@@ -17609,7 +18193,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -18140,12 +18724,12 @@
    }
   ],
   "corrections": [],
-  "snapshot": "8d927f4111e54a2d859b3a0f43b5f920",
+  "snapshot": "c062a5c319244203b95e96a94670981f",
   "case": "C09 whole_maybe"
  },
  {
   "form": 5,
-  "id": "1760fe91bfc14dbfb3ee57bfc1651a42",
+  "id": "60a711cd75d64395be1fd2d284f61281",
   "text": "Redesign the mod. Then show it. Test the search too.",
   "source": "243d9d05090584b2",
   "world": "b193ec94c1e33177",
@@ -18185,7 +18769,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 18,
@@ -18221,7 +18805,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    },
    {
     "start": 32,
@@ -18257,7 +18841,7 @@
       }
      }
     ],
-    "unresolved": null
+    "unresolved": []
    }
   ],
   "constants": [
@@ -19082,7 +19666,7 @@
    }
   ],
   "corrections": [],
-  "snapshot": "bd40414a41c245a781d749c37b322d60",
+  "snapshot": "d417178e850c4d1b82282a04a68e49af",
   "case": "C15 specimen, show rebound to the original mod by an edit (preview)"
  }
 ]
