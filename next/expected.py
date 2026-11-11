@@ -532,7 +532,7 @@ RECORD = {"R1": ("A save writes one JSON object per reading: {\"phrases\": [{\"s
 # Each change to this oracle after its first review. Version 1 is commit 5b524a0.
 # Every observed result must be judged again against the version that holds it;
 # no result had been produced against version 1.
-ORACLE_VERSION = 4
+ORACLE_VERSION = 5
 CORRECTIONS = (
     ("E1", 2, "status could be recomputed by the adapter from the projected bindings, making C10 circular, and was not transitive through a pending operation's non-Later result",
      "observe() now takes status from the engine's own dependency judgment and defines it transitively; run C10 through_result", ("C10", "C15", "C18", "C19")),
@@ -580,6 +580,7 @@ CORRECTIONS = (
     ("E35", 4, "nothing checked that member words inside a quoted reply are not grounded as the user's values", "runs quoted_members and own_members", ("C13",)),
     ("E36", 4, "the saved record that the interface loads had no contract", "requirement R1 and its structural check on the JSON that save wrote", ("C10", "C15", "C16", "C17")),
     ("E37", 4, "fixtures could replace text that the base world does not contain, silently", "world_source builds every world from the base frozen at the snapshot commit; the self-test requires each replaced text to exist", ()),
+    ("E38", 5, "runs later_removed and relabelled made the obligations available with dataclasses.replace but kept ready=False, computed while they were pending; by the oracle's own rule an available, complete, valid obligation is ready", "ready follows from complete and available in those runs", ("C20",)),
 )
 
 
@@ -1014,7 +1015,7 @@ CASES = (
          "check() asks the same argument-blind question twice (probe argument_blind_duplicate_checks); Later makes a refusal PROMISED (probe refusal_becomes_promised).",
          tuple(run(label, label == "both", world, ("Redesign the mod. Redesign the page.",),
                    script({"Redesign the mod.": "redesign", "Redesign the page.": "redesign"}, {("Redesign the mod.", "redesign", "surface"): MOD, ("Redesign the page.", "redesign", "surface"): PAGE}, judge),
-                   (("read", READ, {"obligations": REDESIGN_TWO if world == World() else [dataclasses.replace(one, status=AVAILABLE) for one in REDESIGN_TWO]}),
+                   (("read", READ, {"obligations": REDESIGN_TWO if world == World() else [dataclasses.replace(one, status=AVAILABLE, ready=one.complete) for one in REDESIGN_TWO]}),
                     ("checked", ("check", reply, artifacts, EVIDENCE_CRITERIA), {"checks": checks, "verdict": verdict})))
                for label, world, reply, judge, artifacts, checks, verdict in (
                    ("mod_only", World(), "I redesigned the mod.", 0.99, (worked("redesign", {"surface": MOD}),),
